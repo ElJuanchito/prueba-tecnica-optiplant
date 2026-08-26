@@ -1,0 +1,159 @@
+@startuml casos_de_uso
+' Sistema de Gestión de Inventario Multi-Sucursal — OptiPlant Consultores
+' Diagrama de Casos de Uso (UML 2.5) — Cumplimiento secciones 6.2 y 7.1
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam usecase {
+    BackgroundColor #FDFDFD
+    BorderColor #2C3E50
+    ArrowColor #34495E
+}
+skinparam actor {
+    BackgroundColor #ECF0F1
+    BorderColor #2C3E50
+}
+
+actor "Administrador General" as ADMIN
+actor "Gerente de Sucursal" as MANAGER
+actor "Operador de Inventario" as OPERATOR
+actor "Sistema Externo\n(ERP / POS)" as EXTERNAL <<system>>
+actor "Motor de Tiempo\ndel Sistema" as SCHEDULER <<system>>
+
+rectangle "Sistema de Gestión de Inventario Multi-Sucursal" {
+
+    package "Seguridad e Identidad" {
+        usecase "CU-SEG-01\nAutenticarse en el sistema" as SEG01
+        usecase "CU-SEG-02\nGestionar usuarios y roles" as SEG02
+        usecase "CU-SEG-03\nGestionar sucursales" as SEG03
+        usecase "CU-SEG-04\nConsultar bitácora de auditoría" as SEG04
+    }
+
+    package "Inventario y Catálogo" {
+        usecase "CU-INV-01\nGestionar catálogo de productos" as INV01
+        usecase "CU-INV-02\nGestionar unidades de medida" as INV02
+        usecase "CU-INV-03\nConsultar stock local" as INV03
+        usecase "CU-INV-04\nConsultar stock de la red" as INV04
+        usecase "CU-INV-05\nRegistrar ajuste manual" as INV05
+        usecase "CU-INV-06\nRegistrar merma o daño" as INV06
+        usecase "CU-INV-07\nParametrizar stock mínimo" as INV07
+        usecase "CU-INV-08\nConsultar Kardex" as INV08
+    }
+
+    package "Compras" {
+        usecase "CU-COM-01\nGestionar proveedores" as COM01
+        usecase "CU-COM-02\nCrear orden de compra" as COM02
+        usecase "CU-COM-03\nAprobar o cancelar orden" as COM03
+        usecase "CU-COM-04\nRegistrar recepción y recalcular CPP" as COM04
+        usecase "CU-COM-05\nConsultar histórico de compras" as COM05
+    }
+
+    package "Ventas" {
+        usecase "CU-VEN-01\nRegistrar venta" as VEN01
+        usecase "CU-VEN-02\nAplicar precios y descuentos" as VEN02
+        usecase "CU-VEN-03\nAnular venta" as VEN03
+        usecase "CU-VEN-04\nConsultar comprobante" as VEN04
+    }
+
+    package "Transferencias entre Sucursales" {
+        usecase "CU-TRA-01\nSolicitar transferencia" as TRA01
+        usecase "CU-TRA-02\nAprobar o rechazar solicitud" as TRA02
+        usecase "CU-TRA-03\nRegistrar despacho" as TRA03
+        usecase "CU-TRA-04\nConfirmar recepción completa" as TRA04
+        usecase "CU-TRA-05\nConfirmar recepción parcial" as TRA05
+        usecase "CU-TRA-06\nCancelar solicitud" as TRA06
+    }
+
+    package "Logística" {
+        usecase "CU-LOG-01\nParametrizar rutas" as LOG01
+        usecase "CU-LOG-02\nMonitorear transferencias activas" as LOG02
+        usecase "CU-LOG-03\nReporte de cumplimiento logístico" as LOG03
+    }
+
+    package "Dashboard y Analítica" {
+        usecase "CU-DSH-01\nDashboard de sucursal" as DSH01
+        usecase "CU-DSH-02\nIndicadores de reabastecimiento" as DSH02
+        usecase "CU-DSH-03\nTablero corporativo comparativo" as DSH03
+    }
+
+    package "Alertas Inteligentes" {
+        usecase "CU-ALE-01\nGenerar alertas automáticas" as ALE01
+        usecase "CU-ALE-02\nConsultar y resolver alertas" as ALE02
+    }
+
+    package "Integración Externa" {
+        usecase "CU-EXT-01\nConsultar disponibilidad vía API" as EXT01
+        usecase "CU-EXT-02\nNotificar venta desde POS" as EXT02
+    }
+}
+
+' --- Administrador General ---
+ADMIN --> SEG01
+ADMIN --> SEG02
+ADMIN --> SEG03
+ADMIN --> SEG04
+ADMIN --> INV01
+ADMIN --> INV02
+ADMIN --> COM01
+ADMIN --> LOG01
+ADMIN --> DSH03
+
+' --- Gerente de Sucursal ---
+MANAGER --> SEG01
+MANAGER --> INV05
+MANAGER --> INV07
+MANAGER --> INV08
+MANAGER --> COM03
+MANAGER --> COM05
+MANAGER --> VEN03
+MANAGER --> TRA02
+MANAGER --> TRA06
+MANAGER --> LOG02
+MANAGER --> LOG03
+MANAGER --> DSH01
+MANAGER --> ALE02
+
+' --- Operador de Inventario ---
+OPERATOR --> SEG01
+OPERATOR --> INV03
+OPERATOR --> INV04
+OPERATOR --> INV06
+OPERATOR --> COM02
+OPERATOR --> COM04
+OPERATOR --> VEN01
+OPERATOR --> VEN04
+OPERATOR --> TRA01
+OPERATOR --> TRA03
+OPERATOR --> TRA04
+OPERATOR --> TRA05
+OPERATOR --> DSH02
+
+' --- Actores no humanos ---
+EXTERNAL --> EXT01
+EXTERNAL --> EXT02
+SCHEDULER --> ALE01
+
+' --- Relaciones entre casos de uso ---
+VEN01 ..> VEN02 : <<include>>
+VEN01 ..> INV08 : <<include>>
+VEN01 ..> ALE01 : <<extend>>
+COM04 ..> INV08 : <<include>>
+TRA01 ..> INV04 : <<include>>
+TRA03 ..> INV08 : <<include>>
+TRA04 ..> INV08 : <<include>>
+TRA05 ..> INV08 : <<include>>
+TRA05 ..> ALE01 : <<extend>>
+INV05 ..> SEG04 : <<include>>
+INV06 ..> INV08 : <<include>>
+EXT02 ..> VEN01 : <<include>>
+EXT01 ..> INV04 : <<include>>
+ALE01 ..> INV07 : <<include>>
+
+note bottom of TRA05
+  La recepción parcial ingresa sólo la cantidad
+  efectivamente recibida, libera el stock en tránsito
+  y emite una alerta TRANSFER_DISCREPANCY.
+end note
+
+@enduml
