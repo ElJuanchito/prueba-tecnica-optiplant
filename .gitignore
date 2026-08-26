@@ -1,0 +1,99 @@
+# ============================================================================
+# Backend — Java / Spring Boot
+# ============================================================================
+target/
+build/
+!src/**/build/
+.gradle/
+*.class
+*.war
+*.ear
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
+hs_err_pid*
+replay_pid*
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties
+
+# ============================================================================
+# Frontend — Node / Vite / React
+# ============================================================================
+node_modules/
+dist/
+dist-ssr/
+build/
+.vite/
+.cache/
+coverage/
+*.tsbuildinfo
+.eslintcache
+.npm/
+.pnpm-store/
+*.local
+
+# ============================================================================
+# Variables de entorno y secretos
+# Nunca se versionan credenciales. Los archivos .env.example sí, como plantilla.
+# ============================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+secrets/
+
+# ============================================================================
+# Base de datos y volúmenes locales
+# ============================================================================
+pgdata/
+*.dump
+*.sql.gz
+
+# ============================================================================
+# Registros y temporales
+# ============================================================================
+*.log
+logs/
+tmp/
+temp/
+*.pid
+*.seed
+
+# ============================================================================
+# Entornos de desarrollo
+# ============================================================================
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+!.vscode/extensions.json
+.settings/
+.project
+.classpath
+*.swp
+*.swo
+*~
+
+# ============================================================================
+# Sistema operativo
+# ============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ============================================================================
+# Herramientas de asistencia local (configuración de la máquina, no del proyecto)
+# ============================================================================
+.claude/
+.agents/
+.atl/
+skills-lock.json
