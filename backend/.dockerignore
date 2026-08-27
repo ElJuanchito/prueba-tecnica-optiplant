@@ -1,0 +1,13 @@
+# La construcción sólo necesita el wrapper, el pom y las fuentes.
+target/
+
+# El esquema lo carga el servicio db montando este directorio; no entra en la imagen.
+init-db/
+
+# Secretos y metadatos que no deben viajar dentro de la imagen.
+.env
+.env.*
+.git/
+.gitignore
+.gitattributes
+*.md

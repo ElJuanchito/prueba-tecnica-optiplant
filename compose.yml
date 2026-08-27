@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-optiplant}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-optiplant}
+    volumes:
+      # DT-01: mientras este montaje exista, Flyway permanece apagado.
+      - ./backend/init-db:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT_HOST:-5432}:5432"
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-optiplant}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-optiplant}
+      - BACKEND_PORT=${BACKEND_PORT:-8080}
+      # Sin `=`: se propaga sólo si está definida en el entorno. Con un valor por
+      # defecto vacío sobrescribiría el de application-dev.yml y @NotBlank fallaría.
+      - JWT_SECRET
+    ports:
+      - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:${BACKEND_PORT:-8080}/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+
+volumes:
+  pgdata:
