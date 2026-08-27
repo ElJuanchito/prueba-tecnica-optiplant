@@ -4,6 +4,10 @@ optiplant:
     # Sin valor por defecto a propósito: si la variable falta, el arranque falla acá
     # y no en el primer inicio de sesión.
     secret: ${JWT_SECRET}
+  cors:
+    # Sin valor por defecto, igual que optiplant.jwt.secret: un origen ausente falla
+    # el arranque en vez de abrir CORS de más o rechazar todo en silencio.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
 springdoc:
   api-docs:

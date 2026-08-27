@@ -12,7 +12,7 @@
 -- ============================================================================
 
 -- Contraseña estándar para todos los usuarios semilla: 'Password123!' (BCrypt hash)
--- Hash: $2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi
+-- Hash: $2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q
 
 -- ----------------------------------------------------------------------------
 -- 1. SUCURSALES (Branches)
@@ -27,17 +27,17 @@ INSERT INTO branches (external_id, code, name, address, city, phone) VALUES
 -- ----------------------------------------------------------------------------
 INSERT INTO users (external_id, branch_id, username, email, password_hash, full_name, role) VALUES
 -- Administrador Corporativo Global (sin sucursal fija)
-('e0000000-0000-0000-0000-000000000001', NULL, 'admin.corp', 'admin@optiplant.com', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'Carlos Mendoza (Admin Global)', 'ADMIN'),
+('e0000000-0000-0000-0000-000000000001', NULL, 'admin.corp', 'admin@optiplant.com', '$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q', 'Carlos Mendoza (Admin Global)', 'ADMIN'),
 
 -- Gerentes de Sucursal
-('e0000000-0000-0000-0000-000000000002', 1, 'gerente.bogota', 'gerente.bog@optiplant.com', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'Adriana Morales (Gerente Bogotá)', 'BRANCH_MANAGER'),
-('e0000000-0000-0000-0000-000000000003', 2, 'gerente.medellin', 'gerente.med@optiplant.com', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'Felipe Gómez (Gerente Medellín)', 'BRANCH_MANAGER'),
-('e0000000-0000-0000-0000-000000000004', 3, 'gerente.cali', 'gerente.cal@optiplant.com', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'Lucía Valencia (Gerente Cali)', 'BRANCH_MANAGER'),
+('e0000000-0000-0000-0000-000000000002', 1, 'gerente.bogota', 'gerente.bog@optiplant.com', '$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q', 'Adriana Morales (Gerente Bogotá)', 'BRANCH_MANAGER'),
+('e0000000-0000-0000-0000-000000000003', 2, 'gerente.medellin', 'gerente.med@optiplant.com', '$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q', 'Felipe Gómez (Gerente Medellín)', 'BRANCH_MANAGER'),
+('e0000000-0000-0000-0000-000000000004', 3, 'gerente.cali', 'gerente.cal@optiplant.com', '$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q', 'Lucía Valencia (Gerente Cali)', 'BRANCH_MANAGER'),
 
 -- Operadores de Inventario
-('e0000000-0000-0000-0000-000000000005', 1, 'operador.bogota', 'operador.bog@optiplant.com', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'Juan Pérez (Operador Bogotá)', 'OPERATOR'),
-('e0000000-0000-0000-0000-000000000006', 2, 'operador.medellin', 'operador.med@optiplant.com', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'Mateo Henao (Operador Medellín)', 'OPERATOR'),
-('e0000000-0000-0000-0000-000000000007', 3, 'operador.cali', 'operador.cal@optiplant.com', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 'Sofía Caicedo (Operador Cali)', 'OPERATOR');
+('e0000000-0000-0000-0000-000000000005', 1, 'operador.bogota', 'operador.bog@optiplant.com', '$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q', 'Juan Pérez (Operador Bogotá)', 'OPERATOR'),
+('e0000000-0000-0000-0000-000000000006', 2, 'operador.medellin', 'operador.med@optiplant.com', '$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q', 'Mateo Henao (Operador Medellín)', 'OPERATOR'),
+('e0000000-0000-0000-0000-000000000007', 3, 'operador.cali', 'operador.cal@optiplant.com', '$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q', 'Sofía Caicedo (Operador Cali)', 'OPERATOR');
 
 -- ----------------------------------------------------------------------------
 -- 3. CATÁLOGO MAESTRO (Categories, Products & Units)
