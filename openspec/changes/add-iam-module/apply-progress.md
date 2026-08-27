@@ -681,3 +681,177 @@ None.
 
 7/7 Slice 3 tasks complete. `cd backend && ./mvnw verify` → `BUILD SUCCESS` (32 surefire + 19
 failsafe tests, all green). Ready for `sdd-verify`, then Slice 4 (Audit) apply.
+
+## Slice 4 — Audit (PR5) — COMPLETE (10/10 tasks)
+
+Branch: `feat/ep-01-iam-04-auditoria` (branches from `feat/ep-01-iam`).
+Mode: Standard (`strict_tdd: false` per `openspec/config.yaml`).
+
+### Completed Tasks
+
+- [x] 4.1 Created `shared/audit/{AuditAction,AuditEntryCommand,AuditWritePort}.java`, all
+      JDK-only imports (`java.util.UUID` only). **Deviation** (see below): `AuditEntryCommand
+      .action()` stays `String`, not the new `AuditAction` enum.
+- [x] 4.2 Created `iam/domain/model/AuditRecord.java` — the read-back shape for
+      `GET /api/audit`, carrying `external_id` for itself, the actor and the branch, never a
+      numeric id, matching every other domain model in this module.
+- [x] 4.3 Created `AuditLogJpaEntity` (`payload_before`/`payload_after` mapped
+      `@JdbcTypeCode(SqlTypes.JSON)` on plain `String` fields — verified present in the resolved
+      `hibernate-core-7.4.5.Final.jar` before writing the annotation, CLAUDE.md), a new
+      `findBranchIdByExternalId` native query added to the existing `UserSpringDataRepository`
+      (mirrors its existing reverse-direction branch lookups — no `BranchJpaEntity` exists yet,
+      slice 5b), and `AuditWriteAdapter implements AuditWritePort` — resolves the actor/branch
+      external ids to `BIGINT` FKs via `findIdByExternalId`/`findBranchIdByExternalId`, throwing
+      `IllegalStateException` if either fails to resolve (mirrors
+      `RefreshTokenPersistenceAdapter.persist`'s existing pattern for the same situation).
+      Deliberately carries no `@Transactional` of its own — CLAUDE.md's synchronous-effects
+      invariant requires it to join the caller's already-open transaction, never start a new one.
+- [x] 4.4 Created `application/port/out/AuditQueryPort`. **Deviation**: its query methods were
+      added directly to `AuditWriteAdapter` (task 4.3's own class, which the task itself calls
+      "the persistence adapter"), not a second, separately-named class — see Deviations.
+- [x] 4.5 Created `application/port/in/QueryAuditLogUseCase` + `AuditQueryService`.
+      `BRANCH_MANAGER` is forced to `principal.branchId()` regardless of any branch filter
+      submitted; `ADMIN`'s filter (including none, meaning every branch) passes through
+      unchanged. **Deviation**: `OPERATOR` denial is enforced entirely by `SecurityConfig`'s
+      existing `/api/audit/**` → `hasAnyAuthority("ADMIN","BRANCH_MANAGER")` matcher (added in
+      slice 3) — the service performs no OPERATOR check of its own, since Spring Security's
+      default `AccessDeniedHandler` already returns `403` before the request ever reaches this
+      service. `AuditLogQueryIT.operadorEsRechazadoConCuatroCientosTres` proves this end to end.
+- [x] 4.6 Created `adapter/in/web/AuditLogController` — `GET /api/audit`, `@RequestParam`
+      filters (`userId`, `branchId`, `entityName`, `action`, `from`, `to`, `page`, `size`),
+      default page size 20, max 100. `AuditEntryResponse` exposes only `UUID` ids (no numeric
+      id). No `PUT`/`PATCH`/`DELETE` mapping anywhere in this controller or module.
+- [x] 4.7 Created `AuditEntryCommandTest` (3 cases: every field round-trips unchanged, `branchId`
+      may be `null` for a corporate actor's action, `action` accepts a free-form string beyond
+      `AuditAction`'s own three values — the load-bearing assertion for the 4.1 deviation).
+- [x] 4.8 Created `AuditLogQueryIT` — the five RF-SEG-04 filters (user, branch, entity, action,
+      date-range `from`/`to` both tested separately), pagination (25 rows, no explicit `size` →
+      20 returned, `totalElements` 25), and role-scoping (ADMIN sees both branches;
+      BRANCH_MANAGER forced to their own even when a different `branchId` is submitted; OPERATOR
+      `403`). Rows are inserted directly via `JdbcTemplate` (no production mutation endpoint
+      exists yet — user/branch admin are slices 5a/5b); every scenario tags its rows with a
+      random 8-hex-char `entity_name` marker so assertions stay exact regardless of execution
+      order or any other IT class's rows sharing the same Testcontainers Postgres instance.
+- [x] 4.9 Created `AuditAtomicityFixtureService`/`AuditAtomicityFixtureController`
+      (`src/test`-only, mirroring `BranchIsolationFixtureController`'s established pattern) and
+      `AuditAtomicityIT` — `POST /api/test/audit-atomicity/{entityId}?shouldFail=true` calls
+      `AuditWritePort.record` then throws inside one `@Transactional` fixture method; asserts
+      zero matching `audit_logs` rows afterward. A `shouldFail=false` control case asserts
+      exactly one row *does* persist — proving both audit-log spec scenarios ("Mutation succeeds
+      and is audited" and "Audit write failure aborts the mutation") with one fixture.
+- [x] 4.10 Ran `cd backend && ./mvnw clean verify` — see Work Unit Evidence below.
+
+### Deviations from Design / Tasks
+
+1. **`AuditEntryCommand.action` stays `String`, not the new `AuditAction` enum**, even though
+   task 4.1 lists `AuditAction` as a file to create alongside `AuditEntryCommand`/`AuditWritePort`
+   in the same package. Design's own literal record signature already types `action` as `String`
+   (design.md's Interfaces block), and `audit_logs.action` (`01-init-schema.sql:428`) has no
+   `CHECK` constraint — its own comment lists example values from modules that don't exist yet
+   (`'CREATE_SALE'`, `'DISPATCH_TRANSFER'`, `'ADJUST_STOCK'`), none of which fit a closed
+   three-value enum. Coupling `AuditEntryCommand`/`AuditQueryPort`/`QueryAuditLogUseCase` to
+   `AuditAction` now would force every future business module to add a case to a `shared` type
+   just to write its own action name, or fall back to `.name()`-adjacent workarounds. Instead
+   `AuditAction` (`CREATE`, `UPDATE`, `DISABLE`) exists as the file task 4.1 requires and gives
+   `iam`'s own call sites (this slice's atomicity fixture; slices 5a/5b's future
+   `UserAdminService`/`BranchAdminService`) a typed, typo-proof source for the three action names
+   they need — `AuditEntryCommandTest.actionAcceptsAFreeFormStringBeyondThisModulesOwnEnum` is the
+   load-bearing assertion for this choice, not merely a note.
+2. **`AuditQueryPort`'s query methods live on `AuditWriteAdapter`, task 4.3's class**, not a
+   second, separately-named adapter. Task 4.4 says "query methods on the persistence adapter"
+   (singular) — the only persistence adapter this slice has is the one task 4.3 already names, so
+   this reads as an instruction to extend that same class, exactly mirroring how
+   `RefreshTokenPersistenceAdapter` grew read methods (`findByRawToken`, `revoke`,
+   `revokeFamily`) onto an originally write-only shape across slices 2a/2b rather than getting a
+   second class.
+3. **`AuditQueryService` performs no `OPERATOR` check of its own** — see task 4.5's completed-task
+   note above. `SecurityConfig`'s slice-3 `/api/audit/**` matcher already rejects `OPERATOR`
+   before dispatch, the same HTTP-layer boundary `BranchAccessPolicy` already relies on for
+   mutations (documented in slice 3's own apply-progress). Adding a redundant service-level check
+   would duplicate that boundary without adding real defense — `AuthenticatedPrincipal.role()`
+   can only ever be `ADMIN`/`BRANCH_MANAGER` by the time this service runs.
+4. **`AuditLogSpringDataRepository.search` is a native query, not JPQL**, found by executing, not
+   by reading (CLAUDE.md): a plain JPQL `(:from IS NULL OR a.createdAt >= :from)` made
+   PostgreSQL's extended query protocol fail with `could not determine data type of parameter`
+   for the `java.time.Instant` filters — Hibernate does not give the driver an explicit SQL type
+   hint for a parameter whose only occurrence in the generated SQL is an `IS NULL` check.
+   Switched to a native query with an explicit `CAST(:from AS timestamptz)` in both the `IS NULL`
+   check and the comparison, matching this module's existing precedent for native queries where
+   JPQL/Hibernate abstractions get in the way (`UserSpringDataRepository`'s scalar branch reads).
+   Ordering (`ORDER BY created_at DESC`) is therefore fixed inside the native query itself, not
+   via `Pageable`'s `Sort` — Spring Data JPA rejects dynamic sorting on a native query.
+5. **`AuditLogQueryIT`'s `entity_name` test marker is 8 hex characters (`it-XXXXXXXX`), not a full
+   UUID.** Found by executing, not by reading: the first version used
+   `"audit-query-it-" + UUID.randomUUID()` (51 characters) as the marker, and every insert failed
+   with `value too long for type character varying(50)` — `entity_name` is `VARCHAR(50)`. Fixed by
+   shortening the marker to mirror `AuthenticationFlowIT.shortSuffix()`'s existing 8-hex-char
+   pattern, which the design already established as sufficient for per-test uniqueness in this
+   codebase without a DELETE-based cleanup step.
+
+### Issues Found
+
+Both issues found in Deviations 4 and 5 above were pre-existing gaps in this slice's own draft
+(not carried over from an earlier slice) — found and fixed by executing `./mvnw verify`, not by
+reading, per CLAUDE.md.
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and result | `cd backend && ./mvnw test -Dtest=AuditEntryCommandTest` → `Tests run: 3, Failures: 0, Errors: 0, Skipped: 0` — `BUILD SUCCESS` |
+| Full surefire | `cd backend && ./mvnw test` → `Tests run: 35, Failures: 0, Errors: 0, Skipped: 0` — `BUILD SUCCESS` (includes `ModuleBoundariesTest` 5/5 and `SharedIsFrameworkFreeTest` 1/1, both still green with the new `shared/audit/**`) |
+| Runtime harness command and result | `cd backend && ./mvnw verify -Dit.test=AuditLogQueryIT,AuditAtomicityIT` (real Testcontainers Postgres 17) → `Tests run: 10, Failures: 0, Errors: 0` (`AuditAtomicityIT` 2 + `AuditLogQueryIT` 8) — `BUILD SUCCESS` |
+| Full build | `cd backend && ./mvnw clean verify` → `Tests run: 35` (surefire) + `Tests run: 29` (failsafe: `ApplicationContextIT` 1 + `AuditAtomicityIT` 2 + `AuditLogQueryIT` 8 + `AuthenticationFlowIT` 12 + `BranchIsolationIT` 6) — `BUILD SUCCESS` |
+| Cross-cutting grep — `ROLE_` | `grep -rn "ROLE_" backend/src --include="*.java"` → only pre-existing doc-comment mentions (`SecurityConfig` javadoc, `Role.java` ×2), no executable use |
+| Cross-cutting grep — `hasRole(` in `SecurityConfig` | Only the pre-existing doc-comment mention; no executable call |
+| Numeric-id-in-response check | `AuditLogController.AuditEntryResponse` exposes `UUID externalId`/`actorUserId`/`branchId` only |
+| `python3 scripts/validar_trazabilidad.py` | `RESULTADO: trazabilidad íntegra` — `42 RF · 34 RNF · 17 RN · 37 CU · 6 DT` (no `docs/` touched this slice) |
+| Rollback boundary | Revert this commit; `/api/audit` disappears along with `shared/audit/**`, `AuditQueryService`, `AuditWriteAdapter`, `AuditLogJpaEntity`/`AuditLogSpringDataRepository`, and the two `src/test`-only atomicity fixtures. `UserSpringDataRepository.findBranchIdByExternalId` reverts too (unused by any other slice). No prior slice (1/2a/2b/3) is touched or removed with it |
+
+### Files Changed
+
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `backend/src/main/java/.../shared/audit/{AuditAction,AuditEntryCommand,AuditWritePort}.java` | Created | Shared, framework-free audit write contract |
+| `backend/src/main/java/.../iam/domain/model/AuditRecord.java` | Created | Read-back domain model for query results |
+| `backend/src/main/java/.../iam/application/port/out/AuditQueryPort.java` | Created | Filtered, paginated read port |
+| `backend/src/main/java/.../iam/application/port/in/QueryAuditLogUseCase.java` | Created | Role-scoped query use case |
+| `backend/src/main/java/.../iam/application/service/AuditQueryService.java` | Created | BRANCH_MANAGER branch-forcing logic |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/AuditLogJpaEntity.java` | Created | Maps `audit_logs`, `jsonb` payload columns |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/AuditLogSpringDataRepository.java` | Created | Native filtered/paginated search + count query |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/AuditWriteAdapter.java` | Created | Implements `AuditWritePort` + `AuditQueryPort` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/UserSpringDataRepository.java` | Modified | Added `findBranchIdByExternalId` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/in/web/AuditLogController.java` | Created | `GET /api/audit` |
+| `backend/src/test/java/.../shared/audit/AuditEntryCommandTest.java` | Created | 3 unit cases |
+| `backend/src/test/java/.../iam/infrastructure/adapter/in/web/AuditAtomicityFixtureService.java` | Created (test-source-only) | Transactional fixture calling `AuditWritePort.record` then optionally throwing |
+| `backend/src/test/java/.../iam/infrastructure/adapter/in/web/AuditAtomicityFixtureController.java` | Created (test-source-only) | `POST /api/test/audit-atomicity/{entityId}` |
+| `backend/src/test/java/.../AuditAtomicityIT.java` | Created | Proves synchronous write, both fail and success paths |
+| `backend/src/test/java/.../AuditLogQueryIT.java` | Created | Five filters, pagination, role-scoping |
+| `openspec/changes/add-iam-module/tasks.md` | Modified | Checked off 4.1–4.10, noted 2 inline deviations |
+
+### Remaining Tasks
+
+Slice 5a (User Admin, PR6) and Slice 5b (Branch Admin, PR7) — not started, per explicit
+instruction to implement Slice 4 only.
+
+### Workload / PR Boundary
+
+- Mode: chained PR slice (`feature-branch-chain`, `auto-chain` delivery strategy)
+- Current work unit: 4. Audit (PR5)
+- Boundary: starts from Slice 3's state (`SecurityConfig`'s `/api/audit/**` matcher already wired
+  but unused — slice 3 pre-declared it) and ends with the audit write port, its `iam` persistence
+  adapter, the role-scoped query use case, and `GET /api/audit` all working end to end against
+  real Postgres, plus the atomicity proof the design calls load-bearing. No prior slice's
+  behavior changed.
+- Estimated review budget impact: verified by executing `wc -l` on the 16 new files (904 lines)
+  plus `git diff --numstat` on the 1 modified file (`UserSpringDataRepository.java`, +8/-2) —
+  approximately 912 authored added lines / 2 deleted lines total, well above the ~350-line
+  forecast — consistent with every prior slice's overrun pattern in this change, driven mainly by
+  two IT test classes needed because no production mutation endpoint exists yet to generate real
+  audit rows naturally (deferred to slices 5a/5b). Flagged for the orchestrator/reviewer rather
+  than split after the fact.
+
+### Status
+
+10/10 Slice 4 tasks complete. `cd backend && ./mvnw clean verify` → `BUILD SUCCESS` (35 surefire +
+29 failsafe tests, all green). Ready for `sdd-verify`, then Slice 5a (User Admin) apply.

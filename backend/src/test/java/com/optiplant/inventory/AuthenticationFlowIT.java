@@ -324,13 +324,19 @@ class AuthenticationFlowIT {
 	/** Flips the last character of the signature segment (the third dot-separated
 	 * part) so the token still parses as three well-formed Base64URL segments but
 	 * fails signature verification, rather than failing to parse. */
+	/** Flips the FIRST character of the signature, never the last. An HS256
+	 * signature is 32 bytes, which base64url-encodes to 43 characters: the final
+	 * character carries only 4 significant bits, and its 2 low bits are discarded
+	 * on decode. Altering that last character therefore decodes to the very same
+	 * 32 bytes roughly one time in sixteen, the token stays valid, and the test
+	 * fails intermittently. Every bit of the first character is significant. */
 	private static String alterarFirma(String token) {
 		String[] parts = token.split("\\.");
 		assertThat(parts).hasSize(3);
 		String firma = parts[2];
-		char ultimo = firma.charAt(firma.length() - 1);
-		char reemplazo = ultimo == 'A' ? 'B' : 'A';
-		String firmaAlterada = firma.substring(0, firma.length() - 1) + reemplazo;
+		char primero = firma.charAt(0);
+		char reemplazo = primero == 'A' ? 'B' : 'A';
+		String firmaAlterada = reemplazo + firma.substring(1);
 		return parts[0] + "." + parts[1] + "." + firmaAlterada;
 	}
 
