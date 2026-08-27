@@ -267,7 +267,7 @@ Los objetivos de rendimiento de la sección 5.2 solo son verificables contra una
 * **RNF-USA-04 (Idioma y Formato Regional):** La interfaz se presenta en español, con formatos de fecha, número y moneda consistentes en toda la aplicación.
 
 ### 5.10. Portabilidad y Despliegue
-* **RNF-CON-01 (Contenedorización Total):** Todos los componentes (Frontend, Backend, Base de Datos) deben estar contenerizados mediante imágenes estándar de Docker y orquestados a través de `compose.yml`.
+* **RNF-CON-01 (Contenedorización Total):** Todos los componentes (Frontend, Backend, Base de Datos) deben estar contenerizados mediante imágenes estándar de Docker y orquestados a través de `compose.yml`, el nombre canónico de Compose V2 (el enunciado lo nombra `docker-compose.yml`, forma heredada de la V1; ambas las resuelve `docker compose up`).
 * **RNF-CON-02 (Configuración Externalizada):** Toda configuración dependiente del entorno debe inyectarse por variables de entorno con valores por defecto operativos, de modo que `docker compose up` levante un sistema funcional sin edición previa de archivos.
 
 ### 5.11. Documentación e Interfaz de Programación

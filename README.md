@@ -41,6 +41,8 @@ docker compose up
 
 Levanta dos servicios: `db` (PostgreSQL 17, con el esquema y las semillas de `backend/init-db/`) y `backend` (Java 25 + Spring Boot 4.1). El servicio `frontend` todavía no existe.
 
+> **Sobre el nombre del archivo.** El enunciado pide un `docker-compose.yml`; este repositorio entrega un **`compose.yml`**. Desde Compose V2 ese es el nombre canónico que la herramienta busca primero, y `docker-compose.yml` se conserva únicamente por compatibilidad con la V1. El entregable real es que un solo comando levante la solución, y `docker compose up` funciona igual con cualquiera de los dos nombres. La divergencia se declara acá en lugar de dejarla implícita.
+
 Cuando el backend queda `healthy`:
 
 ```bash
