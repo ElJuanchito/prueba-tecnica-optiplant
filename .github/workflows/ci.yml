@@ -28,7 +28,7 @@ jobs:
     name: Trazabilidad de la documentación
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # El validador es Python puro sin dependencias externas: alcanza con el
       # intérprete que el runner ya trae.
@@ -39,7 +39,7 @@ jobs:
     name: Esquema contra PostgreSQL real
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # El script levanta su propio contenedor postgres:17-alpine y lo limpia al
       # salir; por eso no se declara aquí ningún `services:`. El runner de
@@ -54,10 +54,10 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Preparar JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: temurin
