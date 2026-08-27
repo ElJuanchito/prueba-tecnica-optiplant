@@ -61,7 +61,7 @@ El mecanismo de `init-db/` **sólo actúa sobre un volumen vacío**. Al segundo 
 
 1. `01-init-schema.sql` se convierte en `src/main/resources/db/migration/V1__initial_schema.sql`, **sin reescribirlo**: ya está probado.
 2. Los datos de demostración se separan a `db/seed/R__demo_data.sql` (ver **DT-02**).
-3. Se **elimina el montaje de `init-db/`** del `docker-compose.yml`.
+3. Se **elimina el montaje de `init-db/`** del `compose.yml`.
 4. El servicio `backend` gana `depends_on: db: { condition: service_healthy }` y el servicio `db` un `healthcheck` con `pg_isready`.
 
 #### Las dos trampas de este cambio

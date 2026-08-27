@@ -10,7 +10,7 @@ Sistema para que varias sucursales de una organización gestionen su inventario 
 
 ## Estado del Proyecto
 
-Este repositorio contiene, a la fecha, **la ingeniería completa del sistema y su capa de datos verificada**. La implementación de la aplicación está pendiente.
+Este repositorio contiene, a la fecha, **la ingeniería completa del sistema, su capa de datos verificada y el esqueleto ejecutable del backend**. La lógica de negocio y el frontend están pendientes.
 
 | Entregable | Estado |
 | :--- | :--- |
@@ -20,15 +20,54 @@ Este repositorio contiene, a la fecha, **la ingeniería completa del sistema y s
 | Decisiones de arquitectura documentadas | ✅ Completo |
 | Documentación del uso de IA | ✅ Completo |
 | Registro de deuda técnica | ✅ Completo |
-| Backend (API REST) | ⏳ Pendiente |
+| Backend — esqueleto ejecutable | ✅ Completo — compila, se contenedoriza y responde su sonda de salud |
+| Backend — lógica de negocio y API REST | ⏳ Pendiente |
 | Frontend (SPA) | ⏳ Pendiente |
-| `docker-compose.yml` | ⏳ Pendiente |
+| `compose.yml` | ◐ Parcial — `db` y `backend`; el servicio `frontend` entra cuando exista código |
 
-**Por qué se declara así.** Un README que prometa `docker compose up` cuando el archivo no existe se desmiente en diez segundos. La sección [Ejecución](#ejecución) documenta exactamente lo que hoy se puede correr y verificar.
+**Por qué se declara así.** Un README que prometa más de lo que arranca se desmiente en diez segundos. Cada ✅ de esta tabla corresponde a algo que se ejecutó, y la sección [Ejecución](#ejecución) dice con qué comando reproducirlo.
 
 ---
 
 ## Ejecución
+
+### Levantar el sistema
+
+Desde la raíz del repositorio, sin configuración previa:
+
+```bash
+docker compose up
+```
+
+Levanta dos servicios: `db` (PostgreSQL 17, con el esquema y las semillas de `backend/init-db/`) y `backend` (Java 25 + Spring Boot 4.1). El servicio `frontend` todavía no existe.
+
+Cuando el backend queda `healthy`:
+
+```bash
+curl http://localhost:8080/actuator/health/readiness
+# {"status":"UP"}
+```
+
+La configuración se inyecta por variables de entorno con valores por defecto operativos, de modo que el comando funciona sin crear ningún archivo. Para ajustarlos, copiar [`.env.example`](./.env.example) a `.env`.
+
+> **El backend arranca aunque la base todavía no acepte conexiones.** `spring.datasource.hikari.initialization-fail-timeout: -1` es deliberado: la aplicación levanta y su sonda de *readiness* reporta `DOWN` hasta que PostgreSQL responde. Por eso el `healthcheck` del servicio consulta esa sonda y no el puerto.
+
+Para bajarlo, incluyendo el volumen de datos:
+
+```bash
+docker compose down -v
+```
+
+### Construir y probar el backend
+
+Desde `backend/`, con el wrapper versionado —no hace falta tener Maven instalado:
+
+```bash
+./mvnw package   # compila y empaqueta el JAR; no requiere Docker
+./mvnw verify    # además ejecuta la prueba de integración contra PostgreSQL 17 real
+```
+
+La separación es intencional. `ModuleBoundariesTest` verifica las fronteras entre módulos y capas con reglas de ArchUnit —análisis estático puro— y corre en `package`; `ApplicationContextIT` levanta el contexto contra un PostgreSQL 17 de Testcontainers y corre sólo en `verify`. Así `package` sigue funcionando en un clon limpio sin demonio Docker.
 
 ### Lo que se puede verificar hoy
 
@@ -67,13 +106,11 @@ Los scripts de `backend/init-db/` se ejecutan automáticamente al inicializar el
 | `gerente.bogota`, `gerente.medellin`, `gerente.cali` | `BRANCH_MANAGER` | Bogotá, Medellín, Cali |
 | `operador.bogota`, `operador.medellin`, `operador.cali` | `OPERATOR` | Bogotá, Medellín, Cali |
 
-### Objetivo al completar la implementación
+### Lo que todavía no hace `docker compose up`
 
-```bash
-docker compose up
-```
+No levanta el `frontend`, porque `frontend/` no tiene código: un servicio que apunta a un directorio vacío produce un contenedor que no arranca. Entra en el Compose cuando exista algo que servir.
 
-Un solo comando levantará los tres servicios —`frontend`, `backend` y `db`— sin configuración manual previa. La configuración se inyectará por variables de entorno con valores por defecto operativos (RNF-CON-02).
+Tampoco ejecuta migraciones. Flyway está **declarado y explícitamente desactivado**: mientras el volumen se inicialice con `backend/init-db/`, Flyway encontraría tablas que no creó y fallaría. El procedimiento de sustitución está en `DT-01` de [`docs/deuda_tecnica.md`](./docs/deuda_tecnica.md).
 
 ---
 
@@ -82,7 +119,18 @@ Un solo comando levantará los tres servicios —`frontend`, `backend` y `db`—
 ```
 .
 ├── README.md                  Este documento
+├── compose.yml                Servicios db y backend
+├── .env.example               Plantilla de configuración; ningún secreto real
 ├── backend/
+│   ├── pom.xml                Java 25, Spring Boot 4.1
+│   ├── mvnw                   Wrapper de Maven versionado
+│   ├── Dockerfile             Multi-etapa: JDK 25 construye, JRE 25 ejecuta
+│   ├── src/main/java/com/optiplant/inventory/
+│   │   ├── InventoryApplication.java   Clase de arranque
+│   │   ├── SecurityConfig.java         Cadena de filtros sin estado
+│   │   └── JwtProperties.java          Clave de firma, validada al arrancar
+│   ├── src/main/resources/    application.yml + perfiles dev y prod
+│   ├── src/test/java/...      Fronteras de módulo e integración con Testcontainers
 │   └── init-db/               Esquema y datos semilla de PostgreSQL
 │       ├── 01-init-schema.sql   19 tablas, restricciones e índices
 │       └── 02-seed-data.sql     Datos de demostración
@@ -116,7 +164,7 @@ Negocio        Java 25 + Spring Boot 4.1 · 10 módulos con fronteras verificada
 Datos          PostgreSQL 17 · 19 tablas · Kardex append-only · bloqueo pesimista
 ```
 
-**Por qué monolito modular y no microservicios.** El inventario exige transacciones ACID que abarcan varios módulos: descontar stock, escribir el Kardex y cerrar la venta ocurren juntos o no ocurren. Con microservicios esa atomicidad exigiría sagas y compensaciones, complejidad enorme para un dominio que cabe en una sola base de datos. Spring Modulith entrega la frontera del microservicio sin pagar su costo operativo.
+**Por qué monolito modular y no microservicios.** El inventario exige transacciones ACID que abarcan varios módulos: descontar stock, escribir el Kardex y cerrar la venta ocurren juntos o no ocurren. Con microservicios esa atomicidad exigiría sagas y compensaciones, complejidad enorme para un dominio que cabe en una sola base de datos. El monolito modular entrega la frontera del microservicio sin pagar su costo operativo, y las reglas de ArchUnit impiden que esa frontera se erosione en silencio.
 
 Detalle completo en [`decisiones_arquitectura_tecnica.md`](docs/decisiones_arquitectura_tecnica.md) y en los tres diagramas de arquitectura.
 

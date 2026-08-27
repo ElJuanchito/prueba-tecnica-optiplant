@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Proyecto
 
-Sistema de inventario multi-sucursal (prueba técnica para OptiPlant). **Estado actual: documentación de ingeniería y capa de datos.** No existe todavía backend, frontend ni `docker-compose.yml`.
+Sistema de inventario multi-sucursal (prueba técnica para OptiPlant). **Estado actual: documentación de ingeniería, capa de datos y esqueleto ejecutable del backend.** El backend arranca, se contenedoriza y responde su sonda de salud, pero no tiene todavía lógica de negocio ni endpoints de dominio. `frontend/` está vacío.
 
 Toda la documentación está en español. Mantener ese idioma al extenderla.
 
@@ -13,11 +13,12 @@ Toda la documentación está en español. Mantener ese idioma al extenderla.
 ```bash
 python3 scripts/validar_trazabilidad.py   # referencias y enlaces entre documentos; sin dependencias
 ./scripts/validar_esquema.sh              # 19 invariantes contra PostgreSQL 17 real; requiere Docker
+cd backend && ./mvnw verify               # fronteras de arquitectura + integración con Testcontainers
 ```
 
-Ambos deben pasar antes de dar por terminado cualquier cambio en `docs/` o en `backend/init-db/`.
+Los dos primeros deben pasar antes de dar por terminado cualquier cambio en `docs/` o en `backend/init-db/`; el tercero, ante cualquier cambio en `backend/`.
 
-**Regla de trabajo del proyecto: no se afirma nada sin ejecutarlo.** Cada defecto grave de este repositorio apareció al ejecutar, nunca al leer. Un SQL que "se ve bien" no está verificado; un diagrama Mermaid sin renderizar tampoco.
+**Regla de trabajo del proyecto: no se afirma nada sin ejecutarlo.** Cada defecto grave de este repositorio apareció al ejecutar, nunca al leer. Un SQL que "se ve bien" no está verificado; un diagrama Mermaid sin renderizar tampoco; una clase de Spring importada de memoria, menos que ninguna.
 
 Al levantar PostgreSQL manualmente, esperar `PostgreSQL init process complete` en los registros antes de consultar: el servidor acepta conexiones **mientras** aún corre los scripts de `init-db`, y una consulta prematura devuelve un esquema a medio crear.
 
@@ -38,6 +39,8 @@ Los identificadores encadenan los documentos: `RF` / `RNF` / `RN` → `CU` → `
 
 Al agregar un requerimiento hay que agregar también su caso de uso y su fila en la matriz de trazabilidad de `docs/casos_de_uso.md`, o `scripts/validar_trazabilidad.py` falla. Lo mismo al renombrar o eliminar.
 
+**Al eliminar un identificador, no lo cites por su ID en el historial de versiones.** El validador exige que todo `RF` / `RNF` / `RN` citado en `docs/` esté definido en el SRS, así que una entrada de changelog que dice «se elimina RNF-XX-01» lo resucita y hace fallar la validación. Nombrarlo por su título. Los identificadores retirados no se reasignan.
+
 | Necesitás… | Fuente de verdad |
 | :--- | :--- |
 | Requerimientos, reglas de negocio `RN-xx`, alcance excluido | `docs/especificacion_requerimientos.md` |
@@ -45,8 +48,39 @@ Al agregar un requerimiento hay que agregar también su caso de uso y su fila en
 | Trabajo postergado y su plan de pago | `docs/deuda_tecnica.md` |
 | Modelo de datos | `docs/diagrama_er.md` + `backend/init-db/01-init-schema.sql` |
 
-## Al montar el backend
+## Backend
 
-`backend/init-db/` es hoy el mecanismo de arranque. **No agregar Flyway junto a él**: el volumen ya inicializado hace que Flyway encuentre tablas que no creó y falle. La migración es sustitución, no coexistencia — el procedimiento completo está en `DT-01` de `docs/deuda_tecnica.md`.
+Java 25 · Spring Boot 4.1 · Maven con wrapper (`./mvnw`) · raíz en `backend/`.
 
-Los diez módulos del backend y sus responsabilidades están definidos en la sección 2.4 del documento de arquitectura; respetarlos al crear paquetes.
+**Monolito modular con hexagonal dentro de cada módulo, sin Spring Modulith.** Se retiró de forma deliberada: las fronteras se declaran a mano con reglas de ArchUnit en `ModuleBoundariesTest`, no se derivan de la detección automática de un framework. No reintroducirlo.
+
+Los diez módulos y sus responsabilidades están en la sección 2.4 del documento de arquitectura; la estructura de paquetes canónica, en la sección 5. Respetarlas al crear paquetes.
+
+| Regla del backend | Por qué |
+| :--- | :--- |
+| **Ninguna clase nueva en un subpaquete directo del paquete base** salvo que sea un módulo de negocio | La regla de fronteras trata cada subpaquete de `com.optiplant.inventory` como un módulo. Un `config/` o un `util/` agregarían al grafo verificado una frontera que nadie declaró. Por eso `InventoryApplication`, `SecurityConfig` y `JwtProperties` viven en el paquete base. |
+| **Las pruebas que necesitan Docker terminan en `IT`**, no en `Test` | `*Test` corre en `package` (surefire) y `*IT` en `verify` (failsafe). Con Data JPA en el classpath, un `@SpringBootTest` sin base no levanta contexto: si esa prueba corriera en `package`, la construcción de la imagen exigiría un demonio Docker. |
+| Las reglas de ArchUnit llevan **`allowEmptyShould(true)`** | Mientras los paquetes de módulo no existan, las reglas no encuentran clases que evaluar y ArchUnit falla ante un conjunto vacío por defecto. El vacío es el estado legítimo del proyecto, no un error de la regla. Cada módulo que aparezca entra automáticamente bajo esas comprobaciones. |
+| `shared/` será **módulo abierto** y debe ser **hoja** | Ningún módulo puede aparecer en sus importaciones, o el desacoplamiento por puertos se rompe por la puerta de atrás. Hay una regla de ArchUnit que lo verifica. |
+| **No agregar Flyway junto a `backend/init-db/`** | La dependencia está declarada y `spring.flyway.enabled` en `false`. El volumen ya inicializado hace que Flyway encuentre tablas que no creó y falle; `baseline-on-migrate` no lo resuelve, solo le pide ignorar un estado que no comprende. La migración es sustitución, no coexistencia — el procedimiento está en `DT-01` de `docs/deuda_tecnica.md`. |
+
+### Spring Boot 4 no es Spring Boot 3
+
+Verificado ejecutando, no leyendo. Un `pom.xml` o un `import` copiado de un tutorial de Boot 3 no compila:
+
+| En Boot 3 | En Boot 4 |
+| :--- | :--- |
+| `spring-boot-starter-web` | `spring-boot-starter-webmvc` |
+| `flyway-core` con el starter genérico | `spring-boot-starter-flyway` |
+| `org.springframework.boot.test.web.client.TestRestTemplate`, autoconfigurado con `webEnvironment = RANDOM_PORT` | `org.springframework.boot.resttestclient.TestRestTemplate`, requiere `@AutoConfigureTestRestTemplate` **y** el módulo `spring-boot-restclient`, que no viene con el starter de webmvc |
+
+Ante la duda sobre el nombre o el paquete de una clase de Spring, confirmarlo contra el JAR resuelto en `~/.m2` antes de escribirlo. Las pruebas de integración usan `RestClient` de `spring-web` justamente para no arrastrar un módulo extra.
+
+### Levantar el sistema
+
+```bash
+docker compose up          # servicios db y backend; el frontend todavía no existe
+docker compose down -v
+```
+
+`compose.yml` vive en la raíz. La variable `JWT_SECRET` se propaga **sin `=`** a propósito: con un valor por defecto vacío pisaría el de `application-dev.yml` y la validación de `JwtProperties` fallaría.
