@@ -75,7 +75,7 @@ for archivo in 01-init-schema.sql 02-seed-data.sql; do
     echo; echo "RESULTADO: la base no se puede inicializar."; exit 1
   fi
 done
-igual "19 tablas creadas" "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'" "19"
+igual "20 tablas creadas" "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'" "20"
 
 echo
 echo "B. Integridad del inventario"
@@ -92,6 +92,18 @@ rechaza "el rol debe ser ADMIN, BRANCH_MANAGER u OPERATOR" \
   "INSERT INTO users (branch_id, username, email, password_hash, full_name, role) VALUES (1,'x','x@x.com','h','X','ROLE_ADMIN')"
 igual  "todo usuario tiene external_id público" \
   "SELECT count(*) FROM users WHERE external_id IS NULL" "0"
+rechaza "RF-SEG-01 · un refresh token exige su hash" \
+  "INSERT INTO refresh_tokens (user_id, family_id, token_hash, expires_at) VALUES (1, gen_random_uuid(), NULL, CURRENT_TIMESTAMP + INTERVAL '8 hours')"
+rechaza "el hash de un refresh token debe ser un SHA-256 en hexadecimal" \
+  "INSERT INTO refresh_tokens (user_id, family_id, token_hash, expires_at) VALUES (1, gen_random_uuid(), 'no-es-un-hash', CURRENT_TIMESTAMP + INTERVAL '8 hours')"
+rechaza "dos sesiones no pueden compartir el mismo hash" \
+  "INSERT INTO refresh_tokens (user_id, family_id, token_hash, expires_at) VALUES (1, gen_random_uuid(), repeat('a',64), CURRENT_TIMESTAMP + INTERVAL '8 hours'), (2, gen_random_uuid(), repeat('a',64), CURRENT_TIMESTAMP + INTERVAL '8 hours')"
+rechaza "un refresh token no puede colgar de un usuario inexistente" \
+  "INSERT INTO refresh_tokens (user_id, family_id, token_hash, expires_at) VALUES (9999, gen_random_uuid(), repeat('b',64), CURRENT_TIMESTAMP + INTERVAL '8 hours')"
+rechaza "revocar exige registrar el motivo" \
+  "INSERT INTO refresh_tokens (user_id, family_id, token_hash, expires_at, revoked_at) VALUES (1, gen_random_uuid(), repeat('c',64), CURRENT_TIMESTAMP + INTERVAL '8 hours', CURRENT_TIMESTAMP)"
+acepta "un mismo usuario sostiene varias sesiones simultáneas" \
+  "INSERT INTO refresh_tokens (user_id, family_id, token_hash, expires_at) VALUES (1, gen_random_uuid(), repeat('d',64), CURRENT_TIMESTAMP + INTERVAL '8 hours'), (1, gen_random_uuid(), repeat('e',64), CURRENT_TIMESTAMP + INTERVAL '8 hours')"
 
 echo
 echo "D. Precios comerciales"
