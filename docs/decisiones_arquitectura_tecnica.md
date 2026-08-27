@@ -5,6 +5,8 @@
 | Versión | Fecha | Cambios |
 | :--- | :--- | :--- |
 | 1.0 | 2026-08-25 | Decisiones de lenguaje, base de datos, autenticación, sincronización de inventario y patrones. |
+| 1.3 | 2026-08-27 | Se retira Spring Modulith. El estilo arquitectónico no cambia —monolito modular con hexagonal dentro de cada módulo— pero la verificación de fronteras pasa a declararse con reglas explícitas de ArchUnit en lugar de derivarse de la detección automática del framework. Se elimina en consecuencia la justificación de la sección 3.1 que apoyaba la elección del runtime en esa herramienta: ArchUnit no es una razón para elegir Spring Boot. |
+| 1.2 | 2026-08-27 | Se retira de la matriz de la sección 6 la fila del requerimiento de consistencia de estilo, eliminado del SRS en su versión 1.3. Esa fila apuntaba a la sección 3.7, que trata el versionado del esquema con Flyway y no menciona formato ni análisis estático: era una trazabilidad declarada sin respaldo. |
 | 1.1 | 2026-08-26 | Se incorpora la sección 8.1 (separación de responsabilidades). Se corrige la nomenclatura de roles para alinearla con el esquema. Se separa la comunicación entre módulos en eventos de consistencia y de notificación. Se agregan las decisiones de frontend, migraciones, contrato de API y observabilidad. Se incorpora el módulo de precios y la matriz de trazabilidad RNF → decisión. |
 
 ---
@@ -57,7 +59,7 @@ Definir qué hace cada capa importa; definir qué **no** hace importa más, porq
 |  +---------+ +-----------+ +---------+ +------------+ +-----------+               |
 |                                                                                   |
 |   Cada módulo: adaptadores → puertos → dominio puro → puertos → adaptadores       |
-|   Fronteras verificadas por Spring Modulith (RNF-MAN-02)                          |
+|   Fronteras verificadas por pruebas de arquitectura ArchUnit (RNF-MAN-02)         |
 +-----------------------------------------------------------------------------------+
                                          │ JDBC · HikariCP · transacciones ACID
                                          ▼
@@ -97,7 +99,6 @@ Definir qué hace cada capa importa; definir qué **no** hace importa más, porq
 1. **Tipado fuerte y modelado expresivo del dominio.** *Records* inmutables, *pattern matching* exhaustivo y *sealed interfaces* permiten blindar la máquina de estados de transferencias contra estados inválidos **en tiempo de compilación**, no en tiempo de ejecución.
 2. **Concurrencia con hilos virtuales (Project Loom).** El sistema es intensivo en E/S: consultas de catálogo, lecturas cross-branch y transacciones. Los hilos virtuales maximizan el rendimiento sin obligar a escribir código reactivo, que complicaría un dominio ya de por sí transaccional. *Sostiene RNF-PER-01 y RNF-PER-02.*
 3. **Gestión transaccional declarativa madura.** `@Transactional` con *rollback* automático es exactamente lo que exige RNF-INT-01: una venta que falla a mitad de camino no deja stock descontado sin su asiento en el Kardex.
-4. **Fronteras arquitectónicas verificables.** Spring Modulith comprueba el encapsulamiento entre módulos con pruebas automatizadas (`@ApplicationModuleTest`). *Sostiene RNF-MAN-02.*
 
 ### 3.2. Framework de Frontend: React 19 + Vite + TypeScript
 
@@ -217,7 +218,7 @@ Se distinguen **dos mecanismos con propósitos distintos**, y la elección entre
 
 | Patrón | Nivel | Justificación Técnica |
 | :--- | :--- | :--- |
-| **Monolito Modular (Spring Modulith)** | Sistema | Agrupa la lógica en los diez módulos de la sección 2.4, con fronteras verificadas por pruebas. Entrega el aislamiento del microservicio sin su costo operativo ni sus transacciones distribuidas. |
+| **Monolito Modular** | Sistema | Agrupa la lógica en los diez módulos de la sección 2.4. Las fronteras se verifican con reglas de ArchUnit declaradas explícitamente —dominio sin Spring ni JPA, aplicación sin adaptadores, ningún módulo alcanzando el interior de otro, `shared` como hoja— y no por convención ni por la detección automática de un framework. Entrega el aislamiento del microservicio sin su costo operativo ni sus transacciones distribuidas. *Sostiene RNF-MAN-02.* |
 | **Arquitectura Hexagonal (Puertos y Adaptadores)** | Módulo | Aísla las reglas de negocio —CPP, validación de existencias, máquina de estados— en un dominio puro, sin dependencias de Spring, JPA ni HTTP. Permite probar el núcleo sin levantar infraestructura. *Sostiene RNF-MAN-01.* |
 | **Repository Pattern** | Persistencia | Abstrae el acceso a datos tras puertos de salida, permitiendo sustituir la persistencia por dobles de prueba sin levantar base de datos. |
 | **State Pattern / Máquina de Estados** | Transferencias y compras | Hace imposible una transición ilegal: pasar de `REQUESTED` a `RECEIVED` sin atravesar `IN_TRANSIT` no compila ni se ejecuta. *Sostiene RN-05 y RN-15.* |
@@ -285,8 +286,7 @@ Cierra la matriz declarada en la sección 8 de [`especificacion_requerimientos.m
 | RNF-DIS-02, RNF-DIS-03 | 3.7 — migraciones versionadas · 2.1 — infraestructura reproducible |
 | RNF-OBS-01 … RNF-OBS-03 | 3.8 — logs estructurados, sondas de salud y métricas |
 | RNF-MAN-01 | 3.9 — hexagonal: el núcleo se prueba sin infraestructura |
-| RNF-MAN-02 | 3.1 — Spring Modulith · 3.9 — fronteras verificadas |
-| RNF-MAN-03 | 3.7 — formato y análisis estático en la construcción |
+| RNF-MAN-02 | 3.9 — monolito modular con fronteras verificadas por reglas de ArchUnit |
 | RNF-ESC-01, RNF-ESC-02 | 3.9 — hexagonal y monolito modular |
 | RNF-ESC-03 | 3.4 — JWT sin estado en el servicio |
 | RNF-USA-01 … RNF-USA-04 | 3.2 — React responsivo · 3.9 — *optimistic UI* con confirmación |

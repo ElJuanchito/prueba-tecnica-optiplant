@@ -178,7 +178,7 @@ flowchart TD
 
 ```mermaid
 flowchart TB
-    subgraph MONO["Backend — Monolito Modular · fronteras verificadas con Spring Modulith · RNF-MAN-02"]
+    subgraph MONO["Backend — Monolito Modular · fronteras verificadas con ArchUnit · RNF-MAN-02"]
         direction TB
         subgraph FILA1[" "]
             direction LR
@@ -217,7 +217,7 @@ flowchart TB
     style EVT fill:#f1f3f5,stroke:#495057
 ```
 
-**Por qué monolito modular y no microservicios.** El inventario exige transacciones ACID que abarcan varios módulos: descontar stock, escribir el Kardex y cerrar la venta ocurren juntos o no ocurren. Con microservicios esa atomicidad exigiría sagas y compensaciones —complejidad enorme para un dominio que cabe cómodamente en una sola base de datos—. Spring Modulith entrega las fronteras del microservicio sin pagar su costo operativo: si mañana un módulo debe extraerse, la frontera ya está trazada y verificada por pruebas.
+**Por qué monolito modular y no microservicios.** El inventario exige transacciones ACID que abarcan varios módulos: descontar stock, escribir el Kardex y cerrar la venta ocurren juntos o no ocurren. Con microservicios esa atomicidad exigiría sagas y compensaciones —complejidad enorme para un dominio que cabe cómodamente en una sola base de datos—. El monolito modular entrega las fronteras del microservicio sin pagar su costo operativo: si mañana un módulo debe extraerse, la frontera ya está trazada y verificada por reglas de ArchUnit que corren en cada construcción.
 
 **Y por qué hay dos mecanismos de comunicación y no uno.** La atomicidad **no viaja por eventos**. Si el descuento de stock se delegara a un escucha asíncrono quedaría fuera de la transacción de la venta, y bastaría un fallo de ese escucha para dejar una venta confirmada sin descuento de inventario. Por eso los efectos que deben ser atómicos se invocan por **puerto de salida síncrono** —el desacoplamiento lo da la interfaz, no el evento— y los **eventos de dominio** se reservan, en `AFTER_COMMIT`, para lo que puede fallar sin revertir la venta: una alerta de stock mínimo, una proyección analítica. El detalle está en la sección 3.6 de [`decisiones_arquitectura_tecnica.md`](./decisiones_arquitectura_tecnica.md).
 

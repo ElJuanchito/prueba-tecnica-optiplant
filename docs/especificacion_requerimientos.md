@@ -5,6 +5,7 @@
 | Versión | Fecha | Cambios |
 | :--- | :--- | :--- |
 | 1.0 | 2026-08-25 | Versión inicial: requerimientos funcionales, no funcionales, restricciones, supuestos y dependencias. |
+| 1.3 | 2026-08-27 | Se elimina de la categoría 5.7 el tercer requerimiento de mantenibilidad, «Consistencia de Estilo». Exigía un estándar de formato y análisis estático verificable en la construcción sin que ninguna decisión de arquitectura lo materializara, y se resolvió retirarlo en lugar de sostenerlo como deuda. La categoría conserva sus dos requerimientos restantes. Su identificador no se reasigna. |
 | 1.2 | 2026-08-26 | Se resuelve OI-01: se incorpora al modelo de datos la entidad de listas de precios (`price_lists`, `price_list_items`), lo que habilita RF-VEN-03. Se agregan las reglas RN-16 y RN-17. |
 | 1.1 | 2026-08-26 | Se incorpora el módulo de Seguridad e Identidad y el de Integración Externa; se centralizan las reglas de negocio; se agregan las categorías de RNF de disponibilidad, observabilidad, mantenibilidad y documentación de API; se define la volumetría de referencia; se suman glosario, alcance excluido, stakeholders y priorización. |
 
@@ -253,7 +254,6 @@ Los objetivos de rendimiento de la sección 5.2 solo son verificables contra una
 ### 5.7. Mantenibilidad y Calidad del Código
 * **RNF-MAN-01 (Cobertura de Pruebas del Dominio):** La lógica de negocio crítica (cálculo de CPP, validación de stock, máquina de estados de transferencias, autorización por rol) debe estar cubierta por pruebas automatizadas, con un objetivo mínimo del 80% de cobertura en la capa de dominio.
 * **RNF-MAN-02 (Verificación de Fronteras Arquitectónicas):** La separación entre módulos de negocio y entre capas debe verificarse mediante pruebas de arquitectura automatizadas, no únicamente por convención.
-* **RNF-MAN-03 (Consistencia de Estilo):** El código debe adherir a un estándar de formato y análisis estático aplicado de manera uniforme y verificable en el proceso de construcción.
 
 ### 5.8. Escalabilidad y Arquitectura
 * **RNF-ESC-01 (Arquitectura Desacoplada):** El backend debe ser modular (Clean Architecture / Hexagonal) permitiendo desacoplar la lógica de dominio de los adaptadores de infraestructura y base de datos.
@@ -267,7 +267,7 @@ Los objetivos de rendimiento de la sección 5.2 solo son verificables contra una
 * **RNF-USA-04 (Idioma y Formato Regional):** La interfaz se presenta en español, con formatos de fecha, número y moneda consistentes en toda la aplicación.
 
 ### 5.10. Portabilidad y Despliegue
-* **RNF-CON-01 (Contenedorización Total):** Todos los componentes (Frontend, Backend, Base de Datos) deben estar contenerizados mediante imágenes estándar de Docker y orquestados a través de `docker-compose.yml`.
+* **RNF-CON-01 (Contenedorización Total):** Todos los componentes (Frontend, Backend, Base de Datos) deben estar contenerizados mediante imágenes estándar de Docker y orquestados a través de `compose.yml`.
 * **RNF-CON-02 (Configuración Externalizada):** Toda configuración dependiente del entorno debe inyectarse por variables de entorno con valores por defecto operativos, de modo que `docker compose up` levante un sistema funcional sin edición previa de archivos.
 
 ### 5.11. Documentación e Interfaz de Programación
