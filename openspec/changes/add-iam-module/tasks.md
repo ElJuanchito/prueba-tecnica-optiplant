@@ -69,18 +69,18 @@ Chain strategy: feature-branch-chain (user-selected): PR1 targets the tracker br
 
 ## Phase 2b — Slice 2b: Refresh + Logout (PR3)
 
-- [ ] 2b.1 **[BLOCKED on 1.2/1.3]** Create `iam/infrastructure/config/IamSecurityBeans` hosting the resolved decoder (HMAC from `JwtProperties.secret`) and `IamPrincipalConverter` (maps JWT claims → `Authentication{principal=AuthenticatedPrincipal}`).
-- [ ] 2b.2 **[BLOCKED on 1.2/1.3]** Move `SecurityConfig.java` to `iam/infrastructure/config/`; wire `.cors()` (new `CorsProperties`, explicit origin list, credentials off) and `.oauth2ResourceServer(rs -> rs.jwt(...))`; keep `permitAll` on login/refresh, `authenticated()` on logout.
-- [ ] 2b.3 Create `iam/domain/model/RefreshTokenGrant.java`, `RefreshTokenState.java`, `RevocationReason.java`; `iam/domain/exception/RefreshTokenRejectedException.java`.
-- [ ] 2b.4 Create `iam/domain/service/RefreshTokenPolicy` — validates not-found/revoked(reuse→revoke family)/expired/idle-past-window, per design's REFRESH data-flow branch.
-- [ ] 2b.5 Create port/in `RefreshSessionUseCase`, `LogoutUseCase`; port/out `RefreshTokenRepositoryPort`, `SecretTokenGeneratorPort`.
-- [ ] 2b.6 Create `application/service/SessionRefreshService` (one transaction: lookup by sha256 → policy → revoke+insert successor, same `family_id`) and `LogoutService` (revoke presented token only, P4).
-- [ ] 2b.7 Create `adapter/out/security/SecureRandomTokenGenerator`, `Sha256TokenDigest`, `SecurityContextPrincipalAccessor` (implements `shared.PrincipalAccessor`, reads `SecurityContextHolder`).
-- [ ] 2b.8 Create refresh-token persistence: `RefreshTokenJpaEntity`, `RefreshTokenSpringDataRepository`, `RefreshTokenPersistenceAdapter`, MapStruct mapper.
-- [ ] 2b.9 Extend `AuthController` with `POST /api/auth/refresh` (`permitAll`) and `POST /api/auth/logout` (`authenticated()`); create `IamExceptionHandler` mapping to `401`.
-- [ ] 2b.10 Test: `RefreshTokenPolicyTest` (idle / absolute / revoked / reuse, fixed `Clock`), `Sha256TokenDigestTest`.
-- [ ] 2b.11 Test IT: `AuthenticationFlowIT` — login → protected call → refresh rotates → old token `401` → logout → `401`; wrong password `401`; disabled user `401`.
-- [ ] 2b.12 Grep check: `ROLE_` absent under `backend/src`; `hasRole(` absent in `SecurityConfig`. Run `cd backend && ./mvnw verify`.
+- [x] 2b.1 **[BLOCKED on 1.2/1.3]** Create `iam/infrastructure/config/IamSecurityBeans` hosting the resolved decoder (HMAC from `JwtProperties.secret`) and `IamPrincipalConverter` (maps JWT claims → `Authentication{principal=AuthenticatedPrincipal}`).
+- [x] 2b.2 **[BLOCKED on 1.2/1.3]** Move `SecurityConfig.java` to `iam/infrastructure/config/`; wire `.cors()` (new `CorsProperties`, explicit origin list, credentials off) and `.oauth2ResourceServer(rs -> rs.jwt(...))`; keep `permitAll` on login/refresh, `authenticated()` on logout.
+- [x] 2b.3 Create `iam/domain/model/RefreshTokenGrant.java`, `RefreshTokenState.java`, `RevocationReason.java`; `iam/domain/exception/RefreshTokenRejectedException.java`.
+- [x] 2b.4 Create `iam/domain/service/RefreshTokenPolicy` — validates not-found/revoked(reuse→revoke family)/expired/idle-past-window, per design's REFRESH data-flow branch.
+- [x] 2b.5 Create port/in `RefreshSessionUseCase`, `LogoutUseCase`; port/out `RefreshTokenRepositoryPort` (extended, already existed from 2a — see deviations), `SecretTokenGeneratorPort` (already existed from 2a). **Extended beyond the literal list**: also added `RefreshTokenPolicyConfigPort` (out) — see deviations.
+- [x] 2b.6 Create `application/service/SessionRefreshService` (one transaction: lookup by raw-token → policy → revoke+insert successor, same `family_id`) and `LogoutService` (revoke presented token only, P4).
+- [x] 2b.7 Create `adapter/out/security/Sha256TokenDigest`, `SecurityContextPrincipalAccessor` (implements `shared.PrincipalAccessor`, reads `SecurityContextHolder`). `SecureRandomTokenGenerator` already existed from 2a (pre-empted, per apply-progress).
+- [x] 2b.8 Extend refresh-token persistence: `RefreshTokenJpaEntity`/`RefreshTokenSpringDataRepository`/`RefreshTokenPersistenceAdapter` already existed from 2a (persist-only, pre-empted); this task added lookup-by-hash and revoke/revoke-family, and moved the inline SHA-256 digest into `Sha256TokenDigest` (2b.7).
+- [x] 2b.9 Extend `AuthController` with `POST /api/auth/refresh` (`permitAll`) and `POST /api/auth/logout` (`authenticated()`); create `IamExceptionHandler` mapping to `401`/`429`.
+- [x] 2b.10 Test: `RefreshTokenPolicyTest` (idle / absolute / revoked / reuse, fixed instants), `Sha256TokenDigestTest`.
+- [x] 2b.11 Test IT: `AuthenticationFlowIT` — login → protected call → refresh rotates → old token `401` → logout → `401`; wrong password `401` and disabled user `401` (already present from 2a).
+- [x] 2b.12 Grep check: `ROLE_` absent under `backend/src` (doc-comment mentions of the literal string aside); `hasRole(` absent in `SecurityConfig` (doc-comment mention aside — see apply-progress). Ran `cd backend && ./mvnw verify` — `BUILD SUCCESS`.
 
 ## Phase 3 — Slice 3: Branch Isolation (PR4)
 

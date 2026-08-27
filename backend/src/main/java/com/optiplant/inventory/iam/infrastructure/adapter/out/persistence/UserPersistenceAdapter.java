@@ -19,14 +19,21 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
 
 	@Override
 	public Optional<UserAccount> findByUsername(String username) {
-		return userRepository.findByUsername(username).map(entity -> {
-			UUID branchExternalId = null;
-			Boolean branchActive = null;
-			if (entity.getBranchId() != null) {
-				branchExternalId = userRepository.findBranchExternalId(entity.getBranchId()).orElse(null);
-				branchActive = userRepository.findBranchActive(entity.getBranchId()).orElse(Boolean.FALSE);
-			}
-			return userMapper.toDomain(entity, branchExternalId, branchActive);
-		});
+		return userRepository.findByUsername(username).map(this::toDomain);
+	}
+
+	@Override
+	public Optional<UserAccount> findByExternalId(UUID externalId) {
+		return userRepository.findByExternalId(externalId).map(this::toDomain);
+	}
+
+	private UserAccount toDomain(UserJpaEntity entity) {
+		UUID branchExternalId = null;
+		Boolean branchActive = null;
+		if (entity.getBranchId() != null) {
+			branchExternalId = userRepository.findBranchExternalId(entity.getBranchId()).orElse(null);
+			branchActive = userRepository.findBranchActive(entity.getBranchId()).orElse(Boolean.FALSE);
+		}
+		return userMapper.toDomain(entity, branchExternalId, branchActive);
 	}
 }
