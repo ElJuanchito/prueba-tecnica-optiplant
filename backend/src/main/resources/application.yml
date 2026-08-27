@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: inventory
+  profiles:
+    default: dev
+
+  # Una pieza por variable: la URL se compone acá y no se duplica en el Compose.
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:optiplant}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:optiplant}
+    hikari:
+      # Deliberado: que la base todavía no acepte conexiones no aborta el arranque.
+      # La aplicación levanta y su sonda de readiness reporta DOWN hasta que la base
+      # responde, que es lo que hace útil el healthcheck del Compose.
+      initialization-fail-timeout: -1
+
+  jpa:
+    hibernate:
+      # El esquema lo crea backend/init-db/, nunca Hibernate.
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    # DT-01: mientras el volumen se inicialice con backend/init-db/, Flyway encuentra
+    # tablas que no creó y falla. La dependencia queda declarada para que la migración
+    # futura no toque el pom.xml, pero la ejecución permanece apagada.
+    enabled: false
+
+  threads:
+    virtual:
+      # Decisión de arquitectura 3.1: el sistema es intensivo en E/S.
+      enabled: true
+
+server:
+  port: ${BACKEND_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db

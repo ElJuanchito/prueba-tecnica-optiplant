@@ -1,0 +1,20 @@
+# Perfil de producción.
+optiplant:
+  jwt:
+    # Sin valor por defecto a propósito: si la variable falta, el arranque falla acá
+    # y no en el primer inicio de sesión.
+    secret: ${JWT_SECRET}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  # Registros estructurados en JSON (RNF-OBS-01).
+  structured:
+    format:
+      console: ecs
+  level:
+    com.optiplant.inventory: INFO

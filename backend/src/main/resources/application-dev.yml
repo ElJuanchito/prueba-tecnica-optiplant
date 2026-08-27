@@ -1,0 +1,16 @@
+# Perfil por defecto: local y dentro de Compose.
+optiplant:
+  jwt:
+    # Valor de desarrollo, y está marcado como tal a propósito: si aparece en
+    # cualquier otro entorno, se reconoce de un vistazo. En prod no hay valor por defecto.
+    secret: ${JWT_SECRET:clave-de-desarrollo-no-usar-fuera-de-local-256-bits-minimo}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    com.optiplant.inventory: DEBUG
