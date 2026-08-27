@@ -94,16 +94,16 @@ Chain strategy: feature-branch-chain (user-selected): PR1 targets the tracker br
 
 ## Phase 4 — Slice 4: Audit (PR5)
 
-- [ ] 4.1 Create `com/optiplant/inventory/shared/audit/AuditAction.java`, `AuditEntryCommand.java`, `AuditWritePort.java` (JDK-only imports, `sharedEsUnaHoja` holds vacuously) — audit-log "Every mutation writes an audit entry in the same transaction".
-- [ ] 4.2 Create `iam/domain/model/AuditRecord.java`.
-- [ ] 4.3 Create `AuditLogJpaEntity`, `AuditLogSpringDataRepository`, `AuditWriteAdapter` (implements `AuditWritePort`; resolves `AuthenticatedPrincipal` UUID → BIGINT via `idx_users_external_id`; `INSERT INTO audit_logs` in the caller's own transaction — CLAUDE.md synchronous-effects invariant).
-- [ ] 4.4 Create `application/port/out/AuditQueryPort` + query methods on the persistence adapter: filter by user/branch/entity/action/date-range, paginated (RF-SEG-04, RNF-PER-04).
-- [ ] 4.5 Create `application/port/in/QueryAuditLogUseCase` + `AuditQueryService` — ADMIN sees all branches, BRANCH_MANAGER forced to own `branch_id` regardless of submitted filter, OPERATOR denied.
-- [ ] 4.6 Create `adapter/in/web/AuditLogController` — `GET /api/audit`, paginated, filtered; no update/delete endpoint exists (audit-log "immutable and retained").
-- [ ] 4.7 Test: `AuditEntryCommandTest`.
-- [ ] 4.8 Test IT: `AuditLogQueryIT` — the five RF-SEG-04 filters, pagination, role-scoping scenarios.
-- [ ] 4.9 Test IT: `AuditAtomicityIT` — a use case that throws after `AuditWritePort.record` leaves zero `audit_logs` rows; proves no `@Async`/`AFTER_COMMIT` (load-bearing test, CLAUDE.md).
-- [ ] 4.10 Run `cd backend && ./mvnw verify`.
+- [x] 4.1 Create `com/optiplant/inventory/shared/audit/AuditAction.java`, `AuditEntryCommand.java`, `AuditWritePort.java` (JDK-only imports, `sharedEsUnaHoja` holds vacuously) — audit-log "Every mutation writes an audit entry in the same transaction". **Deviation**: `AuditEntryCommand.action` stays `String`, not `AuditAction` — see apply-progress.
+- [x] 4.2 Create `iam/domain/model/AuditRecord.java`.
+- [x] 4.3 Create `AuditLogJpaEntity`, `AuditLogSpringDataRepository`, `AuditWriteAdapter` (implements `AuditWritePort`; resolves `AuthenticatedPrincipal` UUID → BIGINT via `idx_users_external_id`; `INSERT INTO audit_logs` in the caller's own transaction — CLAUDE.md synchronous-effects invariant).
+- [x] 4.4 Create `application/port/out/AuditQueryPort` + query methods on the persistence adapter: filter by user/branch/entity/action/date-range, paginated (RF-SEG-04, RNF-PER-04). **Deviation**: query methods added to `AuditWriteAdapter` itself (the "persistence adapter" task 4.3 already names), not a second class.
+- [x] 4.5 Create `application/port/in/QueryAuditLogUseCase` + `AuditQueryService` — ADMIN sees all branches, BRANCH_MANAGER forced to own `branch_id` regardless of submitted filter, OPERATOR denied (enforced by `SecurityConfig`'s slice-3 matcher, not by this service — see apply-progress).
+- [x] 4.6 Create `adapter/in/web/AuditLogController` — `GET /api/audit`, paginated, filtered; no update/delete endpoint exists (audit-log "immutable and retained").
+- [x] 4.7 Test: `AuditEntryCommandTest`.
+- [x] 4.8 Test IT: `AuditLogQueryIT` — the five RF-SEG-04 filters, pagination, role-scoping scenarios.
+- [x] 4.9 Test IT: `AuditAtomicityIT` — a use case that throws after `AuditWritePort.record` leaves zero `audit_logs` rows; proves no `@Async`/`AFTER_COMMIT` (load-bearing test, CLAUDE.md).
+- [x] 4.10 Run `cd backend && ./mvnw verify`.
 
 ## Phase 5a — Slice 5a: User Admin (PR6)
 

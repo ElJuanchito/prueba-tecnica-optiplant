@@ -1,16 +1,18 @@
-# Verification Report: `add-iam-module` — Slices 1, 2a, 2b, 3
+# Verification Report: `add-iam-module` — Slices 1, 2a, 2b, 3, 4
 
-**Scope**: Tasks 1.1–1.19 (Foundations), 2a.1–2a.8 (Login), 2b.1–2b.12 (Refresh + Logout), 3.1–3.7 (Branch Isolation).
-Slices 4, 5a, 5b are intentionally out of scope (not started) and are reported as
+**Scope**: Tasks 1.1–1.19 (Foundations), 2a.1–2a.8 (Login), 2b.1–2b.12 (Refresh + Logout), 3.1–3.7 (Branch Isolation), 4.1–4.10 (Audit).
+Slices 5a, 5b are intentionally out of scope (not started) and are reported as
 not-started, not as failures.
 
 **Commit verified**: `2240b17` (Slices 1/2a/2b, merged into tracker `feat/ep-01-iam`) plus
-the uncommitted working tree on `feat/ep-01-iam-03-aislamiento-sucursal` for Slice 3 — `git
-status` shows 7 new/modified source files (`CrossBranchMutationException.java`,
-`BranchAccessPolicy.java`, `IamExceptionHandler.java`, `SecurityConfig.java`,
-`BranchIsolationIT.java`, `BranchAccessPolicyTest.java`, `BranchIsolationFixtureController.java`)
-plus `apply-progress.md`/`tasks.md`, none staged or committed. The orchestrator owns delivery
-(commit/PR) for Slice 3; this report verifies the working tree bytes as they stand.
+Slice 3's own PR merge (branch history shown by `git log --oneline -5`: `510fade` merge of
+`feat/ep-01-iam-03-aislamiento-sucursal`) plus the uncommitted working tree on
+`feat/ep-01-iam-04-auditoria` for Slice 4 — `git status` shows 1 modified source file
+(`UserSpringDataRepository.java`) plus `apply-progress.md`/`tasks.md`, and 13 new untracked
+source/test files under `shared/audit/**` and `iam/**` (audit domain model, ports, service,
+persistence adapter, controller, and the two IT fixtures), none staged or committed. The
+orchestrator owns delivery (commit/PR) for Slice 4; this report verifies the working tree
+bytes as they stand.
 
 ## Verdict per slice
 
@@ -20,9 +22,10 @@ plus `apply-progress.md`/`tasks.md`, none staged or committed. The orchestrator 
 | 2a — Login | **PASS** |
 | 2b — Refresh + Logout | **PASS WITH WARNINGS** (2 minor coverage/design-deviation warnings, no CRITICAL) |
 | 3 — Branch Isolation | **PASS** |
+| 4 — Audit | **PASS** |
 
-**Overall: all four implemented slices are ready to merge.** No CRITICAL issue found in any
-slice, including Slice 3.
+**Overall: all five implemented slices are ready to merge.** No CRITICAL issue found in any
+slice, including Slice 4.
 
 ## Decisive command output
 
@@ -370,21 +373,196 @@ section — no undisclosed deviation was found while cross-referencing the diff 
 
 **SUGGESTION**: none beyond what is already tracked from prior slices.
 
+
+## Slice 4 — Audit (tasks 4.1–4.10) — detailed verification
+
+**Artifact store note**: same as Slice 3 — `openspec/config.yaml` has no `artifact_store`
+field and its `schema: spec-driven` plus the on-disk `openspec/changes/add-iam-module/`
+tree remain the source of truth. This report is persisted as the canonical file; no
+`mem_save` duplicate was issued for the underlying artifact content, following the
+precedent set by the Slice 3 verification.
+
+### Decisive command output (re-run independently for this verification)
+
+`cd backend && ./mvnw verify` (real Testcontainers Postgres 17, full module, current
+uncommitted working tree on `feat/ep-01-iam-04-auditoria`):
+```
+[INFO] Running com.optiplant.inventory.AuditAtomicityIT
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.AuditAtomicityIT
+[INFO] Running com.optiplant.inventory.AuditLogQueryIT
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.AuditLogQueryIT
+[INFO] Running com.optiplant.inventory.AuthenticationFlowIT
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.AuthenticationFlowIT
+[INFO] Running com.optiplant.inventory.BranchIsolationIT
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.BranchIsolationIT
+[INFO] Results:
+[INFO] Tests run: 29, Failures: 0, Errors: 0, Skipped: 0
+[INFO] --- failsafe:3.5.6:verify (default) @ inventory ---
+[INFO] BUILD SUCCESS
+```
+(Failsafe total 29 = `ApplicationContextIT` 1 + `AuditAtomicityIT` 2 + `AuditLogQueryIT` 8 +
+`AuthenticationFlowIT` 12 + `BranchIsolationIT` 6, matching `apply-progress.md`'s own count
+exactly.)
+
+Focused re-run, `cd backend && ./mvnw test -Dtest=AuditEntryCommandTest,ModuleBoundariesTest,SharedIsFrameworkFreeTest`:
+```
+[INFO] Running com.optiplant.inventory.ModuleBoundariesTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.ModuleBoundariesTest
+[INFO] Running com.optiplant.inventory.SharedIsFrameworkFreeTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.SharedIsFrameworkFreeTest
+[INFO] Running com.optiplant.inventory.shared.audit.AuditEntryCommandTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.shared.audit.AuditEntryCommandTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+`ModuleBoundariesTest` still 5/5 non-vacuous with the new `shared/audit/**` classes present;
+`SharedIsFrameworkFreeTest` still 1/1 green — `shared` remains framework-free with the new
+audit port/command/enum added.
+
+`python3 scripts/validar_trazabilidad.py` (re-run):
+```
+RESULTADO: trazabilidad íntegra
+  42 RF · 34 RNF · 17 RN · 37 CU · 6 DT
+```
+Unaffected — Slice 4 touches no `docs/` file (`git diff --stat -- backend/init-db docs`
+returns empty, confirmed).
+
+`./scripts/validar_esquema.sh` was **not** re-run: Slice 4 touches no file under
+`backend/init-db/` (confirmed via `git status --porcelain | grep init-db` — no hits), so it
+is out of scope for this slice, same as Slice 3's precedent.
+
+### Task-by-task verification (4.1–4.10)
+
+| Task | Claim | Verified against |
+|---|---|---|
+| 4.1 | `AuditAction`, `AuditEntryCommand`, `AuditWritePort` created, JDK-only imports; `action` stays `String` (disclosed deviation) | All three files read in full: `AuditWritePort`/`AuditEntryCommand`/`AuditAction` import only `java.util.UUID` — no Spring/JPA. Record field order/types match `design.md:225-228` verbatim (`actorUserId, branchId, action, entityName, entityId, payloadBefore, payloadAfter, ipAddress`) |
+| 4.2 | `AuditRecord` domain model created | Read in full: `external_id`-only fields (`externalId`, `actorUserExternalId`, `branchExternalId`), no numeric id |
+| 4.3 | `AuditLogJpaEntity`, `AuditLogSpringDataRepository`, `AuditWriteAdapter` created; UUID→BIGINT resolution; INSERT in caller's transaction | Read in full: `AuditWriteAdapter.record` carries no `@Transactional` (joins caller's transaction, never starts its own); `requireUserId`/`requireBranchId` resolve external ids via `UserSpringDataRepository`, throwing `IllegalStateException` on failure, mirroring `RefreshTokenPersistenceAdapter`'s established pattern |
+| 4.4 | `AuditQueryPort` + query methods on the persistence adapter (disclosed: same class as 4.3, not a second one) | Confirmed: `AuditWriteAdapter implements AuditWritePort, AuditQueryPort`; `AuditQueryPort.query`/`AuditFilter`/`AuditPage` read in full, `external_id`-only filter fields |
+| 4.5 | `QueryAuditLogUseCase` + `AuditQueryService`; BRANCH_MANAGER forced to own branch; OPERATOR denied via `SecurityConfig` (disclosed: no service-level check) | Read in full: `AuditQueryService.query` computes `effectiveBranch = principal.role() == Role.BRANCH_MANAGER ? principal.branchId() : query.branchExternalId()`; `SecurityConfig`'s `/api/audit/**` → `hasAnyAuthority("ADMIN","BRANCH_MANAGER")` matcher (added slice 3) is the only OPERATOR gate, confirmed still present and using `hasAnyAuthority`, never `hasRole` |
+| 4.6 | `AuditLogController` — `GET /api/audit`, paginated/filtered, no update/delete endpoint | Read in full: only one `@GetMapping`, no `@PostMapping`/`@PutMapping`/`@PatchMapping`/`@DeleteMapping` anywhere in the class; `AuditEntryResponse` exposes only `UUID` fields, no numeric id |
+| 4.7 | `AuditEntryCommandTest` created | Re-run independently: `Tests run: 3, Failures: 0` |
+| 4.8 | `AuditLogQueryIT` — five RF-SEG-04 filters, pagination, role-scoping | Read in full (8 test methods: admin-all-branches, branch-manager-forced, operator-403, filter-by-actor, filter-by-entity, filter-by-action, filter-by-date-range, pagination); re-run independently, all 8 green |
+| 4.9 | `AuditAtomicityIT` — a use case that throws after `AuditWritePort.record` leaves zero rows | Read `AuditAtomicityIT`, `AuditAtomicityFixtureService`, `AuditAtomicityFixtureController` in full: the fixture service is `@Transactional`, calls `auditWritePort.record(...)` then conditionally throws; the IT asserts zero matching rows on the failure path and exactly one row on the success path. This is the load-bearing test design.md calls out by name ("the only test that can distinguish the required synchronous port from an accidental AFTER_COMMIT or @Async implementation") — re-run independently, both cases green |
+| 4.10 | `./mvnw verify` run | Re-run independently by this verification, `BUILD SUCCESS` (see Decisive command output above) |
+
+All 10 tasks in `tasks.md` are checked `[x]` and correspond to real, independently-verified
+artifacts. No unchecked task in the 4.1–4.10 range.
+
+### Spec compliance matrix (`specs/audit-log/spec.md`)
+
+| Requirement / Scenario | Status | Covering test |
+|---|---|---|
+| Mutation succeeds and is audited | **PASS** | `AuditAtomicityIT.unaEscrituraDeAuditoriaSinFallaSiPersisteLaFila` — one row persists after a successful call |
+| Audit write failure aborts the mutation | **PASS** | `AuditAtomicityIT.unaEscrituraDeAuditoriaSeguidaDeUnaFallaNoDejaFilas` — zero rows after the fixture throws post-`record`; proves the write is inside the caller's own transaction (rolled back with it), not `@Async`/`AFTER_COMMIT` |
+| Reads are never audited | **PASS (by construction, not a dedicated negative test)** | `AuditLogController` has exactly one `@GetMapping` and calls only `QueryAuditLogUseCase.query`, which never calls `AuditWritePort.record`; no code path exists that could audit a read. No dedicated IT asserts "read produced zero new audit rows" as an explicit assertion — **SUGGESTION**, not a gap, since the absence is structural (no call site exists to remove) |
+| ADMIN queries across branches | **PASS** | `AuditLogQueryIT.adminVeEntradasDeTodasLasSucursales` |
+| BRANCH_MANAGER scoped to own branch, filter ignored | **PASS** | `AuditLogQueryIT.gerenteDeSucursalSoloVeSuPropiaSucursalAunqueEnvieOtraEnElFiltro` — submits Medellín's `branchId` while authenticated as Bogotá's manager, still gets only Bogotá's row |
+| OPERATOR is denied (403) | **PASS** | `AuditLogQueryIT.operadorEsRechazadoConCuatroCientosTres` |
+| Large result set is paginated | **PASS** | `AuditLogQueryIT.unConjuntoMasGrandeQueElTamanoDePaginaPorDefectoSePagina` — 25 rows inserted, default page returns 20, `totalElements` 25 |
+| No mutation path exists for audit entries | **PASS** | `AuditLogController` grep-confirmed: zero `PUT`/`PATCH`/`DELETE` mappings; no other controller in the diff touches `audit_logs` |
+
+All eight audit-log spec scenarios have a runtime-executed covering test (or, for "reads are
+never audited," a structural proof plus a low-risk coverage suggestion). No UNTESTED or
+FAILING scenario against the required behavior.
+
+### Test-quality check (not just presence)
+
+- `AuditAtomicityIT` is not tautological: if `AuditWriteAdapter.record` were annotated
+  `@Async` or deferred via `TransactionSynchronizationManager.registerSynchronization(...,
+  afterCommit)`, the failure-path test would find one row instead of zero (the write would
+  complete on a separate thread/after the enclosing transaction, regardless of the fixture's
+  own rollback). If the fixture's `@Transactional` boundary were removed entirely (each
+  statement auto-committing), the same test would also fail. Both realistic regressions are
+  caught.
+- `AuditLogQueryIT.gerenteDeSucursalSoloVeSuPropiaSucursalAunqueEnvieOtraEnElFiltro` is the
+  strongest test in this slice: it deliberately submits a *conflicting* branch filter and
+  asserts the server-side value wins, not the client-submitted one — if
+  `AuditQueryService.query` used `query.branchExternalId()` unconditionally instead of the
+  role-conditional expression, this test fails.
+- `operadorEsRechazadoConCuatroCientosTres` would fail with `200` instead of `403` if the
+  `SecurityConfig` matcher for `/api/audit/**` were removed or loosened — not tautological.
+
+### CLAUDE.md hard invariants — re-checked for Slice 4's diff
+
+| Invariant | Status | Evidence |
+|---|---|---|
+| Audit write is synchronous, in the caller's own transaction (no `@Async`, no `AFTER_COMMIT`) | **PASS** | `grep -rn "@Async\|AFTER_COMMIT\|TransactionPhase" backend/src` → only doc-comment mentions in `AuditWritePort.java` and `AuditAtomicityIT.java` explaining the invariant itself, zero executable use; `AuditWriteAdapter.record` carries no `@Transactional`, confirmed by reading the class; `AuditAtomicityIT` independently re-run and green (see above) |
+| Roles `ADMIN`/`BRANCH_MANAGER`/`OPERATOR`, no `ROLE_` prefix; `hasAuthority()` never `hasRole()` | **PASS** | `grep -rn "ROLE_\|hasRole(" backend/src --include=*.java` → only pre-existing doc-comment mentions (`Role.java` ×2, `SecurityConfig.java` ×1), zero executable use; `SecurityConfig`'s `/api/audit/**` matcher uses `hasAnyAuthority("ADMIN","BRANCH_MANAGER")` |
+| API exposes only `external_id`, never numeric ids | **PASS** | `AuditLogController.AuditEntryResponse`/`AuditRecord`/`AuditQueryPort.AuditFilter` all carry `UUID` fields only; `AuditLogJpaEntity.id` (the internal `Long`) never crosses `AuditWriteAdapter.toDomain`'s mapping into `AuditRecord` |
+| `shared/` stays framework-free and a leaf | **PASS** | `shared/audit/{AuditAction,AuditEntryCommand,AuditWritePort}.java` import only `java.util.UUID`; `SharedIsFrameworkFreeTest` re-run, still 1/1 green; `ModuleBoundariesTest.sharedEsUnaHoja` still passes (5/5 total, non-vacuous) |
+| Docker-dependent tests named `*IT` | **PASS** | `AuditAtomicityIT`, `AuditLogQueryIT` (Testcontainers-backed) vs. `AuditEntryCommandTest` (pure unit, ran in the surefire-only focused re-run above, no Testcontainers boot logged) — correctly suffixed |
+| No new class in a direct subpackage of the base package other than a business module | **PASS** | `shared/audit/**` is a subpackage of the existing `shared` leaf module (not a new direct base-package subpackage); all other Slice 4 classes live under `iam/**`. `find backend/src/main/java/com/optiplant/inventory -maxdepth 2 -type d` still shows only `iam` and `shared` |
+| No Flyway added alongside `backend/init-db/` | **PASS** | No schema file touched this slice; no Flyway dependency change |
+
+### Deviations recorded in `apply-progress.md` for Slice 4 — verified
+
+1. **`AuditEntryCommand.action` stays `String`, not `AuditAction`.** Confirmed: the record's
+   `action` parameter is `String` (matches `design.md:225-228` verbatim, which itself types it
+   `String`); `AuditAction` exists as a separate typed helper for `iam`'s own call sites
+   (`AuditAtomicityFixtureService` uses `AuditAction.CREATE.name()`). The load-bearing test,
+   `AuditEntryCommandTest`, was re-run and passed.
+2. **`AuditQueryPort`'s query methods live on `AuditWriteAdapter`, not a second class.**
+   Confirmed: `AuditWriteAdapter implements AuditWritePort, AuditQueryPort` in one class.
+3. **`AuditQueryService` performs no `OPERATOR` check of its own.** Confirmed: no `Role`
+   comparison against `OPERATOR` anywhere in `AuditQueryService`; the HTTP-layer
+   `SecurityConfig` matcher is the sole gate, and `AuditLogQueryIT.operadorEsRechazadoConCuatroCientosTres`
+   proves it end to end.
+4. **`AuditLogSpringDataRepository.search` is a native query with explicit `::timestamptz`
+   casts, not JPQL**, found by executing (a JPQL version failed with a Postgres extended-query
+   protocol type-inference error). Confirmed by reading the `@Query(nativeQuery = true, ...)`
+   annotation directly — both the `search` and `countQuery` clauses cast `:from`/`:to` to
+   `timestamptz`. Real and necessary, not a shortcut.
+5. **`AuditLogQueryIT`'s test marker is 8 hex chars (`it-XXXXXXXX`), not a full UUID**, because
+   `entity_name` is `VARCHAR(50)`. Confirmed by reading `AuditLogQueryIT.marker()` and cross-
+   checking `01-init-schema.sql`'s `entity_name VARCHAR(50)` column definition.
+
+All five declared deviations are real, sound, and consistent with the actual code — no
+undisclosed deviation was found while cross-referencing the diff against `design.md` and
+`tasks.md`.
+
+### Issues found for Slice 4
+
+**CRITICAL**: none.
+
+**WARNING**: none new. (The two Slice-3 forward-looking WARNINGs about a future real mutating
+endpoint remain open and are unaffected by Slice 4, since 5a/5b — the first real mutation
+endpoints wired to `AuditWritePort` — have not started.)
+
+**SUGGESTION**:
+1. Add a dedicated negative-assertion test for "reads are never audited" (e.g., call
+   `GET /api/audit` itself, or any existing read endpoint, then assert the `audit_logs` row
+   count is unchanged). The current proof is structural (no call site exists), which is sound
+   but not execution-verified the same way the write-side atomicity is. Low priority — the
+   absence of a call site is a stronger guarantee than a test could add, but it would close the
+   verification loop for this specific scenario the same way the other seven were closed.
+2. Once slices 5a/5b wire `UserAdminService`/`BranchAdminService` mutations through
+   `AuditWritePort`, extend `AuditAtomicityIT`'s scenario coverage (or add an equivalent) against
+   a *real* production mutation, not only the test-only fixture — this was already anticipated
+   in the Slice-4 apply-progress boundary note and does not block this slice's own merge.
+
 ## Conclusion
 
-Slices 1, 2a, 2b, and 3 are functionally complete. Slices 1/2a/2b are spec-compliant on all but
-two narrow scenario halves (disabled-branch login denial, expired/altered-token rejection —
-both WARNING, not CRITICAL). Slice 3 (Branch Isolation) is fully spec-compliant: all four
-branch-isolation requirements have a runtime-executed covering test for their in-scope half, no
-CRITICAL issue was found, and all three declared deviations (opaque-resource fixture instead of
-a branch-id parameter, `BranchAccessPolicy` as a `new`-able non-bean matching
-`RefreshTokenPolicy`'s pattern, the exception message omitting the target branch id) were
-independently confirmed as real and sound against the source, not taken on the apply
-executor's word. Every project invariant re-checked (no `ROLE_`/`hasRole(`, session-derived
-branch, `external_id`-only surface, `shared` as a framework-free leaf, `*IT`/`*Test` naming, no
-new base-package subpackage) holds for Slice 3's diff. `cd backend && ./mvnw verify` on the
-current working tree passes with 32 surefire + 19 failsafe tests, all green, and
-`validar_trazabilidad.py` is unaffected and green; `validar_esquema.sh` was correctly skipped
-(no `docs/`/`backend/init-db/` change in this slice). **Ready to proceed** — the two open
-WARNINGs on Slice 3 are forward-looking scope notes for Slices 4/5, not merge blockers; slices
-4, 5a, 5b remain correctly unstarted.
+Slices 1, 2a, 2b, 3, and 4 are functionally complete. Slices 1/2a/2b are spec-compliant on all
+but two narrow scenario halves (disabled-branch login denial, expired/altered-token rejection
+— both WARNING, not CRITICAL). Slice 3 (Branch Isolation) is fully spec-compliant, as detailed
+above. Slice 4 (Audit) is fully spec-compliant: all eight audit-log spec requirements have a
+runtime-executed covering test (seven direct, one structural-plus-suggestion for "reads are
+never audited"), no CRITICAL issue was found, and all five declared deviations (`action` stays
+`String`, query methods on the write adapter, no service-level OPERATOR check, native query
+with explicit timestamp casts, short test-marker length) were independently confirmed as real
+and sound against the source, not taken on the apply executor's word. The load-bearing
+`AuditAtomicityIT` was read in full and independently re-run: it genuinely distinguishes a
+synchronous, same-transaction audit write from an `@Async`/`AFTER_COMMIT` implementation, which
+is the exact CLAUDE.md invariant this verification was asked to scrutinize most closely. Every
+project invariant re-checked for Slice 4's diff holds: no `ROLE_`/`hasRole(`, `external_id`-only
+API surface, `shared/audit/**` framework-free and still a leaf (`SharedIsFrameworkFreeTest`,
+`ModuleBoundariesTest` both green and non-vacuous), `*IT`/`*Test` naming correct, no Flyway
+introduced. `cd backend && ./mvnw verify` on the current working tree passes with 35 surefire +
+29 failsafe tests, all green (independently re-run for this verification, not taken from
+`apply-progress.md`'s own numbers alone), and `validar_trazabilidad.py` is unaffected and green;
+`validar_esquema.sh` was correctly skipped (no `docs/`/`backend/init-db/` change in this
+slice). **Ready to proceed** — the two SUGGESTIONs on Slice 4 are low-priority coverage notes
+for a future slice, not merge blockers; slices 5a, 5b remain correctly unstarted (confirmed:
+`fd` search for `UserAdminService`, `BranchAdminService`, `BranchJpaEntity` returns zero hits
+under `src/main`).
