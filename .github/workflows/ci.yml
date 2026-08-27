@@ -1,0 +1,71 @@
+# Integración continua — OptiPlant
+#
+# Corre las mismas tres verificaciones que CLAUDE.md exige antes de dar por
+# terminado un cambio, para que revisar un pull request se reduzca a mirar si
+# los tres jobs están en verde.
+#
+# Los tres son independientes y corren en paralelo: un fallo de esquema no
+# oculta un fallo de trazabilidad, y viceversa.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# Un push nuevo sobre la misma rama cancela la corrida anterior: lo que importa
+# es el estado del último commit, no la historia de los intermedios.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  trazabilidad:
+    name: Trazabilidad de la documentación
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # El validador es Python puro sin dependencias externas: alcanza con el
+      # intérprete que el runner ya trae.
+      - name: Validar trazabilidad
+        run: python3 scripts/validar_trazabilidad.py
+
+  esquema:
+    name: Esquema contra PostgreSQL real
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # El script levanta su propio contenedor postgres:17-alpine y lo limpia al
+      # salir; por eso no se declara aquí ningún `services:`. El runner de
+      # ubuntu-latest ya trae Docker.
+      - name: Validar esquema e invariantes
+        run: bash scripts/validar_esquema.sh
+
+  backend:
+    name: Backend — fronteras, pruebas e integración
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      # `verify` corre surefire (pruebas unitarias y reglas de ArchUnit) y
+      # failsafe (las *IT, que levantan PostgreSQL con Testcontainers sobre el
+      # Docker del runner). El wrapper fija la versión de Maven.
+      - name: Compilar y verificar
+        run: ./mvnw --batch-mode --no-transfer-progress verify
