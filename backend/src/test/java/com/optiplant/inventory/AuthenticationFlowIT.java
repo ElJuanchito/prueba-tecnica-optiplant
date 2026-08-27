@@ -4,7 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.optiplant.inventory.iam.infrastructure.adapter.out.persistence.UserJpaEntity;
 import com.optiplant.inventory.iam.infrastructure.adapter.out.persistence.UserSpringDataRepository;
+import com.optiplant.inventory.iam.infrastructure.config.JwtProperties;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +21,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -37,6 +50,12 @@ class AuthenticationFlowIT {
 
 	@Autowired
 	private UserSpringDataRepository userRepository;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private JwtProperties jwtProperties;
 
 	private RestClient restClient;
 
@@ -80,6 +99,46 @@ class AuthenticationFlowIT {
 	void unUsuarioDeshabilitadoNoPuedeIniciarSesion() {
 		String username = "it.deshabilitado." + shortSuffix();
 		crearUsuarioDeshabilitado(username);
+
+		ResponseEntity<String> respuestaDeshabilitado = loginRaw(username, SEED_PASSWORD);
+		// A disabled account must be indistinguishable from bad credentials, or the
+		// response itself leaks that the account exists (same no-leak posture already
+		// proven for unknown-username vs. wrong-password by
+		// credencialesInvalidasNoRevelanSiElUsuarioExiste). A fresh random username
+		// keeps this comparison independent of any other test's login throttle state.
+		ResponseEntity<String> respuestaCredencialesInvalidas = loginRaw("no-existe-" + UUID.randomUUID(),
+				"cualquier-cosa");
+
+		assertThat(respuestaDeshabilitado.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+		assertThat(respuestaDeshabilitado.getBody()).isEqualTo(respuestaCredencialesInvalidas.getBody());
+	}
+
+	@Test
+	void unUsuarioActivoConSucursalDeshabilitadaNoPuedeIniciarSesion() {
+		// This user's OWN `is_active` flag stays TRUE. If it were false too, this test
+		// would pass for the reason unUsuarioDeshabilitadoNoPuedeIniciarSesion already
+		// covers, and would prove nothing about the branch half of UserMapper's
+		// effective-active expression (entity.isActive() && (no branch || branch is
+		// active)). The seed branches are never mutated here — the Testcontainers
+		// container is shared across this class's tests, so flipping seed state would
+		// make test execution order a hidden dependency; a dedicated branch row avoids
+		// that entirely.
+		String suffix = shortSuffix();
+		Long branchId = jdbcTemplate.queryForObject(
+				"INSERT INTO branches (code, name, address, city, is_active) VALUES (?, ?, ?, ?, false) "
+						+ "RETURNING id",
+				Long.class, "IT-" + suffix, "IT Disabled Branch", "Calle Falsa 123", "Bogota");
+
+		String username = "it.sucursal." + suffix;
+		UserJpaEntity user = new UserJpaEntity();
+		user.setUsername(username);
+		user.setEmail(username + "@optiplant.com");
+		user.setPasswordHash(SEED_PASSWORD_HASH);
+		user.setFullName("IT User With Disabled Branch");
+		user.setRole("OPERATOR");
+		user.setActive(true);
+		user.setBranchId(branchId);
+		userRepository.save(user);
 
 		ResponseEntity<String> respuesta = loginRaw(username, SEED_PASSWORD);
 
@@ -164,6 +223,60 @@ class AuthenticationFlowIT {
 		assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 	}
 
+	@Test
+	void unTokenDeAccesoAlteradoEsRechazado() {
+		LoginResponseBody sesion = login("admin.corp", SEED_PASSWORD).getBody();
+		assertThat(sesion).isNotNull();
+
+		String tokenAlterado = alterarFirma(sesion.accessToken());
+
+		ResponseEntity<String> respuesta = protectedProbe(tokenAlterado);
+
+		assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+	}
+
+	@Test
+	void unTokenDeAccesoExpiradoEsRechazado() {
+		// No sleep: mint a token whose `exp` claim already lies in the past, signed
+		// with the same secret the running application is configured with, mirroring
+		// exactly what JwtAccessTokenAdapter builds in production. NimbusJwtDecoder
+		// rejects based on the claim's value, not on wall-clock time elapsed since
+		// issuance.
+		Instant expiraba = Instant.now().minus(Duration.ofMinutes(1));
+		Instant fueEmitido = expiraba.minus(Duration.ofMinutes(15));
+		String tokenExpirado = mintAccessToken(fueEmitido, expiraba, UUID.randomUUID().toString(), "ADMIN", null,
+				"admin.corp");
+
+		ResponseEntity<String> respuesta = protectedProbe(tokenExpirado);
+
+		assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+	}
+
+	@Test
+	void logoutEnUnDispositivoNoAfectaLaSesionDeOtro() {
+		// Two independent logins as the same user create two independent refresh-token
+		// families (AuthenticationService.login mints a fresh UUID family id per call).
+		LoginResponseBody sesionA = login("admin.corp", SEED_PASSWORD).getBody();
+		LoginResponseBody sesionB = login("admin.corp", SEED_PASSWORD).getBody();
+		assertThat(sesionA).isNotNull();
+		assertThat(sesionB).isNotNull();
+
+		ResponseEntity<Void> respuestaLogout = logout(sesionA.accessToken(), sesionA.refreshToken());
+		assertThat(respuestaLogout.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+		ResponseEntity<String> sesionATrasLogout = refreshRaw(sesionA.refreshToken());
+		assertThat(sesionATrasLogout.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+		// The decisive assertion: session B, from an entirely separate login, must stay
+		// alive. LogoutService revokes only the presented refresh token, never the
+		// whole family or the whole user (design decision P4) — a bug that revoked too
+		// broadly would only be caught here, not by the assertion above.
+		ResponseEntity<RefreshResponseBody> sesionBRefrescada = refresh(sesionB.refreshToken());
+		assertThat(sesionBRefrescada.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(sesionBRefrescada.getBody()).isNotNull();
+		assertThat(sesionBRefrescada.getBody().refreshToken()).isNotEqualTo(sesionB.refreshToken());
+	}
+
 	private ResponseEntity<String> protectedProbe(String accessToken) {
 		RestClient.RequestHeadersSpec<?> request = restClient.get().uri("/api/auth/__protected-probe");
 		if (accessToken != null) {
@@ -206,6 +319,44 @@ class AuthenticationFlowIT {
 	/** {@code users.username} is {@code VARCHAR(50)}; a full UUID would overflow it. */
 	private static String shortSuffix() {
 		return UUID.randomUUID().toString().substring(0, 8);
+	}
+
+	/** Flips the last character of the signature segment (the third dot-separated
+	 * part) so the token still parses as three well-formed Base64URL segments but
+	 * fails signature verification, rather than failing to parse. */
+	private static String alterarFirma(String token) {
+		String[] parts = token.split("\\.");
+		assertThat(parts).hasSize(3);
+		String firma = parts[2];
+		char ultimo = firma.charAt(firma.length() - 1);
+		char reemplazo = ultimo == 'A' ? 'B' : 'A';
+		String firmaAlterada = firma.substring(0, firma.length() - 1) + reemplazo;
+		return parts[0] + "." + parts[1] + "." + firmaAlterada;
+	}
+
+	/** Mints an access token the same way {@code JwtAccessTokenAdapter} does
+	 * (NimbusJwtEncoder, HS256, same claim set), but with caller-controlled
+	 * issued/expiry instants — needed to construct an already-expired token without
+	 * sleeping in the test. */
+	private String mintAccessToken(Instant issuedAt, Instant expiresAt, String subject, String role, String branchId,
+			String username) {
+		SecretKey secretKey = new SecretKeySpec(jwtProperties.secret().getBytes(StandardCharsets.UTF_8),
+				"HmacSHA256");
+		JwtEncoder encoder = NimbusJwtEncoder.withSecretKey(secretKey).algorithm(MacAlgorithm.HS256).build();
+
+		JwtClaimsSet claims = JwtClaimsSet.builder()
+				.issuedAt(issuedAt)
+				.expiresAt(expiresAt)
+				.subject(subject)
+				.claims(map -> {
+					map.put("role", role);
+					map.put("branch_id", branchId);
+					map.put("username", username);
+				})
+				.build();
+
+		Jwt jwt = encoder.encode(JwtEncoderParameters.from(claims));
+		return jwt.getTokenValue();
 	}
 
 	private UserJpaEntity crearUsuarioHabilitado(String username) {
