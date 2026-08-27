@@ -58,14 +58,14 @@ Chain strategy: feature-branch-chain (user-selected): PR1 targets the tracker br
 
 ## Phase 2a — Slice 2a: Login (PR2)
 
-- [ ] 2a.1 Create `iam/domain/model/UserAccount.java`; `iam/domain/exception/InvalidCredentialsException.java`, `UserDisabledException.java`.
-- [ ] 2a.2 Create port/in `AuthenticateUseCase`; port/out `UserRepositoryPort`, `PasswordHasherPort`, `AccessTokenIssuerPort`, `LoginThrottlePort`.
-- [ ] 2a.3 Create `application/service/AuthenticationService` — check throttle → load user (active) → BCrypt match → issue access token → generate+persist refresh token, per design Data Flow "LOGIN".
-- [ ] 2a.4 Create `adapter/out/security/BCryptPasswordHasher`, `JwtAccessTokenAdapter` (issue only), `InMemoryLoginThrottle` (keyed `lower(username)+"|"+clientIp`, 5/5min, `429`).
-- [ ] 2a.5 Create user persistence: `UserJpaEntity`, `UserSpringDataRepository`, `UserPersistenceAdapter` (implements `UserRepositoryPort`), MapStruct mapper.
-- [ ] 2a.6 Create `adapter/in/web/AuthController` — `POST /api/auth/login`, `permitAll`; generic error on bad credentials (no user-existence leak, CU-SEG-01 EX-01); `403`-equivalent denial on disabled user/branch.
-- [ ] 2a.7 Test: `LoginRateLimitTest` (throttle window, keyed by username+IP).
-- [ ] 2a.8 Run `cd backend && ./mvnw test` (surefire only; Docker not required for this slice).
+- [x] 2a.1 Create `iam/domain/model/UserAccount.java`; `iam/domain/exception/InvalidCredentialsException.java`, `UserDisabledException.java`.
+- [x] 2a.2 Create port/in `AuthenticateUseCase`; port/out `UserRepositoryPort`, `PasswordHasherPort`, `AccessTokenIssuerPort`, `LoginThrottlePort`. **Extended beyond the literal list**: also added `SecretTokenGeneratorPort` and `RefreshTokenRepositoryPort` — login cannot return a refresh token (per this slice's settled behavior and the spec's "Successful login" scenario) without them; see apply-progress deviations.
+- [x] 2a.3 Create `application/service/AuthenticationService` — check throttle → load user (active) → BCrypt match → issue access token → generate+persist refresh token, per design Data Flow "LOGIN".
+- [x] 2a.4 Create `adapter/out/security/BCryptPasswordHasher`, `JwtAccessTokenAdapter` (issue only), `InMemoryLoginThrottle` (keyed `lower(username)+"|"+clientIp`, 5/5min, `429`). Also `SecureRandomTokenGenerator` (pre-empted from 2b.7, see deviations).
+- [x] 2a.5 Create user persistence: `UserJpaEntity`, `UserSpringDataRepository`, `UserPersistenceAdapter` (implements `UserRepositoryPort`), MapStruct mapper. Also `RefreshTokenJpaEntity`/`RefreshTokenSpringDataRepository`/`RefreshTokenPersistenceAdapter` (persist-only; pre-empted from 2b.7/2b.8, see deviations).
+- [x] 2a.6 Create `adapter/in/web/AuthController` — `POST /api/auth/login`, `permitAll`; generic error on bad credentials (no user-existence leak, CU-SEG-01 EX-01). **Deviation**: disabled user/branch maps to the *same* generic 401 as bad credentials, not a distinct `403`-equivalent — a distinct response would itself leak that the account exists but is disabled, which is the same CU-SEG-01 EX-01 leak the task guards against for unknown usernames. `SecurityConfig` (still in the base package; the move is 2b.2) gets one added `permitAll` matcher for `/api/auth/login` only — nothing else from the OAuth2/CORS wiring.
+- [x] 2a.7 Test: `LoginRateLimitTest` (throttle window, keyed by username+IP).
+- [x] 2a.8 Run `cd backend && ./mvnw test` (surefire, green) **and** `./mvnw verify` (failsafe, green) — the orchestrator's evidence goal for this slice required `AuthenticationFlowIT` login scenarios against real Postgres, beyond this task's literal "Docker not required" scope; see apply-progress.
 
 ## Phase 2b — Slice 2b: Refresh + Logout (PR3)
 

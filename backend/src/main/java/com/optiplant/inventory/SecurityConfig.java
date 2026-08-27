@@ -33,6 +33,11 @@ class SecurityConfig {
 						.requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui", "/swagger-ui/**",
 								"/swagger-ui.html")
 						.permitAll()
+						// Slice 2a: login debe ser alcanzable sin token para poder obtener uno.
+						// El resto de /api/auth/** (refresh, logout) y la cadena que valida el
+						// bearer token llegan en la slice 2b, cuando esta clase se mueve a
+						// iam.infrastructure.config junto con el resto del cableado OAuth2.
+						.requestMatchers("/api/auth/login").permitAll()
 						// Todo lo demás autenticado: la denegación es el estado por defecto.
 						.anyRequest().authenticated())
 				.build();
