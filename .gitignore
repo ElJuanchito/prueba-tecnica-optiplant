@@ -97,3 +97,6 @@ desktop.ini
 .agents/
 .atl/
 skills-lock.json
+
+# Índice local de CodeGraph: se regenera por checkout y depende de la ruta absoluta.
+.codegraph/

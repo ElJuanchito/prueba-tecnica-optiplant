@@ -348,3 +348,247 @@ implement Slice 2a only.
 
 8/8 Slice 2a tasks complete. `cd backend && ./mvnw clean verify` → `BUILD SUCCESS`. Ready for
 `sdd-verify`, then Slice 2b apply.
+
+---
+
+## Slice 2b — Refresh + Logout (PR3) — COMPLETE (12/12 tasks)
+
+Branch: `feat/ep-01-iam-02b-refresh-logout` (branches from `feat/ep-01-iam-02a-login`).
+Mode: Standard (`strict_tdd: false`).
+
+### Completed Tasks
+
+- [x] 2b.1 Created `iam/infrastructure/config/IamSecurityBeans` (`@Configuration`, two `@Bean`
+      methods: `jwtDecoder(JwtProperties)` using the slice-1-resolved
+      `NimbusJwtDecoder.withSecretKey(SecretKey).macAlgorithm(MacAlgorithm.HS256).build()`, and
+      `iamPrincipalConverter()`). Created `IamPrincipalConverter implements Converter<Jwt,
+      AbstractAuthenticationToken>` reading `sub` (user external id), `role`, `branch_id`, and a
+      new `username` claim (see Deviations) into a `shared.AuthenticatedPrincipal`, wrapped in a
+      new package-private `IamAuthenticationToken extends AbstractAuthenticationToken` so
+      `Authentication.getPrincipal()` returns the domain type directly, per design's data flow.
+- [x] 2b.2 Moved `SecurityConfig.java` to `iam/infrastructure/config/`; deleted the base-package
+      file. Wired `.cors(cors -> cors.configurationSource(...))` against a new `CorsProperties`
+      (`optiplant.cors.allowed-origins`, `@NotEmpty List<String>`, no `@DefaultValue` — each
+      profile supplies its own list explicitly, mirroring `JwtProperties.secret`) and
+      `.oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.decoder(jwtDecoder)
+      .jwtAuthenticationConverter(iamPrincipalConverter)))`. Kept `permitAll` on
+      `/api/auth/login` and `/api/auth/refresh`, `authenticated()` on `/api/auth/logout`.
+      **Deliberately did not** add the `/api/admin/**`/`/api/audit/**` authority matchers —
+      those are task 3.3, out of this slice's scope per the explicit "do not start Slice 3"
+      instruction.
+- [x] 2b.3 Created `iam/domain/model/{RefreshTokenGrant,RefreshTokenState,RevocationReason}.java`
+      and `iam/domain/exception/RefreshTokenRejectedException.java`. `RefreshTokenGrant` is the
+      value object a hash lookup returns (`externalId`, `userExternalId`, `familyId`,
+      `issuedAt`/`lastUsedAt`/`expiresAt`, nullable `revokedAt`/`revokedReason`).
+      `RefreshTokenState` (`VALID`/`REUSE_DETECTED`/`EXPIRED`/`IDLE_EXPIRED`) is the pure outcome
+      of evaluating a grant — a domain concept, not a stored column. `RevocationReason` mirrors
+      the DB's four-value CHECK constraint exactly.
+- [x] 2b.4 Created `iam/domain/service/RefreshTokenPolicy` — one pure method,
+      `evaluate(RefreshTokenGrant, Instant now, Duration idleWindow) -> RefreshTokenState`: revoked
+      (presented again) → `REUSE_DETECTED`; `expires_at` not after `now` → `EXPIRED`; idle past
+      `lastUsedAt + idleWindow` → `IDLE_EXPIRED`; else `VALID`. No I/O, no `Clock` field — the
+      caller passes `now` directly, which is the equivalent of a fixed `Clock` for testing without
+      adding a dependency the pure evaluation doesn't need.
+- [x] 2b.5 Created `iam/application/port/in/{RefreshSessionUseCase,LogoutUseCase}.java`. Extended
+      the existing `RefreshTokenRepositoryPort` (created in 2a, persist-only) with
+      `findByRawToken`, `revoke(externalId, reason)`, `revokeFamily(familyId, reason)`.
+      `SecretTokenGeneratorPort` already existed from 2a, unchanged. **Added one port beyond the
+      literal list**: `RefreshTokenPolicyConfigPort` (`Duration idleWindow()`) — see Deviations for
+      why `SessionRefreshService` needs it.
+- [x] 2b.6 Created `application/service/SessionRefreshService` (`@Transactional`): lookup by raw
+      token → `RefreshTokenPolicy.evaluate` → on `REUSE_DETECTED`, `revokeFamily` then throw; on
+      `EXPIRED`/`IDLE_EXPIRED`, throw; on `VALID`, reload the user by `externalId` (role/branch may
+      have changed since login), revoke the presented token (`ROTATED`), issue a new access token,
+      generate + persist a successor refresh token sharing the same `family_id`. Created
+      `application/service/LogoutService` (`@Transactional`): look up by raw token, revoke
+      (`LOGOUT`) if found — idempotent no-op otherwise (see Deviations).
+- [x] 2b.7 Created `adapter/out/security/Sha256TokenDigest` (`@Component`, one method `hex(String)`)
+      and moved the digest logic out of `RefreshTokenPersistenceAdapter`'s inlined private method
+      into it, used by both the write path (`persist`) and the new read path
+      (`findByRawToken`). Created `SecurityContextPrincipalAccessor implements
+      shared.PrincipalAccessor`, reading `SecurityContextHolder`, matching only on
+      `AuthenticatedPrincipal` principals. `SecureRandomTokenGenerator` already existed from 2a
+      (pre-empted), untouched.
+- [x] 2b.8 Extended `RefreshTokenSpringDataRepository` with `findByTokenHash`, and two `@Modifying`
+      JPQL updates (`revokeByExternalId`, `revokeByFamilyId`) that set `revoked_at`/`revoked_reason`
+      only `WHERE ... revoked_at IS NULL`, so revoking an already-revoked row is a 0-row no-op, not
+      an error. Extended `RefreshTokenPersistenceAdapter` to implement `findByRawToken` (hash via
+      `Sha256TokenDigest`, resolve `user_id` → `userExternalId` via a new
+      `UserSpringDataRepository.findExternalIdById`), `revoke`, `revokeFamily`. Extended
+      `UserSpringDataRepository`/`UserPersistenceAdapter`/`UserRepositoryPort` with
+      `findByExternalId`, refactoring `UserPersistenceAdapter`'s entity→domain mapping into one
+      shared private method used by both `findByUsername` and `findByExternalId`.
+- [x] 2b.9 Extended `AuthController` with `POST /api/auth/refresh` (delegates to
+      `RefreshSessionUseCase`) and `POST /api/auth/logout` (delegates to `LogoutUseCase`, returns
+      `204 No Content`). Extracted the local `@ExceptionHandler` methods (and the `ErrorResponse`
+      record) into a new `@RestControllerAdvice(basePackages =
+      "...iam.infrastructure.adapter.in.web") IamExceptionHandler`, scoped to this package only so
+      it cannot intercept a future module's exceptions. Added a fourth mapping:
+      `RefreshTokenRejectedException` → `401`, same generic body shape as the login failures — not
+      found / reuse / expired / idle all collapse to one response, for the same
+      no-existence/no-state-leak reason CU-SEG-01 EX-01 already requires for login.
+- [x] 2b.10 Created `RefreshTokenPolicyTest` (6 cases: valid, reuse/revoked, absolute expiry, idle
+      expiry, exactly-at-the-idle-boundary still valid, absolute expiry prevails even with recent
+      activity) and `Sha256TokenDigestTest` (determinism, 64-hex-char shape, distinct inputs →
+      distinct digests, and a known SHA-256("") test vector confirmed with `sha256sum` before
+      writing the assertion — CLAUDE.md "no se afirma nada sin ejecutarlo").
+- [x] 2b.11 Extended `AuthenticationFlowIT` with
+      `loginLuegoLlamadaProtegidaLuegoRotacionDeRefreshLuegoLogout` covering: login → a "protected
+      call" (see Deviations for what stood in for a business endpoint) with and without the bearer
+      token → refresh rotates (new refresh token differs; old one now rejects as reuse) → logout
+      (`204`, requires the bearer) → the just-logged-out refresh token also rejects. Added
+      `refrescarConUnTokenInexistenteDevuelve401` for the not-found branch. The wrong-password and
+      disabled-user `401` scenarios already existed from 2a and were not duplicated.
+- [x] 2b.12 Grep checks and full verify — see Work Unit Evidence below.
+
+### Deviations from Design / Tasks
+
+1. **Added a `username` claim to the access token** (`JwtAccessTokenAdapter`, created in 2a).
+   `IamPrincipalConverter` must rebuild a complete `AuthenticatedPrincipal` from the JWT alone (the
+   bearer filter has no session or DB access) — `sub` (external id), `role`, `branch_id` were
+   already present, but `username` was not, and `AuthenticatedPrincipal` has no optional/default
+   for it. Necessary, minimal, and confined to one adapter already owned by this module.
+2. **Added `RefreshTokenPolicyConfigPort`** (`application/port/out`), not in the design's or
+   task list's literal enumeration. `SessionRefreshService` needs the configured idle window
+   (`JwtProperties.refreshInactivity()`) to call `RefreshTokenPolicy.evaluate(...)`, but
+   `JwtProperties` is an `iam.infrastructure.config` type and `laCapaDeAplicacionNoConoceSusAdaptadores`
+   forbids the application layer from importing anything under `..infrastructure..` (the same
+   constraint 2a's `AuthenticationService` already worked around by pushing all TTL math into
+   adapters). A one-method port exposing just the `Duration` is the smallest legitimate way to
+   thread a config value across that boundary; implemented by a three-line
+   `RefreshTokenPolicyConfigAdapter` wrapping `JwtProperties`.
+3. **`LogoutService` is idempotent, not error-throwing, on an unknown/already-revoked token.** The
+   design's LOGOUT data flow says "revoke the presented token" but is silent on what happens if it
+   doesn't resolve. Treating it as a no-op (not a `401`) keeps logout consistent with the
+   no-existence-leak posture the rest of this module holds for authentication endpoints, and
+   matches ordinary idempotent-DELETE semantics — a second logout call with the same token is not
+   an error.
+4. **`AuthenticationFlowIT`'s "protected call" step uses an unmapped path
+   (`/api/auth/__protected-probe`) under the bearer chain**, not a dedicated business endpoint.
+   No production controller exists yet with an `authenticated()` route (the first one arrives in
+   slice 5); adding a throwaway controller only for this IT would be its own scope creep. Asserting
+   "not `401`" with a token (Spring MVC's own `404` for "no handler" proves the request passed the
+   security filter chain) versus `401` without one proves the decoder/converter/filter wiring
+   without depending on a future slice.
+5. **`SessionRefreshService` reloads the user by `external_id` on every refresh**, not just using
+   the cached principal from the presented token. Not explicitly required by the task list, but
+   without it a rotated access token would carry stale role/branch claims for the lifetime of every
+   refresh cycle — a correctness gap, not a hardening extra, given `AccessTokenIssuerPort.issue`
+   needs a full `AuthenticatedPrincipal`. Did **not** add an active-user check on refresh (that
+   remains the disable-flow's job in slice 5a, which revokes all live tokens on disable — a
+   redundant check here would be dead code until 5a exists, and is explicitly out of this slice's
+   scope).
+6. **Loosened the `AuthenticationFlowIT` rotation assertion to not require a distinct access
+   token**, found by executing (CLAUDE.md), not by reading: the first version asserted
+   `rotado.accessToken() != sesion.accessToken()` and failed, because both tokens were minted
+   within the same second in this fast local run — `iat`/`exp` and every other claim can coincide
+   at second resolution, producing byte-identical JWTs. Rotation is still proven by the refresh
+   token changing and the old one becoming reuse; asserting the access token merely "not blank" is
+   what the design's actual guarantee supports.
+
+### Issues Found
+
+None beyond deviation 6 above (a test-assertion defect this slice introduced and fixed within the
+same work unit, not a pre-existing one).
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and result | `cd backend && ./mvnw test -Dtest=RefreshTokenPolicyTest,Sha256TokenDigestTest` → `Tests run: 10, Failures: 0, Errors: 0, Skipped: 0` — `BUILD SUCCESS` |
+| Full surefire | `cd backend && ./mvnw test` → `Tests run: 26, Failures: 0, Errors: 0, Skipped: 0` — `BUILD SUCCESS` (includes `ModuleBoundariesTest` 5/5 and `SharedIsFrameworkFreeTest` 1/1, both still green with the new `iam.infrastructure.config`/`iam.domain.service` classes) |
+| Runtime harness command and result | `cd backend && ./mvnw clean verify` (real Testcontainers Postgres 17) → `Tests run: 8, Failures: 0, Errors: 0` (`ApplicationContextIT` 1 + `AuthenticationFlowIT` 7) — `BUILD SUCCESS` |
+| Cross-cutting grep — `ROLE_` | `grep -rn "ROLE_" backend/src --include="*.java"` → only three doc-comment mentions (`shared/security/Role.java` ×2, `iam/infrastructure/config/SecurityConfig.java` ×1), all explaining *why not* to use the prefix; no executable use |
+| Cross-cutting grep — `hasRole(` in `SecurityConfig` | One doc-comment mention (`nunca {@code hasRole()}`) explaining the same rule; no executable call. `SecurityConfig` uses no authority matchers yet in this slice (those are task 3.3) |
+| Rollback boundary | Revert this commit; `/api/auth/refresh` and `/api/auth/logout` disappear, `SecurityConfig` reverts to the 2a state (one `permitAll` line, no bearer chain), login (PR2) unaffected |
+
+### Files Changed
+
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `backend/src/main/java/.../iam/domain/model/{RefreshTokenGrant,RefreshTokenState,RevocationReason}.java` | Created | Domain value objects |
+| `backend/src/main/java/.../iam/domain/exception/RefreshTokenRejectedException.java` | Created | Generic refresh-rejection exception |
+| `backend/src/main/java/.../iam/domain/service/RefreshTokenPolicy.java` | Created | Pure grant-validity evaluation |
+| `backend/src/main/java/.../iam/application/port/in/{RefreshSessionUseCase,LogoutUseCase}.java` | Created | Use-case ports |
+| `backend/src/main/java/.../iam/application/port/out/RefreshTokenPolicyConfigPort.java` | Created | Idle-window config port |
+| `backend/src/main/java/.../iam/application/port/out/RefreshTokenRepositoryPort.java` | Modified | Added `findByRawToken`, `revoke`, `revokeFamily` |
+| `backend/src/main/java/.../iam/application/port/out/UserRepositoryPort.java` | Modified | Added `findByExternalId` |
+| `backend/src/main/java/.../iam/application/service/{SessionRefreshService,LogoutService}.java` | Created | Refresh/logout orchestration |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/security/Sha256TokenDigest.java` | Created | Shared digest, extracted from `RefreshTokenPersistenceAdapter` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/security/SecurityContextPrincipalAccessor.java` | Created | `shared.PrincipalAccessor` implementation |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/security/JwtAccessTokenAdapter.java` | Modified | Added `username` claim |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/RefreshTokenSpringDataRepository.java` | Modified | Added `findByTokenHash`, two `@Modifying` revoke queries |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/RefreshTokenPersistenceAdapter.java` | Modified | Uses `Sha256TokenDigest`; implements lookup/revoke/revokeFamily |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/UserSpringDataRepository.java` | Modified | Added `findByExternalId`, `findExternalIdById` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/UserPersistenceAdapter.java` | Modified | Added `findByExternalId`; shared mapping method |
+| `backend/src/main/java/.../iam/infrastructure/adapter/in/web/AuthController.java` | Modified | Added `/refresh`, `/logout`; removed local exception handling |
+| `backend/src/main/java/.../iam/infrastructure/adapter/in/web/IamExceptionHandler.java` | Created | Package-scoped `@RestControllerAdvice` |
+| `backend/src/main/java/.../iam/infrastructure/config/IamSecurityBeans.java` | Created | `JwtDecoder` + `IamPrincipalConverter` beans |
+| `backend/src/main/java/.../iam/infrastructure/config/IamPrincipalConverter.java` | Created | JWT → `AuthenticatedPrincipal` |
+| `backend/src/main/java/.../iam/infrastructure/config/IamAuthenticationToken.java` | Created | `AbstractAuthenticationToken` carrying the domain principal |
+| `backend/src/main/java/.../iam/infrastructure/config/CorsProperties.java` | Created | `optiplant.cors.allowed-origins` |
+| `backend/src/main/java/.../iam/infrastructure/config/RefreshTokenPolicyConfigAdapter.java` | Created | Wraps `JwtProperties.refreshInactivity()` |
+| `backend/src/main/java/.../iam/infrastructure/config/SecurityConfig.java` | Created (moved) | Bearer/CORS wiring, `permitAll`/`authenticated()` for `/api/auth/**` |
+| `backend/src/main/java/.../SecurityConfig.java` | Deleted | Superseded by the moved file |
+| `backend/src/main/resources/application-dev.yml` | Modified | `optiplant.cors.allowed-origins` default (localhost Vite/CRA ports) |
+| `backend/src/main/resources/application-prod.yml` | Modified | `optiplant.cors.allowed-origins` from `CORS_ALLOWED_ORIGINS`, no default |
+| `backend/src/test/java/.../iam/domain/service/RefreshTokenPolicyTest.java` | Created | 6 pure evaluation cases |
+| `backend/src/test/java/.../iam/infrastructure/adapter/out/security/Sha256TokenDigestTest.java` | Created | Determinism, shape, distinctness, known vector |
+| `backend/src/test/java/.../AuthenticationFlowIT.java` | Modified | Added full login→refresh→logout scenario + not-found refresh scenario |
+| `openspec/changes/add-iam-module/tasks.md` | Modified | Checked off 2b.1–2b.12 |
+
+### Remaining Tasks
+
+Slice 3 (Branch Isolation, PR4) and later slices — not started, per explicit instruction to
+implement Slice 2b only.
+
+### Workload / PR Boundary
+
+- Mode: chained PR slice (`feature-branch-chain`, `auto-chain` delivery strategy)
+- Current work unit: 2b. Refresh + Logout (PR3)
+- Estimated review budget impact: ~922 authored added lines / ~63 deleted lines across
+  `backend/src` (per `git diff --numstat`), well over the ~230-line forecast for this slice —
+  consistent with 2a's overrun pattern. Most of the volume is genuinely new surface (13 new files:
+  domain model/service/exception, two use-case ports, two application services, two security
+  adapters, five `iam.infrastructure.config` classes) rather than padding; flagged for the
+  orchestrator/reviewer.
+- Boundary: starts from 2a's login-only state (`SecurityConfig` still in the base package with one
+  `permitAll` line; `RefreshTokenRepositoryPort` persist-only) and ends with the full bearer/CORS
+  chain wired, refresh rotation and logout working end-to-end against real Postgres, and the
+  digest-extraction/lookup deviations 2a flagged now resolved. Slice 3's ADMIN/audit authority
+  matchers were deliberately left out of `SecurityConfig`.
+
+### Orchestrator Review — Two Defects Found and Fixed
+
+Both were found by reading the applied diff before commit, then confirmed by executing.
+
+1. **`RevocationReason.USER_DISABLED` was declared but never emitted.**
+   `SessionRefreshService` reloaded the user on every refresh (correct, and deliberate per its
+   own deviation note) but never checked `user.active()`. A user disabled — or whose branch was
+   deactivated — after login kept rotating refresh tokens until the 7-day absolute window closed.
+   That defeats the premise the `refresh_tokens` table exists for: sessions must be revocable.
+   `grep -rn USER_DISABLED backend/src` returned exactly one hit, the enum declaration itself,
+   while the `revoked_reason` CHECK in `01-init-schema.sql` lists the value — an unused constant
+   on both sides of the boundary was the tell. Fixed: on an inactive user, refresh now revokes the
+   whole family with `USER_DISABLED` and rejects, closing every device the chain reached.
+2. **The Slice-2a seed-hash fix never reached `AuthenticationFlowIT`.**
+   The IT declared `SEED_PASSWORD_HASH = "$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi"`
+   with a comment claiming it matched `02-seed-data.sql` — but that is the hash Slice 2a proved by
+   execution does *not* correspond to `Password123!`, and the seed file had already been corrected
+   to `$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q`. Consequence:
+   `unUsuarioDeshabilitadoNoPuedeIniciarSesion` created its user with a hash matching no password,
+   so the expected `401` came from a credential mismatch, never from the disabled flag. The test
+   was green and proved nothing. Fixed: the constant now carries the corrected hash, with a comment
+   stating why drift here silently voids every "login must fail" assertion.
+
+Added `unUsuarioDeshabilitadoDespuesDelLoginNoPuedeRefrescar` to `AuthenticationFlowIT`: it logs in
+for real (which only succeeds with the corrected hash, so defect 2 cannot regress unnoticed),
+deactivates the user, and requires `401` on refresh (which only holds with defect 1 fixed).
+
+Re-verified after both fixes: `cd backend && ./mvnw clean verify` → `Tests run: 26` (surefire) and
+`Tests run: 9` (failsafe, `AuthenticationFlowIT` now 8 cases) → `BUILD SUCCESS`.
+
+### Status
+
+12/12 Slice 2b tasks complete, plus two review defects fixed. `cd backend && ./mvnw clean verify` →
+`BUILD SUCCESS`. Ready for `sdd-verify`, then Slice 3 apply.

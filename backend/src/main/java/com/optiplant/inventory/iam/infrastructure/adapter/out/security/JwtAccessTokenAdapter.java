@@ -53,6 +53,11 @@ public class JwtAccessTokenAdapter implements AccessTokenIssuerPort {
 					// absence would be ambiguous with "not yet migrated" rather than
 					// "corporate", and the spec requires the claim to be carried.
 					map.put("branch_id", principal.branchId() != null ? principal.branchId().toString() : null);
+					// Slice 2b's IamPrincipalConverter must rebuild a full
+					// AuthenticatedPrincipal from the token alone (the bearer filter has
+					// no session/DB lookup) — username is otherwise unrecoverable from sub
+					// (external_id) + role + branch_id.
+					map.put("username", principal.username());
 				})
 				.build();
 

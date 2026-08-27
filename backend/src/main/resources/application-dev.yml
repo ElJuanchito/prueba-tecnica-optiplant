@@ -4,6 +4,10 @@ optiplant:
     # Valor de desarrollo, y está marcado como tal a propósito: si aparece en
     # cualquier otro entorno, se reconoce de un vistazo. En prod no hay valor por defecto.
     secret: ${JWT_SECRET:clave-de-desarrollo-no-usar-fuera-de-local-256-bits-minimo}
+  cors:
+    # frontend/ todavía no existe; estos son los puertos habituales de Vite/CRA en
+    # local. Sin comodín — un origen explícito por entrada (RNF-SEC-06).
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
 
 springdoc:
   api-docs:

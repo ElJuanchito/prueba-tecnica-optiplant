@@ -1,35 +1,36 @@
 package com.optiplant.inventory.iam.infrastructure.adapter.in.web;
 
 import com.optiplant.inventory.iam.application.port.in.AuthenticateUseCase;
-import com.optiplant.inventory.iam.domain.exception.InvalidCredentialsException;
-import com.optiplant.inventory.iam.domain.exception.TooManyLoginAttemptsException;
-import com.optiplant.inventory.iam.domain.exception.UserDisabledException;
+import com.optiplant.inventory.iam.application.port.in.LogoutUseCase;
+import com.optiplant.inventory.iam.application.port.in.RefreshSessionUseCase;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * {@code POST /api/auth/login} — permitAll (wired in {@code SecurityConfig}); the
- * exception mapping stays local to this controller for slice 2a. Slice 2b's
- * {@code IamExceptionHandler} takes over once {@code /refresh} and {@code /logout}
- * exist and need the same mapping.
+ * {@code /api/auth/**} — login and refresh are {@code permitAll} (wired in {@code
+ * SecurityConfig}), logout requires the bearer token issued at login. Exception
+ * mapping lives in {@link IamExceptionHandler}, shared by all three endpoints.
  */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
 	private final AuthenticateUseCase authenticateUseCase;
+	private final RefreshSessionUseCase refreshSessionUseCase;
+	private final LogoutUseCase logoutUseCase;
 
-	public AuthController(AuthenticateUseCase authenticateUseCase) {
+	public AuthController(AuthenticateUseCase authenticateUseCase, RefreshSessionUseCase refreshSessionUseCase,
+			LogoutUseCase logoutUseCase) {
 		this.authenticateUseCase = authenticateUseCase;
+		this.refreshSessionUseCase = refreshSessionUseCase;
+		this.logoutUseCase = logoutUseCase;
 	}
 
 	@PostMapping("/login")
@@ -42,18 +43,16 @@ public class AuthController {
 				result.role(), result.branchId());
 	}
 
-	// Same response for both: neither may reveal whether the username exists
-	// (CU-SEG-01 EX-01) or is merely disabled (EX-02).
-	@ExceptionHandler({ InvalidCredentialsException.class, UserDisabledException.class })
-	public ResponseEntity<ErrorResponse> onInvalidCredentials() {
-		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-				.body(new ErrorResponse("invalid_credentials", "Invalid username or password"));
+	@PostMapping("/refresh")
+	public RefreshResponse refresh(@Valid @RequestBody RefreshRequest request) {
+		RefreshSessionUseCase.RefreshResult result = refreshSessionUseCase.refresh(request.refreshToken());
+		return new RefreshResponse(result.accessToken(), result.refreshToken(), result.expiresInSeconds());
 	}
 
-	@ExceptionHandler(TooManyLoginAttemptsException.class)
-	public ResponseEntity<ErrorResponse> onTooManyAttempts() {
-		return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-				.body(new ErrorResponse("too_many_attempts", "Too many login attempts, try again later"));
+	@PostMapping("/logout")
+	public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
+		logoutUseCase.logout(request.refreshToken());
+		return ResponseEntity.noContent().build();
 	}
 
 	public record LoginRequest(@NotBlank String username, @NotBlank String password) {
@@ -63,6 +62,12 @@ public class AuthController {
 			UUID branchId) {
 	}
 
-	public record ErrorResponse(String code, String message) {
+	public record RefreshRequest(@NotBlank String refreshToken) {
+	}
+
+	public record RefreshResponse(String accessToken, String refreshToken, long expiresInSeconds) {
+	}
+
+	public record LogoutRequest(@NotBlank String refreshToken) {
 	}
 }

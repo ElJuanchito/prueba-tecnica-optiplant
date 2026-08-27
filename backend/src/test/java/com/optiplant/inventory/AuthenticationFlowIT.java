@@ -11,23 +11,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 
 /**
- * Login-only scenarios of the authentication spec against a real PostgreSQL 17
- * (Testcontainers). Slice 2b extends this same class with the refresh-rotation and
- * logout scenarios once {@code SecurityConfig} is wired for the bearer chain.
+ * Full authentication spec (login, refresh rotation, logout) against a real
+ * PostgreSQL 17 (Testcontainers).
  */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class AuthenticationFlowIT {
 
 	private static final String SEED_PASSWORD = "Password123!";
-	// BCrypt hash of SEED_PASSWORD, matching backend/init-db/02-seed-data.sql's header comment.
-	private static final String SEED_PASSWORD_HASH = "$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi";
+	// BCrypt hash of SEED_PASSWORD, the same value every row of
+	// backend/init-db/02-seed-data.sql carries. It must stay in sync with that file: a
+	// stale hash here makes every "login must fail" assertion pass for the wrong reason
+	// (the password never matches), hiding whatever the test meant to prove.
+	private static final String SEED_PASSWORD_HASH = "$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q";
 
 	@LocalServerPort
 	private int port;
@@ -95,9 +98,125 @@ class AuthenticationFlowIT {
 		assertThat(ultimoIntento.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
 	}
 
+	@Test
+	void loginLuegoLlamadaProtegidaLuegoRotacionDeRefreshLuegoLogout() {
+		LoginResponseBody sesion = login("admin.corp", SEED_PASSWORD).getBody();
+		assertThat(sesion).isNotNull();
+
+		// Protected call: no dedicated business endpoint exists yet (slice 5), so an
+		// unmapped path under authorizeHttpRequests' anyRequest().authenticated() is
+		// the cheapest way to prove the bearer/decoder/converter chain actually runs
+		// without adding a throwaway controller. A valid token must clear the
+		// security filter chain (never 401); Spring MVC's own 404 for "no handler"
+		// proves the request passed authentication.
+		ResponseEntity<String> conToken = protectedProbe(sesion.accessToken());
+		assertThat(conToken.getStatusCode()).isNotEqualTo(HttpStatus.UNAUTHORIZED);
+
+		ResponseEntity<String> sinToken = protectedProbe(null);
+		assertThat(sinToken.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+		// Refresh rotates the refresh token (family stays, hash changes). The new
+		// access token is not asserted distinct from the old one: both are minted
+		// within the same second in this fast-running test, and the JWT claims
+		// (sub/role/branch_id/username/iat truncated to seconds) can coincide —
+		// rotation is proven by the refresh token and by the old one becoming reuse.
+		RefreshResponseBody rotado = refresh(sesion.refreshToken()).getBody();
+		assertThat(rotado).isNotNull();
+		assertThat(rotado.refreshToken()).isNotEqualTo(sesion.refreshToken());
+		assertThat(rotado.accessToken()).isNotBlank();
+
+		// The now-rotated original refresh token is reuse: rejected.
+		ResponseEntity<String> reintentoConTokenViejo = refreshRaw(sesion.refreshToken());
+		assertThat(reintentoConTokenViejo.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+		// Logout revokes the current (rotated) refresh token; requires the bearer.
+		ResponseEntity<Void> respuestaLogout = logout(rotado.accessToken(), rotado.refreshToken());
+		assertThat(respuestaLogout.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+		// The now-logged-out token can no longer refresh.
+		ResponseEntity<String> reintentoTrasLogout = refreshRaw(rotado.refreshToken());
+		assertThat(reintentoTrasLogout.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+	}
+
+	@Test
+	void unUsuarioDeshabilitadoDespuesDelLoginNoPuedeRefrescar() {
+		String username = "it.baja." + shortSuffix();
+		UserJpaEntity user = crearUsuarioHabilitado(username);
+
+		LoginResponseBody sesion = login(username, SEED_PASSWORD).getBody();
+		assertThat(sesion).isNotNull();
+
+		user.setActive(false);
+		userRepository.save(user);
+
+		// Without the active check on refresh, the session would keep rotating until
+		// the 7-day absolute window closed, which is exactly what revocable sessions
+		// exist to prevent.
+		ResponseEntity<String> respuesta = refreshRaw(sesion.refreshToken());
+
+		assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+	}
+
+	@Test
+	void refrescarConUnTokenInexistenteDevuelve401() {
+		ResponseEntity<String> respuesta = refreshRaw(UUID.randomUUID().toString());
+
+		assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+	}
+
+	private ResponseEntity<String> protectedProbe(String accessToken) {
+		RestClient.RequestHeadersSpec<?> request = restClient.get().uri("/api/auth/__protected-probe");
+		if (accessToken != null) {
+			request = request.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
+		}
+		return request.retrieve().onStatus(status -> true, (req, res) -> {
+		}).toEntity(String.class);
+	}
+
+	private ResponseEntity<RefreshResponseBody> refresh(String refreshToken) {
+		return restClient.post()
+				.uri("/api/auth/refresh")
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(new RefreshRequestBody(refreshToken))
+				.retrieve()
+				.toEntity(RefreshResponseBody.class);
+	}
+
+	private ResponseEntity<String> refreshRaw(String refreshToken) {
+		return restClient.post()
+				.uri("/api/auth/refresh")
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(new RefreshRequestBody(refreshToken))
+				.retrieve()
+				.onStatus(status -> true, (req, res) -> {
+				})
+				.toEntity(String.class);
+	}
+
+	private ResponseEntity<Void> logout(String accessToken, String refreshToken) {
+		return restClient.post()
+				.uri("/api/auth/logout")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(new RefreshRequestBody(refreshToken))
+				.retrieve()
+				.toBodilessEntity();
+	}
+
 	/** {@code users.username} is {@code VARCHAR(50)}; a full UUID would overflow it. */
 	private static String shortSuffix() {
 		return UUID.randomUUID().toString().substring(0, 8);
+	}
+
+	private UserJpaEntity crearUsuarioHabilitado(String username) {
+		UserJpaEntity entity = new UserJpaEntity();
+		entity.setUsername(username);
+		entity.setEmail(username + "@optiplant.com");
+		entity.setPasswordHash(SEED_PASSWORD_HASH);
+		entity.setFullName("IT Active User");
+		entity.setRole("OPERATOR");
+		entity.setActive(true);
+		return userRepository.save(entity);
 	}
 
 	private void crearUsuarioDeshabilitado(String username) {
@@ -136,5 +255,11 @@ class AuthenticationFlowIT {
 
 	private record LoginResponseBody(String accessToken, String refreshToken, long expiresInSeconds, String role,
 			UUID branchId) {
+	}
+
+	private record RefreshRequestBody(String refreshToken) {
+	}
+
+	private record RefreshResponseBody(String accessToken, String refreshToken, long expiresInSeconds) {
 	}
 }
