@@ -84,13 +84,13 @@ Chain strategy: feature-branch-chain (user-selected): PR1 targets the tracker br
 
 ## Phase 3 — Slice 3: Branch Isolation (PR4)
 
-- [ ] 3.1 Create `iam/domain/exception/CrossBranchMutationException.java` and `iam/domain/service/BranchAccessPolicy` (wraps `AuthenticatedPrincipal.mayMutateBranch`, throws on `false`) — branch-isolation "Mutations are confined to the caller's own branch".
-- [ ] 3.2 Extend `IamExceptionHandler`: `CrossBranchMutationException` → `403 Forbidden`.
-- [ ] 3.3 Add authority matchers to `SecurityConfig`: `/api/admin/users/**`, `/api/admin/branches/**` → `hasAuthority("ADMIN")`; `/api/audit/**` → `hasAnyAuthority("ADMIN","BRANCH_MANAGER")` (paths land in slices 4-5; matchers are safe to add now).
-- [ ] 3.4 Add a test-source-only branch-scoped fixture endpoint exercising `BranchAccessPolicy`, used solely by `BranchIsolationIT` — **flag**: no production business module exists yet with a branch-scoped mutable resource; see Risks.
-- [ ] 3.5 Test: `BranchAccessPolicyTest` (ADMIN any branch; OPERATOR/BRANCH_MANAGER same-branch only).
-- [ ] 3.6 Test IT: `BranchIsolationIT` — cross-branch mutation `403`, cross-branch read `200`, ADMIN mutates anywhere, no endpoint accepts a client-supplied `branch_id` (branch-isolation full scenario set).
-- [ ] 3.7 Run `cd backend && ./mvnw verify`.
+- [x] 3.1 Create `iam/domain/exception/CrossBranchMutationException.java` and `iam/domain/service/BranchAccessPolicy` (wraps `AuthenticatedPrincipal.mayMutateBranch`, throws on `false`) — branch-isolation "Mutations are confined to the caller's own branch".
+- [x] 3.2 Extend `IamExceptionHandler`: `CrossBranchMutationException` → `403 Forbidden`.
+- [x] 3.3 Add authority matchers to `SecurityConfig`: `/api/admin/users/**`, `/api/admin/branches/**` → `hasAuthority("ADMIN")`; `/api/audit/**` → `hasAnyAuthority("ADMIN","BRANCH_MANAGER")` (paths land in slices 4-5; matchers are safe to add now).
+- [x] 3.4 Add a test-source-only branch-scoped fixture endpoint exercising `BranchAccessPolicy`, used solely by `BranchIsolationIT` — **flag**: no production business module exists yet with a branch-scoped mutable resource; see Risks.
+- [x] 3.5 Test: `BranchAccessPolicyTest` (ADMIN any branch; OPERATOR/BRANCH_MANAGER same-branch only).
+- [x] 3.6 Test IT: `BranchIsolationIT` — cross-branch mutation `403`, cross-branch read `200`, ADMIN mutates anywhere, no endpoint accepts a client-supplied `branch_id` (branch-isolation full scenario set).
+- [x] 3.7 Run `cd backend && ./mvnw verify`.
 
 ## Phase 4 — Slice 4: Audit (PR5)
 

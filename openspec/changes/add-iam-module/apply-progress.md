@@ -592,3 +592,92 @@ Re-verified after both fixes: `cd backend && ./mvnw clean verify` → `Tests run
 
 12/12 Slice 2b tasks complete, plus two review defects fixed. `cd backend && ./mvnw clean verify` →
 `BUILD SUCCESS`. Ready for `sdd-verify`, then Slice 3 apply.
+
+## Slice 3 — Branch Isolation (PR4) — COMPLETE (7/7 tasks)
+
+**Artifact store note**: the orchestrator's launch prompt named `engram` as the active
+artifact store, but `openspec/config.yaml` (`schema: spec-driven`, no `artifact_store` field
+present) and the on-disk `openspec/changes/add-iam-module/` tree are the actual source of
+truth for this change — confirmed by reading `openspec/config.yaml` and by an `engram`
+project search finding only one unrelated `add-iam-module` decision note (`#8`), not the
+spec/design/tasks/apply-progress content itself. Followed the `openspec` convention:
+`tasks.md` `[x]` marks and this file are the persisted record; no `mem_save` was issued for
+this slice since the openspec files are what later phases will actually read.
+
+### Files Changed
+
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `backend/src/main/java/.../iam/domain/exception/CrossBranchMutationException.java` | Created | Generic cross-branch rejection, mirrors `RefreshTokenRejectedException`'s shape |
+| `backend/src/main/java/.../iam/domain/service/BranchAccessPolicy.java` | Created | Pure `requireMayMutate(principal, targetBranchId)` wrapping `AuthenticatedPrincipal.mayMutateBranch` — `new`-able, not a Spring bean, matching `RefreshTokenPolicy`'s pattern |
+| `backend/src/main/java/.../iam/infrastructure/adapter/in/web/IamExceptionHandler.java` | Modified | Added `CrossBranchMutationException` → `403 Forbidden` handler |
+| `backend/src/main/java/.../iam/infrastructure/config/SecurityConfig.java` | Modified | Added `hasAuthority("ADMIN")` on `/api/admin/users/**`, `/api/admin/branches/**`; `hasAnyAuthority("ADMIN","BRANCH_MANAGER")` on `/api/audit/**`, both before `anyRequest().authenticated()`; updated class javadoc |
+| `backend/src/test/java/.../iam/infrastructure/adapter/in/web/BranchIsolationFixtureController.java` | Created (test-source-only) | `GET`/`PATCH /api/test/branch-fixture/{resource}` — see Deviations |
+| `backend/src/test/java/.../iam/domain/service/BranchAccessPolicyTest.java` | Created | ADMIN any branch, OPERATOR/BRANCH_MANAGER own-branch-only, exception message does not leak the target branch |
+| `backend/src/test/java/.../BranchIsolationIT.java` | Created | Full branch-isolation scenario set against real Postgres (Testcontainers) |
+| `openspec/changes/add-iam-module/tasks.md` | Modified | Checked off 3.1–3.7 |
+
+### Deviations from Design
+
+1. **Task 3.4's fixture endpoint takes no branch-identifier parameter at all**, not even
+   as a "target branch" path segment. Design's Data Flow only sketches `principal
+   .mayMutateBranch(target) → 403 when false` inside a generic "module X controller"; it
+   does not specify how a fixture would source `target` without a real branch-scoped
+   entity to look it up from (none exists until slices 4-5). Rather than accept a branch id
+   directly in the URL — which would blur into RN-14's "acting branch must never come from
+   the client" requirement even though this fixture's parameter would represent the
+   *target's* branch, not the *acting* one — `BranchIsolationFixtureController` maps an
+   opaque resource name (`bogota`/`medellin`/`cali`) to one of the three seeded branches'
+   `external_id`s server-side. This makes `BranchIsolationIT`'s "no endpoint accepts a
+   client-supplied `branch_id`" scenario (tasks.md 3.6) trivially and unambiguously true:
+   there is no `branch_id`-shaped parameter in the endpoint's contract to spoof, not merely
+   one that happens to get ignored.
+2. **`BranchAccessPolicy` is not a Spring bean**, instantiated with `new` in both the
+   production exception path (none needed one directly this slice — it is only used by the
+   test fixture controller) and the test fixture controller, exactly mirroring
+   `RefreshTokenPolicy`'s existing "new-able, not a Spring bean" shape from slice 2b. Not
+   explicitly stated in the design's Interfaces block, but consistent with the established
+   pattern for other domain-service policy classes in this module.
+3. **`CrossBranchMutationException`'s message deliberately omits the target branch id**
+   (`BranchAccessPolicyTest.laExcepcionNoRevelaLaSucursalObjetivoEnElMensaje` asserts this).
+   Not required by any task or spec scenario, but consistent with this module's existing
+   no-existence-leak posture (2a/2b's generic 401 responses) even though a 403 to an
+   already-authenticated caller carries lower leak risk than the login/refresh paths.
+
+### Issues Found
+
+None.
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and result | `cd backend && ./mvnw test -Dtest=BranchAccessPolicyTest` → `Tests run: 6, Failures: 0, Errors: 0, Skipped: 0` — `BUILD SUCCESS` |
+| Full surefire | `cd backend && ./mvnw verify` (surefire phase) → `Tests run: 32, Failures: 0, Errors: 0, Skipped: 0` — includes `ModuleBoundariesTest` 5/5 and `SharedIsFrameworkFreeTest` 1/1 still green |
+| Runtime harness command and result | `cd backend && ./mvnw verify -Dit.test=BranchIsolationIT` (real Testcontainers Postgres 17) → `Tests run: 6, Failures: 0, Errors: 0` — `BUILD SUCCESS`; full `./mvnw verify` failsafe phase → `Tests run: 19` (`ApplicationContextIT` 1 + `AuthenticationFlowIT` 12 + `BranchIsolationIT` 6), all green |
+| Cross-cutting grep — `ROLE_` | `grep -rn "ROLE_" backend/src --include="*.java"` → only doc-comment mentions (`SecurityConfig` javadoc, `Role.java` ×2), no executable use |
+| Cross-cutting grep — `hasRole(` | `grep -rn "hasRole(" backend/src --include="*.java"` → only doc-comment mentions, no executable call; `SecurityConfig` uses `hasAuthority`/`hasAnyAuthority` exclusively |
+| Full build | `cd backend && ./mvnw verify` → `BUILD SUCCESS` |
+| Rollback boundary | Revert this commit; the `ADMIN`/`ADMIN,BRANCH_MANAGER` authority matchers and `CrossBranchMutationException` handler are removed from `SecurityConfig`/`IamExceptionHandler`, falling back to plain `anyRequest().authenticated()` for those paths; the fixture controller and its tests disappear with it (test-source-only, no production surface removed) |
+
+### Workload / PR Boundary
+
+- Mode: chained PR slice (`feature-branch-chain`, `auto-chain` delivery strategy)
+- Current work unit: 3. Branch isolation (PR4)
+- Estimated review budget impact: ~353 authored added lines / 4 deleted lines across
+  `backend/src` and `openspec/changes/add-iam-module/tasks.md` (per `git diff --numstat` +
+  new-file line counts), above the ~250-line forecast — consistent with 2a/2b's overrun
+  pattern, driven mainly by the test-source fixture controller and its two test classes
+  (`BranchIsolationFixtureController` 77 lines, `BranchAccessPolicyTest` 75 lines,
+  `BranchIsolationIT` 140 lines) needed because no production branch-scoped resource exists
+  yet to test the policy against directly.
+- Boundary: starts from 2b's state (`SecurityConfig` with `permitAll`/`authenticated()` on
+  `/api/auth/**` only, no authority matchers, no branch-isolation policy) and ends with
+  `BranchAccessPolicy` enforced and provably tested end to end, `ADMIN`/`ADMIN,BRANCH_MANAGER`
+  matchers wired for the not-yet-existing `/api/admin/**`/`/api/audit/**` paths (slices 4-5),
+  and no regression to any prior slice's behavior.
+
+### Status
+
+7/7 Slice 3 tasks complete. `cd backend && ./mvnw verify` → `BUILD SUCCESS` (32 surefire + 19
+failsafe tests, all green). Ready for `sdd-verify`, then Slice 4 (Audit) apply.

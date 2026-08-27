@@ -1,5 +1,6 @@
 package com.optiplant.inventory.iam.infrastructure.adapter.in.web;
 
+import com.optiplant.inventory.iam.domain.exception.CrossBranchMutationException;
 import com.optiplant.inventory.iam.domain.exception.InvalidCredentialsException;
 import com.optiplant.inventory.iam.domain.exception.RefreshTokenRejectedException;
 import com.optiplant.inventory.iam.domain.exception.TooManyLoginAttemptsException;
@@ -40,6 +41,15 @@ class IamExceptionHandler {
 	ResponseEntity<ErrorResponse> onRefreshTokenRejected() {
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
 				.body(new ErrorResponse("invalid_refresh_token", "Invalid or expired refresh token"));
+	}
+
+	// The caller is already authenticated, so unlike the exceptions above there is
+	// no existence-leak concern here — a distinct 403 does not reveal anything new
+	// (branch-isolation "Cross-branch mutation is rejected").
+	@ExceptionHandler(CrossBranchMutationException.class)
+	ResponseEntity<ErrorResponse> onCrossBranchMutation() {
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(new ErrorResponse("cross_branch_mutation", "Cannot mutate a resource of another branch"));
 	}
 
 	record ErrorResponse(String code, String message) {

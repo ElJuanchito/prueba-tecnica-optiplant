@@ -24,9 +24,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * (p. ej. {@code /api/admin/**}) llegan como cadenas literales en slices futuras, no
  * como imports, así que ninguna frontera se cruza por eso.
  *
- * <p>No declara todavía reglas por rol — eso es la slice 3
- * ({@code hasAuthority("ADMIN")}/{@code hasAnyAuthority(...)}, nunca {@code hasRole()},
- * que antepone {@code ROLE_} y la restricción CHECK de {@code users} rechaza).
+ * <p>Declara las reglas por rol de la slice 3 con {@code hasAuthority}/{@code
+ * hasAnyAuthority} — nunca {@code hasRole()}, que antepone {@code ROLE_} y la
+ * restricción CHECK de {@code users} rechaza. Las rutas {@code /api/admin/**} y
+ * {@code /api/audit/**} llegan recién en las slices 4-5, pero los matchers son
+ * seguros de declarar ahora: ninguna ruta existe todavía bajo esos prefijos.
  */
 @Configuration
 @EnableWebSecurity
@@ -62,7 +64,8 @@ class SecurityConfig {
 						// logout exige el bearer emitido en login (design's SecurityConfig block).
 						.requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
 						.requestMatchers("/api/auth/logout").authenticated()
-						// Slice 3 agrega acá los matchers de /api/admin/** y /api/audit/**.
+						.requestMatchers("/api/admin/users/**", "/api/admin/branches/**").hasAuthority("ADMIN")
+						.requestMatchers("/api/audit/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						.anyRequest().authenticated())
 				.build();
 	}
