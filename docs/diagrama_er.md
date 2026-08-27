@@ -11,6 +11,7 @@ El modelo de datos relacional para **PostgreSQL 17** implementa una arquitectura
 * **Public Natural Token:** `external_id UUID` para exponer identificadores seguros (anti-IDOR/BOLA) en la API REST pública.
 * **Inmutabilidad en Auditoría:** Tablas *append-only* para `kardex_movements` y `audit_logs`.
 * **Precios Versionados por Vigencia:** `price_list_items` conserva el histórico de precios mediante `valid_from` / `valid_to`; el precio vigente no se sobrescribe, se cierra y se sucede.
+* **Sesiones revocables:** `refresh_tokens` guarda únicamente el digest del token; la rotación cierra el anterior y la reutilización de uno ya rotado revoca la familia completa.
 
 ### 1.1. Resolución del Precio de Venta
 
@@ -68,6 +69,7 @@ erDiagram
     USERS ||--o{ KARDEX_MOVEMENTS : "autoriza"
     USERS ||--o{ SYSTEM_ALERTS : "resuelve"
     USERS ||--o{ AUDIT_LOGS : "ejecuta"
+    USERS ||--o{ REFRESH_TOKENS : "mantiene"
 
     BRANCHES {
         bigint id PK
@@ -87,6 +89,17 @@ erDiagram
         varchar email UK
         varchar role
         boolean is_active
+    }
+
+    REFRESH_TOKENS {
+        bigint id PK
+        uuid external_id UK
+        bigint user_id FK
+        uuid family_id
+        varchar token_hash UK
+        timestamptz last_used_at
+        timestamptz expires_at
+        timestamptz revoked_at
     }
 
     CATEGORIES {
@@ -313,6 +326,20 @@ package "IAM & Organización" {
         * is_active : BOOLEAN
         created_at : TIMESTAMPTZ
         updated_at : TIMESTAMPTZ
+    }
+
+    entity "refresh_tokens" as refresh_tokens {
+        * id : BIGINT <<PK>>
+        --
+        * external_id : UUID <<UK>>
+        * user_id : BIGINT <<FK>>
+        * family_id : UUID
+        * token_hash : VARCHAR(64) <<UK>>
+        * issued_at : TIMESTAMPTZ
+        * last_used_at : TIMESTAMPTZ
+        * expires_at : TIMESTAMPTZ
+        revoked_at : TIMESTAMPTZ
+        revoked_reason : VARCHAR(20)
     }
 }
 
@@ -596,6 +623,7 @@ users ||--o{ transfers : "recibe"
 users ||--o{ kardex_movements
 users ||--o{ system_alerts
 users ||--o{ audit_logs
+users ||--o{ refresh_tokens : "mantiene"
 
 @enduml
 ```

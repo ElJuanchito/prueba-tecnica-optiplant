@@ -45,6 +45,32 @@ CREATE INDEX idx_users_external_id ON users(external_id);
 CREATE INDEX idx_users_branch_id ON users(branch_id);
 CREATE INDEX idx_users_role ON users(role);
 
+-- Sesiones de refresco. Guarda solo el digest del token, nunca el valor crudo.
+-- family_id encadena las rotaciones de un mismo inicio de sesión: si un token ya
+-- rotado se vuelve a presentar, se revoca la familia completa y no las demás
+-- sesiones del usuario (varios dispositivos simultáneos son válidos).
+CREATE TABLE refresh_tokens (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    external_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    family_id UUID NOT NULL,
+    -- SHA-256 en hexadecimal: determinista, de modo que la búsqueda por hash es
+    -- un acceso por índice único. BCrypt, al llevar sal, no permitiría buscarlo.
+    token_hash VARCHAR(64) NOT NULL UNIQUE CHECK (token_hash ~ '^[0-9a-f]{64}$'),
+    issued_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ,
+    revoked_reason VARCHAR(20) CHECK (revoked_reason IN ('LOGOUT', 'ROTATED', 'REUSE_DETECTED', 'USER_DISABLED')),
+    CONSTRAINT chk_refresh_tokens_revocacion CHECK ((revoked_at IS NULL) = (revoked_reason IS NULL)),
+    CONSTRAINT chk_refresh_tokens_vigencia CHECK (expires_at > issued_at)
+);
+
+CREATE INDEX idx_refresh_tokens_external_id ON refresh_tokens(external_id);
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_family_id ON refresh_tokens(family_id);
+CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+
 -- ============================================================================
 -- 2. MÓDULO: CATÁLOGO MAESTRO (Master Catalog)
 -- ============================================================================
