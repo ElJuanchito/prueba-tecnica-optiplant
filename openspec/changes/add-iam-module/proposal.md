@@ -106,12 +106,12 @@ Per slice, `git revert` of the slice commit. Slice 1 is the only one with a pers
 
 ## Success Criteria
 
-- [ ] `python3 scripts/validar_trazabilidad.py` passes.
-- [ ] `./scripts/validar_esquema.sh` passes with 20 tables and the new refresh-token invariants.
-- [ ] `cd backend && ./mvnw verify` passes; `ModuleBoundariesTest` green with `iam` populated.
-- [ ] Login returns an access + refresh pair; refresh rotates and revokes its predecessor; logout makes the refresh token unusable; an idle session past the window is rejected (RF-SEG-01).
-- [ ] Cross-branch mutation returns 403; cross-branch read succeeds (RN-08, RN-14).
-- [ ] No endpoint accepts a branch identifier from the client; no response exposes a numeric `id`.
-- [ ] No `ROLE_` prefix anywhere in the codebase.
-- [ ] Repeated failed logins from the same identifier are throttled (RNF-SEC-06).
-- [ ] Disabling a user revokes every one of that user's refresh tokens (P2, P4).
+- [x] `python3 scripts/validar_trazabilidad.py` passes. — 42 RF · 34 RNF · 17 RN · 37 CU · 6 DT, íntegro.
+- [x] `./scripts/validar_esquema.sh` passes with 20 tables and the new refresh-token invariants. — 25/25 checks, 20 tables.
+- [x] `cd backend && ./mvnw verify` passes; `ModuleBoundariesTest` green with `iam` populated. — 56 surefire + 48 failsafe, 0 failures; `ModuleBoundariesTest` 5/5 non-vacuous.
+- [x] Login returns an access + refresh pair; refresh rotates and revokes its predecessor; logout makes the refresh token unusable; an idle session past the window is rejected (RF-SEG-01). — `AuthenticationFlowIT` (12/12); idle rejection in `RefreshTokenPolicyTest.unaSesionInactivaMasAlláDeLaVentanaDeInactividadEstaExpiradaPorInactividad`.
+- [x] Cross-branch mutation returns 403; cross-branch read succeeds (RN-08, RN-14). — `BranchIsolationIT` (6/6).
+- [x] No endpoint accepts a branch identifier from the client; no response exposes a numeric `id`. — `BranchIsolationIT.ningunEndpointAceptaUnBranchIdSuministradoPorElCliente`; grep of `*Response` DTOs found no numeric `id` field.
+- [x] No `ROLE_` prefix anywhere in the codebase. — grep of `backend/src` found `ROLE_`/`hasRole(` only in doc comments explaining the invariant, zero executable use.
+- [x] Repeated failed logins from the same identifier are throttled (RNF-SEC-06). — `LoginRateLimitTest` (5/5).
+- [x] Disabling a user revokes every one of that user's refresh tokens (P2, P4). — `UserAdminIT` (10/10, includes disable-revokes-every-live-token scenario).
