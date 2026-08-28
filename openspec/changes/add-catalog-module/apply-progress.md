@@ -688,3 +688,206 @@ None that block S7. `design.md` §3.2, §3.4, §4.2, §5.2, §8.1 and contract �
 - Current work unit: S7 — the base-unit rule, without its endpoint.
 - Boundary: starts from the S6 branch; ends with `StockPresence`, `BaseUnitChangeRejectedException` (+ `Reason`), `BaseUnitChangePolicy`, the `ProductAdminService.changeBaseUnit` wiring against `Optional<ProductStockPresencePort>` (fail-closed), `BaseUnitChangePolicyTest` and the `ProductAdminServiceTest` extension. No endpoint, matcher, error code or handler mapping — `base_unit` stays de-facto immutable in this change (DT-07). Only S8 (cross-cutting verification) remains.
 - Estimated review budget impact: ~110 lines production + ~110 lines tests (design forecast: ~170). Planned S7 slice of the approved 8-PR chain; well within the 400-line soft budget.
+
+---
+
+## Phase 8 — S8: Cross-cutting verification and documentation (PR8)
+
+**Mode**: Standard (openspec, `strict_tdd: false`).
+**Branch**: `feat/ep-02-catalog-09-s8-transversal` (chained on S7).
+**Status**: 16/16 tasks complete. `./mvnw verify` + `validar_esquema.sh` + `validar_trazabilidad.py` all green. Ready for verify. **Last slice.**
+
+### Completed tasks
+
+- [x] 8.1 `CatalogRbacIT` (Testcontainers, real PostgreSQL 17). `operatorAndBranchManagerGet403OnEveryMutationAnd200OnEveryRead` — for `operador.bogota` **and** `gerente.bogota`: all **11** §6 mutation endpoints (4 category + 4 product + 3 unit) → `403`, all **5** read endpoints (2 category + 2 product + 1 unit) → `200`. The `403` targets seeded ids, so the filter-chain rejection is exercised without the request mutating anything (design §7, contract §5 note 3). `adminSeesExactlyWhatAnOperatorSeesOnEveryReadEndpoint` — raw response bodies from `admin.corp` and `operador.bogota` are byte-identical on every read endpoint (R-01, R-16).
+- [x] 8.2 `CatalogRbacIT.noTokenAndExpiredTokenBothYield401OnEveryEndpoint` — all 16 endpoints, each with (a) no `Authorization` header and (b) an already-expired HS256 token minted with the app's own secret (mirrors `AuthenticationFlowIT.mintAccessToken`, no sleep) → `401` (R-01).
+- [x] 8.3 `CatalogRbacIT.corporateAdminWithNullBranchCanPerformEveryMutation` — the seeded `admin.corp` (`users.branch_id = NULL`) runs a full cycle: create+edit category, create+edit product, add+replace+delete unit, disable+enable product, disable+enable category → every status `2xx`. No rule in the module inspects the principal's branch (contract §5 note 2).
+- [x] 8.4 `CatalogRbacIT.twoUsersFromDifferentBranchesReadTheSameProductByteForByte` — `operador.bogota` (branch 1) and `operador.medellin` (branch 2) `GET` the seeded product detail and its units; both response bodies compare equal (R-16).
+- [x] 8.5 `CatalogAuditIT` (modelled on `AuditAtomicityIT`). `everyMutationAcrossTheThreeResourcesWritesAnAuditRowWithNullBranch` — category create/edit/disable/enable, product create/edit/disable/enable, unit add/replace/delete; for each the `audit_logs` row is asserted: `action` matches (`CREATE`/`UPDATE`/`DISABLE`/`ENABLE`/`DELETE`), `entity_name` ∈ {`categories`,`products`,`product_units`}, `entity_id` = the affected `external_id`, `user_id` = `admin.corp`'s id, **`branch_id IS NULL`**, `payload_after` present on create (and `payload_before` null), both present on update/disable/enable, `payload_before` present + `payload_after` null on delete (R-15, R-16). `aFailingAuditWriteRollsTheCatalogMutationBack` — a valid unexpired `ADMIN` bearer whose `sub` is a random UUID no `users` row carries: authorization passes (the chain never hits the DB), the `categories` row is inserted, then `AuditWriteAdapter.requireUserId` cannot resolve the actor and throws **inside the same `@Transactional`** → response `5xx`, `SELECT count(*) FROM categories WHERE name = ?` → `0`, `audit_logs` count for `categories` unchanged. This is the atomic-effects invariant proven end-to-end for `catalog`.
+- [x] 8.6 `CatalogApiContractIT.noNumericIdLeaksInAnyBodyOrLocationHeaderAcrossAllSixteenEndpoints` — every one of the 16 endpoints is exercised as `admin.corp`; each JSON body is walked recursively and the test **fails on any field literally named `id`** or any `*Id`/`*_id` field holding an integral value (external ids are UUID strings; `activeProductCount` is not `*Id`). Every `Location` header equals `/api/catalog/.../{externalId}` and, with UUIDs stripped, contains no digit (§7.1 point 1).
+- [x] 8.7 `CatalogApiContractIT.openApiPublishesTheSixteenEndpointsTheErrorEnvelopeAndNoBaseUnitRoute` — `GET /v3/api-docs` (permitAll, no token): all **16** `METHOD path` pairs present in `paths` (with springdoc's `{externalId}` / `{productExternalId}` / `{unitExternalId}` templating); no catalog path contains `base-unit`/`baseunit` (PA-08); the `{ code, message }` error envelope is a documented schema. **See the minimal production change below.**
+- [x] 8.8 **Verified, not re-created.** `docs/deuda_tecnica.md`: `DT-07` + `DT-08` registry rows (`:43-44`), `### DT-07` ficha (`:222`), `### DT-08` ficha (`:248`), version-history row `1.1` (`:7`). Re-read both fichas against the shipped code — `DT-07` still correctly states `base_unit` is de-facto immutable and `PUT /api/catalog/products/{externalId}` rejects the field with `400 invalid_request`; `DT-08` still correctly states the free-text search resolves by sequential scan and that `idx_products_sku` serves only the SKU-uniqueness equality check. No divergence, no ficha edit.
+- [x] 8.9 Manual review checklist — all pass: direct subpackages of `com.optiplant.inventory` are only `catalog/`, `iam/`, `shared/` (no `config/`/`util/`); `catalog/infrastructure/config/` does not exist; `catalog/domain/**` framework-freedom and no cross-module import are enforced green by `ModuleBoundariesTest` (5/5) and re-checked by `rg`; `shared/stock/ProductStockPresencePort` declares exactly one `boolean isProductUntouched(UUID)` and no stock-shaped return type.
+- [x] 8.10 `rg -i 'branch_inventories|kardex_movements' backend/src/main/java/com/optiplant/inventory/catalog` — **substantive constraint met**: `0` matches under `catalog/infrastructure/**`, and no `@Query`/native query/`jdbcTemplate` string anywhere in `catalog` names those tables. The literal command returns **2** lines, both Javadoc prose in `catalog/domain/model/StockPresence.java` naming the two tables to *explain* the R-08 precondition concept — not SQL. Same class of imprecise verification wording as S7's task 7.5 (`rg 'base-unit'`): recorded here, not treated as a design flaw and not redesigned (contract §2.2 rejected alternative 2 is honoured — `catalog` issues no SQL against `inventory`'s tables).
+- [x] 8.11 `rg -n 'ROLE_|hasRole\(' backend/src/main/java/com/optiplant/inventory/catalog backend/src/main/java/com/optiplant/inventory/iam/infrastructure/config` — one hit, `SecurityConfig.java:29`, **inside the class Javadoc** ("nunca `hasRole()`, que antepone `ROLE_`"). Zero hits in `catalog`. Passes as specified ("no occurrence outside a doc comment").
+- [x] 8.12 All three gates run for real, all green — literal output below.
+- [x] 8.13 `git diff --stat $(git merge-base main HEAD) HEAD -- docs/` → exactly `docs/deuda_tecnica.md` (+72) and `docs/diagrama_er.md` (+3), both deliberate (design §10.4, D-12). `docs/casos_de_uso.md`, `docs/especificacion_requerimientos.md`, `docs/historias_de_usuario.md` untouched — no `RF`/`RNF`/`RN` identifier created, traceability matrix intact. `validar_trazabilidad.py` green.
+- [x] 8.14 Contract §11 walked end to end — see the dedicated section below. Every item satisfied; one item ("error envelope documented in `/v3/api-docs`") required a minimal doc-only production change.
+- [x] 8.15 `ProductSearchPerformanceIT` (`@TestInstance(PER_CLASS)`, real PostgreSQL 17). `@BeforeAll` bulk-inserts **10 000** products in one statement — `INSERT INTO products (category_id, sku, name, base_unit) SELECT ((g-1)%4)+1, 'PERF-'||LPAD(g::text,6,'0'), 'Perf product '||g, 'KG' FROM generate_series(1, 10000) g` — asserts `count(*) FROM products >= 10000`, and `@AfterAll` deletes the `PERF-%` rows so the shared container is left clean. **(a)** `aContainsSearchStaysUnderTheLatencyCeilingAtTenThousandProducts` — 5 warmup + 25 measured `GET /api/catalog/products?q=npk&size=20` calls, timed with `System.nanoTime()`; **median = 41 ms, p95 = 57 ms** (a fresh re-run: median 41 ms, p95 57 ms, max 61 ms), ceiling **200 ms** → PASS with wide margin; each run also asserts `q=npk` still finds the seeded `FERT-NPK-151515` (≥ 1 hit). **(b)** `explainReportsASequentialScanOnProductsForTheContainsPredicate` — `EXPLAIN` of the contains predicate (no `ORDER BY`/`LIMIT`, so nothing tempts the planner toward `idx_products_sku`) → `Seq Scan on products p` (full plan below). Confirms design §8.4 / corrected contract §9.
+- [x] 8.16 **Not triggered.** 8.15 (a) passed with median 41 ms « 200 ms, so `DT-08`'s "latency test fails its threshold" trigger did not fire. No `CREATE EXTENSION pg_trgm`, no `gin_trgm_ops` index, no schema change; `DT-08` stays **Aceptada** and its ficha is unchanged (a debt is only marked **Resuelta** when actually paid).
+
+### Files changed
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/in/web/CatalogExceptionHandler.java` | Modified | **Doc-only.** Added `io.swagger.v3.oas.annotations` imports and three `@ApiResponse` annotations (400 on `onIllegalArgument`, 404 on `onCategoryNotFound`, 409 on `onCategoryInUse`) each referencing `@Schema(implementation = ErrorResponse.class)` via a `private static final String ERROR_ENVELOPE_MEDIA_TYPE` constant. Zero behaviour change — status codes, codes, messages and the `ErrorResponse` record are untouched; springdoc now emits the `{ code, message }` envelope into `/v3/api-docs`, satisfying contract §11's DoD item. |
+| `backend/src/test/java/com/optiplant/inventory/CatalogRbacIT.java` | Created | 5 tests — 8.1 (×2), 8.2, 8.3, 8.4. Endpoint catalogue as a `List<Endpoint>`; expired-token mint via `NimbusJwtEncoder`. |
+| `backend/src/test/java/com/optiplant/inventory/CatalogAuditIT.java` | Created | 2 tests — 8.5 positive (every mutation → audit row, `branch_id NULL`) + negative (orphan-actor bearer → audit write throws in-txn → full rollback). |
+| `backend/src/test/java/com/optiplant/inventory/CatalogApiContractIT.java` | Created | 2 tests — 8.6 (no numeric id across all 16 endpoints, recursive JSON walk + `Location` check) and 8.7 (`/v3/api-docs`: 16 ops published, error envelope documented, no base-unit route). |
+| `backend/src/test/java/com/optiplant/inventory/ProductSearchPerformanceIT.java` | Created | 2 tests — 8.15 (a) warmed-up median/p95 latency over 25 runs at 10 000 products, and (b) `EXPLAIN` → sequential scan. `@BeforeAll` bulk seed, `@AfterAll` cleanup. |
+| `openspec/changes/add-catalog-module/tasks.md` | Modified | Phase 8 tasks 8.1–8.16 marked `[x]` with per-task evidence notes. |
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | `cd backend && ./mvnw verify -Dit.test=CatalogApiContractIT` → `BUILD SUCCESS`, `Tests run: 2, Failures: 0`. Full failsafe suite: `Tests run: 90, Failures: 0, Errors: 0, Skipped: 0` (was 79 at S7 → +11 = `CatalogRbacIT` 5 + `CatalogAuditIT` 2 + `CatalogApiContractIT` 2 + `ProductSearchPerformanceIT` 2). |
+| Runtime harness command/scenario and exact result | `cd backend && ./mvnw verify` — real PostgreSQL 17 via Testcontainers — `BUILD SUCCESS`. surefire `Tests run: 154, Failures: 0, Errors: 0, Skipped: 0`; `ModuleBoundariesTest` 5/5; `SharedIsFrameworkFreeTest` 1/1. Plus `./scripts/validar_esquema.sh` (30 checks) and `python3 scripts/validar_trazabilidad.py` — both exit 0. |
+| Rollback boundary | `git revert` of this commit deletes the four new `*IT` classes and reverts the three `@ApiResponse` annotations + two imports on `CatalogExceptionHandler` (behaviour identical either way). No schema, seed, doc, or other production file is touched; the `PERF-%` seed rows are self-cleaning (`@AfterAll`). |
+
+### Final gate output (run, not asserted from memory)
+
+**`cd backend && ./mvnw verify`** — `BUILD SUCCESS`, total time 01:25 min:
+
+```
+[INFO] --- surefire ---
+[INFO] Tests run: 154, Failures: 0, Errors: 0, Skipped: 0
+[INFO]   ModuleBoundariesTest        Tests run: 5, Failures: 0, Errors: 0
+[INFO]   SharedIsFrameworkFreeTest   Tests run: 1, Failures: 0, Errors: 0
+
+[INFO] --- failsafe (*IT, Testcontainers / real PostgreSQL 17) ---
+[INFO]   AuditAtomicityIT       Tests run: 2, Failures: 0, Errors: 0
+[INFO]   AuditLogQueryIT        Tests run: 8, Failures: 0, Errors: 0
+[INFO]   AuthenticationFlowIT   Tests run: 12, Failures: 0, Errors: 0
+[INFO]   BranchAdminIT          Tests run: 9, Failures: 0, Errors: 0
+[INFO]   BranchIsolationIT      Tests run: 6, Failures: 0, Errors: 0
+[INFO]   CatalogApiContractIT   Tests run: 2, Failures: 0, Errors: 0
+[INFO]   CatalogAuditIT         Tests run: 2, Failures: 0, Errors: 0
+[INFO]   CatalogRbacIT          Tests run: 5, Failures: 0, Errors: 0
+[INFO]   CategoryCatalogIT      Tests run: 8, Failures: 0, Errors: 0
+[INFO]   ProductCatalogIT       Tests run: 9, Failures: 0, Errors: 0
+[INFO]   ProductSearchPerformanceIT  Tests run: 2, Failures: 0, Errors: 0
+[INFO]   ProductUnitCatalogIT   Tests run: 9, Failures: 0, Errors: 0
+[INFO]   UserAdminIT            Tests run: 15, Failures: 0, Errors: 0
+[INFO] Tests run: 90, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+Two `ERROR`-level stack traces in the log are the deliberate in-test failures: `AuditAtomicityIT`'s `AtomicityFixtureFailure`, and `CatalogAuditIT`'s `IllegalStateException: No user found for external id <uuid>` (the orphan-actor rollback probe). Both suites report `Failures: 0, Errors: 0`.
+
+**8.15 latency + EXPLAIN (run, not asserted from memory):**
+
+```
+[8.15] contains-search q=npk size=20 over 10000 products, 25 measured runs: median=41ms p95=57ms max=61ms
+[8.15] EXPLAIN for the contains predicate:
+Aggregate  (cost=211.33..211.34 rows=1 width=8)
+  ->  Hash Join  (cost=15.62..211.13 rows=79 width=0)
+        Hash Cond: (p.category_id = c.id)
+        ->  Seq Scan on products p  (cost=0.00..195.30 rows=79 width=8)
+              Filter: (is_active AND ((lower((sku)::text) ~~ '%npk%'::text) OR (lower((name)::text) ~~ '%npk%'::text)))
+        ->  Hash  (cost=12.50..12.50 rows=250 width=8)
+              ->  Seq Scan on categories c  (cost=0.00..12.50 rows=250 width=8)
+```
+
+Median 41 ms « 200 ms ceiling → 8.16 (DT-08 trigger) did **not** fire. `Seq Scan on products` confirms design §8.4 / contract §9.
+
+**`./scripts/validar_esquema.sh`** — exit 0:
+
+```
+G. Catálogo maestro
+  ok     toda categoría tiene estado de actividad  (0)
+  ok     las categorías sembradas nacen activas  (4)
+  ok     RN-13 · un producto no puede tener dos unidades de venta predeterminadas
+  ok     dos productos distintos tienen cada uno su unidad predeterminada
+  ok     el nombre de una categoría es único sin distinguir mayúsculas
+------------------------------------------------------------
+RESULTADO: 30 comprobaciones correctas — esquema íntegro
+```
+
+`A. ... ok 20 tablas creadas (20)` still passes.
+
+**`python3 scripts/validar_trazabilidad.py`** — exit 0:
+
+```
+4. Ítems de deuda técnica con ficha detallada
+   ok    8 declarados, 8 con ficha
+5. Enlaces relativos entre documentos
+   ok    38 enlaces revisados, 0 rotos
+--------------------------------------------------------------
+RESULTADO: trazabilidad íntegra
+  42 RF · 34 RNF · 17 RN · 37 CU · 8 DT
+```
+
+### Contract §11 walk (task 8.14) — every item, with where it is proven
+
+**Automated verification**
+
+| Item | Status |
+|---|---|
+| `./mvnw verify` green (ArchUnit + Testcontainers) | ✅ BUILD SUCCESS, surefire 154 / failsafe 90 |
+| `./scripts/validar_esquema.sh` green (mandatory — `init-db/` changed) | ✅ 30 comprobaciones correctas |
+| `python3 scripts/validar_trazabilidad.py` green | ✅ trazabilidad íntegra |
+| No `RF`/`RNF`/`RN` identifier created, `casos_de_uso.md` matrix untouched | ✅ 8.13 — docs diff is only `diagrama_er.md` + `deuda_tecnica.md` |
+
+**New invariants in `validar_esquema.sh`** (added in S1, re-verified green here)
+
+| Item | Status |
+|---|---|
+| `rechaza` two default sale units for one product | ✅ section G |
+| `acepta` two different products each with their own default | ✅ section G |
+| `igual` `count(*) categories WHERE is_active IS NULL` = 0 | ✅ section G |
+| `igual` seeded categories active = 4 | ✅ section G |
+| `igual "20 tablas creadas"` still passes | ✅ validator green |
+
+**Domain unit tests** (`*Test`, no Docker) — all present and green (S2/S4/S6/S7)
+
+| Item | Where |
+|---|---|
+| SKU normalization `abc-1` ≡ `ABC-1` | `SkuTest` |
+| Base-unit / `unit_name` format + whitespace rejection | `UnitCodeTest` |
+| Base-unit rule: applied / balances / kardex-only / port-unavailable | `BaseUnitChangePolicyTest` + `ProductAdminServiceTest` |
+| Conversion factor ≤ 0 rejected | `ProductUnitPolicyTest` / `ProductInvariantsTest` |
+| Base-unit homonym factor ≠ 1 rejected | `ProductInvariantsTest` / `ProductUnitPolicyTest` |
+| Marking a new default leaves exactly one | `ProductUnitPolicyTest` |
+| Category name normalization + case-insensitive compare | `CategoryNameTest` |
+
+**Integration tests** (`*IT`, Testcontainers)
+
+| Item | Where |
+|---|---|
+| Full category cycle | `CategoryCatalogIT` |
+| `409 category_in_use` + success with only inactive products | `CategoryCatalogIT` |
+| `409 category_inactive` on create + on re-enable | `ProductCatalogIT` |
+| Full product cycle incl. inline units, read by `external_id` | `ProductCatalogIT` |
+| `409 duplicate_sku` on create **and** edit | `ProductCatalogIT` |
+| `400` when `PUT /products/{id}` carries `baseUnit`; no OpenAPI route mutates a base unit | `ProductCatalogIT` (5.10) + `CatalogApiContractIT` (8.7) |
+| Replacing the default sale unit **commits** (one `TRUE` row) | `ProductUnitCatalogIT` (6.9/6.10) |
+| Schema-level rejection of a second default → conflict not 500 | `ProductUnitCatalogIT` (6.12) |
+| Free-text search latency at 10 000 products + `EXPLAIN` sequential scan | `ProductSearchPerformanceIT` (8.15) |
+| RBAC: `403` on every mutation, `200` on every read | `CatalogRbacIT` (8.1) |
+| `401` with no token on any endpoint | `CatalogRbacIT` (8.2) |
+| Listing active-only default; `active=false`/`all`; `active=maybe` → `400` | `CategoryCatalogIT` + `ProductCatalogIT` |
+| Page cap with `size=5000`; `sort` outside allow-list → `400` | `ProductCatalogIT` (5.11) |
+| Every response contains no numeric `id` (explicit JSON assertion) | `CategoryCatalogIT` (3.10) + `CatalogApiContractIT` (8.6 — all 16) |
+| Disabling a product with stock leaves balances intact | `ProductCatalogIT` (5.12) |
+| Every mutation writes its `audit_logs` entry with null `branch_id`; audit failure rolls back | `CatalogAuditIT` (8.5) |
+
+**Manual review**
+
+| Item | Status |
+|---|---|
+| No new class in a direct subpackage of `com.optiplant.inventory` other than `catalog/` | ✅ 8.9 |
+| `catalog/domain/**` imports neither `org.springframework..` nor `jakarta.persistence..` | ✅ `ModuleBoundariesTest` + `rg` |
+| `catalog` imports no class from another business module; `shared` still imports no module | ✅ `ModuleBoundariesTest` 5/5 |
+| Stock-presence port: one boolean method, no stock-shaped return type | ✅ `ProductStockPresencePort` |
+| No `catalog` adapter issues SQL against `branch_inventories` / `kardex_movements` | ✅ 8.10 (0 hits in `infrastructure`; 2 Javadoc-prose hits in `domain/model` only) |
+| The §6 endpoints appear in `/v3/api-docs` with the error envelope documented | ✅ 8.7 — **required action**: springdoc did not synthesise the envelope from the runtime-computed `ResponseEntity.status(...)` handlers, so three doc-only `@ApiResponse` annotations were added to `CatalogExceptionHandler` (400/404/409 → `ErrorResponse` schema). No behaviour change. |
+
+**Result of the walk: no §11 item left unsatisfied.** The only item that was not already met by S1–S7 was the OpenAPI error-envelope documentation, now fixed with the minimal doc-only change above.
+
+### Deviations from design / tasks
+
+1. **Task 8.7 required a minimal production change to `CatalogExceptionHandler` (doc-only).** Contract §11 and RNF-API-01 require the `{ code, message }` envelope to appear in `/v3/api-docs`. springdoc-openapi does not auto-document responses for `@ExceptionHandler` methods that compute their status at runtime via `ResponseEntity.status(...)` (it has no static status to attach) — `iam`'s `IamExceptionHandler` has the identical gap. Three `@ApiResponse` (`io.swagger.v3.oas.annotations`) annotations were added to the catalog handler's 400/404/409 methods, each pointing at `@Schema(implementation = ErrorResponse.class)`. This changes only the generated OpenAPI document; every status code, error `code` string, message and the `ErrorResponse` record itself are untouched, and no test other than 8.7 changed behaviour. Treated as the "a transversal test revealed a real gap → minimal fix + document" path the S8 brief allows, not a redesign.
+2. **Task 8.10's literal `rg` command cannot return empty and never could.** `rg -i 'branch_inventories|kardex_movements' .../catalog` matches 2 Javadoc lines in `catalog/domain/model/StockPresence.java` that name the two tables to explain the R-08 concept. The *substantive* rule — no `catalog` adapter issues SQL against those tables — holds precisely (0 hits in `catalog/infrastructure`, no `@Query`/native/`jdbcTemplate` referencing them). Same imprecise-wording pattern as S7's task 7.5; documented, not escalated.
+3. **Task 8.11's `rg` matches one line — inside a doc comment.** `SecurityConfig.java:29` Javadoc says "nunca `hasRole()`". The task's own wording ("no occurrence outside a doc comment") accepts this; recorded for completeness.
+
+### Issues found
+
+None that block S8. `design.md` §7, §8.1, §8.4 and `contract.md` §5, §7, §9, §11 were complete and internally consistent for this slice. The one real gap uncovered (OpenAPI error envelope not documented) is a contract-DoD item that S1–S7 never addressed; it is fixed here with the minimal doc-only annotation change described above rather than deferred or dropped.
+
+### Workload / PR boundary
+
+- Mode: chained PR slice — PR8 of 8 (feature-branch-chain; PR8 targets PR7's branch `feat/ep-02-catalog-08-s7-regla-unidad-base`). **Final slice — this PR completes `add-catalog-module`.**
+- Current work unit: S8 — cross-cutting verification and documentation.
+- Boundary: starts from the S7 branch; ends with `CatalogRbacIT`, `CatalogAuditIT`, `CatalogApiContractIT`, `ProductSearchPerformanceIT`, and the three doc-only `@ApiResponse` annotations on `CatalogExceptionHandler`. No new module code, no schema change, no seed change, no `docs/` change (S1's `diagrama_er.md` / `deuda_tecnica.md` edits already carried the deliberate doc deltas).
+- Estimated review budget impact: ~660 lines of new `*IT` test code + ~8 lines of production annotation (design forecast: ~320, all tests). Above the 400-line soft budget but this is the planned S8 slice of the approved 8-PR feature-branch chain, and it is entirely additive test code plus a doc-only annotation — it proceeds as a bounded slice per the tasks `Review Workload Forecast`.

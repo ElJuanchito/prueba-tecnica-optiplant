@@ -9,6 +9,9 @@ import com.optiplant.inventory.catalog.domain.exception.DuplicateSkuException;
 import com.optiplant.inventory.catalog.domain.exception.InvalidConversionFactorException;
 import com.optiplant.inventory.catalog.domain.exception.ProductNotFoundException;
 import com.optiplant.inventory.catalog.domain.exception.ProductUnitNotFoundException;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,9 +48,15 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice(basePackages = "com.optiplant.inventory.catalog.infrastructure.adapter.in.web")
 class CatalogExceptionHandler {
 
+	/** JSON media type of the uniform error envelope, reused by the OpenAPI annotations below. */
+	private static final String ERROR_ENVELOPE_MEDIA_TYPE = "application/json";
+
 	// Value-object violations (CategoryName), active-filter parsing and any other
 	// IllegalArgumentException from this package's controllers.
 	@ExceptionHandler(IllegalArgumentException.class)
+	@ApiResponse(responseCode = "400", description = "Uniform { code, message } error envelope (contract §7)",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onIllegalArgument(IllegalArgumentException ex) {
 		return build(HttpStatus.BAD_REQUEST, "invalid_request", ex.getMessage());
 	}
@@ -63,6 +72,9 @@ class CatalogExceptionHandler {
 	}
 
 	@ExceptionHandler(CategoryNotFoundException.class)
+	@ApiResponse(responseCode = "404", description = "Uniform { code, message } error envelope (contract §7)",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onCategoryNotFound() {
 		return build(HttpStatus.NOT_FOUND, "category_not_found", "Category not found");
 	}
@@ -73,6 +85,9 @@ class CatalogExceptionHandler {
 	}
 
 	@ExceptionHandler(CategoryInUseException.class)
+	@ApiResponse(responseCode = "409", description = "Uniform { code, message } error envelope (contract §7)",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onCategoryInUse(CategoryInUseException ex) {
 		return build(HttpStatus.CONFLICT, "category_in_use", ex.getMessage());
 	}
