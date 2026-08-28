@@ -1045,3 +1045,59 @@ instruction to implement Slice 5a only.
 
 8/8 Slice 5a tasks complete. `cd backend && ./mvnw clean verify` → `BUILD SUCCESS` (48 surefire +
 37 failsafe tests, all green). Ready for `sdd-verify`, then Slice 5b (Branch Admin) apply.
+
+## Phase 5b — Slice 5b: Branch Admin (PR7)
+
+### Completed Tasks
+
+- [x] 5b.1 Created `iam/domain/model/BranchProfile.java` (record: `externalId`, `code`, `name`, `address`, `city`, `phone`, `active`), `iam/domain/exception/DuplicateBranchCodeException.java`, and `iam/domain/exception/BranchNotFoundException.java` (added for 404 on missing branch id).
+- [x] 5b.2 Created `application/port/out/BranchRepositoryPort` (`findByCode`, `findByExternalId`, `create`, `update`, `disable`, `list` + `NewBranch`/`BranchUpdate`/`BranchFilter`/`BranchPage`), `application/port/in/ManageBranchesUseCase` (`create`, `edit`, `disable`, `list` + `CreateBranchCommand`/`EditBranchCommand`/`BranchQuery`), `application/service/BranchAdminService` — create (unique `code`), edit (name/address/city/phone, `external_id` immutable), disable (`is_active=false`, no physical delete; disabled branch's users can no longer log in per authentication capability), query (no numeric `id` exposed).
+- [x] 5b.3 Wired `BranchAdminService` mutations through `AuditWritePort` (slice 4): for every mutation (create/edit/disable), `branch_id` is the branch of the affected resource itself (its own `external_id`), written synchronously in the same transaction with compact JSON snapshots in `payloadBefore`/`payloadAfter`.
+- [x] 5b.4 Created `BranchJpaEntity`, `BranchSpringDataRepository`, `BranchPersistenceAdapter`, and `BranchMapper` (MapStruct).
+- [x] 5b.5 Created `adapter/in/web/BranchAdminController` — `POST/PUT/PATCH .../disable/GET /api/admin/branches/**`, `ADMIN`-gated via existing `SecurityConfig` matcher; duplicate code → `409 Conflict`; missing branch → `404 Not Found`.
+- [x] 5b.6 Created `BranchAdminServiceTest` — 8 unit test cases covering duplicate code rejection, immutable `external_id`, unchanged `code` on edit, audit entry recording with affected resource `branch_id`, logical disable, and filtering, using hand-written in-memory fakes (no Mockito).
+- [x] 5b.7 Created `BranchAdminIT` — 9 integration test cases against real Postgres 17 (Testcontainers): successful branch creation, duplicate `code` → 409, edit updates profile maintaining `external_id` and `code`, missing branch → 404, disabling a branch blocks assigned users from login while retaining the branch row with `is_active=false`, non-ADMIN caller → 403, list query does not expose numeric `id`, and audit logging records CREATE, UPDATE, DISABLE entries with payloads.
+- [x] 5b.8 Ran `cd backend && ./mvnw verify`; verified all 49 surefire + 48 failsafe tests pass; grep check confirmed no numeric `id` in response DTOs across the module.
+
+### Deviations from Design / Tasks
+
+1. **`BranchNotFoundException` added**, beyond the design's literal exception list (`DuplicateBranchCodeException` only). `edit`/`disable` on an unknown `external_id` need a genuine client-facing `404`, mirroring `UserNotFoundException` from slice 5a. Scoped to authenticated `ADMIN` acting on a supplied id, so no existence-leak concern applies.
+2. **`GET /api/admin/branches` query endpoint included**, mirroring `UserAdminController` from slice 5a to fulfill the "query (no numeric `id` exposed)" requirement on `ManageBranchesUseCase` with a reachable HTTP entry point.
+3. **No Mockito on the classpath** — `BranchAdminServiceTest` uses hand-written in-memory fakes (`FakeBranchRepositoryPort`, `FakeAuditWritePort`), consistent with all other unit tests in the project.
+4. **Audit `branch_id` is the affected branch's own `external_id`** — resolved per the established design decision (unlike user admin where acting admin's branch is null, for branch admin the affected resource IS the branch itself).
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and result | `cd backend && ./mvnw test -Dtest=BranchAdminServiceTest` → `Tests run: 8, Failures: 0, Errors: 0, Skipped: 0` — `BUILD SUCCESS` |
+| Full surefire | `cd backend && ./mvnw test` → `Tests run: 49, Failures: 0, Errors: 0, Skipped: 0` — `BUILD SUCCESS` |
+| Runtime harness command and result | `cd backend && ./mvnw verify -Dit.test=BranchAdminIT` (real Testcontainers Postgres 17) → `Tests run: 9, Failures: 0, Errors: 0` — `BUILD SUCCESS` |
+| Full failsafe phase | `cd backend && ./mvnw verify` → `Tests run: 48` (`ApplicationContextIT` 1 + `AuditAtomicityIT` 2 + `AuditLogQueryIT` 8 + `AuthenticationFlowIT` 12 + `BranchAdminIT` 9 + `BranchIsolationIT` 6 + `UserAdminIT` 10), all green — `BUILD SUCCESS` |
+| Cross-cutting grep — `ROLE_` / `hasRole(` | Only pre-existing doc-comment mentions in `SecurityConfig`/`Role.java`; zero executable use |
+| Numeric-id-in-response check | `BranchAdminController.BranchResponse`/`BranchPageResponse` expose `externalId` (`UUID`) only; `BranchAdminIT.consultarSucursalesNoExponeElIdNumerico` asserts no `id` key in response JSON |
+| `python3 scripts/validar_trazabilidad.py` | `RESULTADO: trazabilidad íntegra` — `42 RF · 34 RNF · 17 RN · 37 CU · 6 DT` |
+| Rollback boundary | Revert this commit; `/api/admin/branches/**` disappears along with `BranchAdminService`, `ManageBranchesUseCase`, `BranchRepositoryPort`, `BranchJpaEntity`, `BranchPersistenceAdapter`, `BranchMapper`, `BranchNotFoundException`, `DuplicateBranchCodeException`, `BranchProfile`. No prior slice (1/2a/2b/3/4/5a) is broken or removed with it |
+
+### Files Changed
+
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `backend/src/main/java/.../iam/domain/model/BranchProfile.java` | Created | Domain model for branch with `externalId`, `code`, `name`, `address`, `city`, `phone`, `active` |
+| `backend/src/main/java/.../iam/domain/exception/{DuplicateBranchCodeException,BranchNotFoundException}.java` | Created | 409/404 domain exceptions |
+| `backend/src/main/java/.../iam/application/port/in/ManageBranchesUseCase.java` | Created | Inbound port: `create`/`edit`/`disable`/`list` + command/query records |
+| `backend/src/main/java/.../iam/application/port/out/BranchRepositoryPort.java` | Created | Outbound port: `findByCode`/`findByExternalId`/`create`/`update`/`disable`/`list` + DTO records |
+| `backend/src/main/java/.../iam/application/service/BranchAdminService.java` | Created | Branch admin orchestration, audited, transactional |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/BranchJpaEntity.java` | Created | JPA entity mapping `branches` table |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/BranchSpringDataRepository.java` | Created | Spring Data JPA repo with `search`, `findByCode`, `findByExternalId` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/BranchMapper.java` | Created | MapStruct entity-to-domain mapper |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/BranchPersistenceAdapter.java` | Created | Outbound persistence adapter implementing `BranchRepositoryPort` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/in/web/BranchAdminController.java` | Created | `POST`/`PUT`/`PATCH .../disable`/`GET /api/admin/branches` REST controller |
+| `backend/src/main/java/.../iam/infrastructure/adapter/in/web/IamExceptionHandler.java` | Modified | Added mappings for `DuplicateBranchCodeException` (409) and `BranchNotFoundException` (404) |
+| `backend/src/test/java/.../iam/application/service/BranchAdminServiceTest.java` | Created | 8 unit test cases using in-memory fakes (no Mockito) |
+| `backend/src/test/java/.../BranchAdminIT.java` | Created | 9 integration test cases with real Postgres 17 Testcontainers |
+| `openspec/changes/add-iam-module/tasks.md` | Modified | Checked off 5b.1–5b.8 |
+
+### Status
+
+8/8 Slice 5b tasks complete. `cd backend && ./mvnw verify` → `BUILD SUCCESS` (49 surefire + 48 failsafe tests, all green). Ready for `sdd-verify`.

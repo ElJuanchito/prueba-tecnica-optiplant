@@ -770,3 +770,88 @@ for corporate-scoped actors) is a genuine open product/design question worth res
 Slice 5b repeats the same call pattern, but does not contradict any spec scenario this slice
 itself is responsible for. **Verdict: PASS WITH WARNINGS — ready to proceed to `sdd-archive`**
 for Slice 5a, with the three WARNINGs carried forward as follow-up items (not merge blockers).
+
+## Slice 5b — Slice 5b: Branch Admin (PR7) Verification
+
+### Summary of verification
+
+Slice 5b implements branch administration (RF-SEG-03, CU-SEG-03, HU-SEG-03): create with unique code, edit updating name/address/city/phone while preserving immutable `external_id` and `code`, logical disable (`is_active = false`, no physical delete; blocking assigned users from authenticating), filtered/paginated query without exposing internal numeric `id`s, and transactional audit logging with compact JSON payloads.
+
+| Metric | Value |
+|---|---|
+| Tasks total (5b) | 8 |
+| Tasks complete | 8 |
+| Tasks incomplete | 0 |
+
+### Build & tests — independently re-run for this verification
+
+**Focused test** — `cd backend && ./mvnw test -Dtest=BranchAdminServiceTest`
+```
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.iam.application.service.BranchAdminServiceTest
+BUILD SUCCESS
+```
+Exit code `0`.
+
+**Runtime harness** — `cd backend && ./mvnw verify -Dit.test=BranchAdminIT` (real Postgres 17, Testcontainers)
+```
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.BranchAdminIT
+BUILD SUCCESS
+```
+Exit code `0`.
+
+**Full build** — `cd backend && ./mvnw verify` (whole module, including all previous slices)
+```
+Tests run: 49, Failures: 0, Errors: 0, Skipped: 0   (surefire)
+Tests run: 48, Failures: 0, Errors: 0, Skipped: 0   (failsafe: ApplicationContextIT 1,
+  AuditAtomicityIT 2, AuditLogQueryIT 8, AuthenticationFlowIT 12, BranchAdminIT 9,
+  BranchIsolationIT 6, UserAdminIT 10)
+BUILD SUCCESS
+```
+Exit code `0`. Matches `apply-progress.md`'s reported numbers independently.
+
+**`python3 scripts/validar_trazabilidad.py`**
+```
+RESULTADO: trazabilidad íntegra
+  42 RF · 34 RNF · 17 RN · 37 CU · 6 DT
+```
+Exit code `0`.
+
+### Spec compliance matrix (`specs/branch-administration/spec.md`)
+
+| Requirement | Scenario | Test | Result |
+|---|---|---|---|
+| Only ADMIN manages branches | Non-ADMIN attempts branch management | `BranchAdminIT.unGerenteDeSucursalNoAdminEsRechazadoConCuatroCientosTres` (403 via `SecurityConfig` matcher `/api/admin/branches/**`) | ✅ COMPLIANT |
+| Branch creation enforces unique code | Successful branch creation | `BranchAdminServiceTest.creaUnaSucursalConCodigoUnico` + `BranchAdminIT.crearSucursalConExito` | ✅ COMPLIANT |
+| ″ | Duplicate branch code | `BranchAdminServiceTest.rechazaUnCodigoDeSucursalDuplicado` + `BranchAdminIT.crearConCodigoDuplicadoDevuelve409` | ✅ COMPLIANT |
+| Branch edit updates name and location, not identity | Successful branch edit | `BranchAdminServiceTest.editaNombreYDireccionDeUnaSucursalExistente` + `BranchAdminIT.editarActualizaNombreYDireccionPeroMantieneExternalIdYCodigo` (`external_id` immutable, `code` unchanged, name/address updated) | ✅ COMPLIANT |
+| Branch disable is logical, never physical | Disabling a branch | `BranchAdminServiceTest.deshabilitarUnaSucursalCambiaActiveAFalsoYRegistraAuditoria` + `BranchAdminIT.deshabilitarUnaSucursalBloqueaElLoginDeSusUsuariosYNoLaBorraFisicamente` (`is_active=false`, row count remains 1, assigned user login denied with `401`) | ✅ COMPLIANT |
+| Branch query lists branches with status | Query includes disabled branches | `BranchAdminServiceTest.listarSucursalesConFiltro` + `BranchAdminIT.consultarSucursalesNoExponeElIdNumerico` (includes active and disabled branches, no `id` key in response JSON) | ✅ COMPLIANT |
+
+**Compliance summary**: 6/6 scenarios fully compliant with passing runtime tests.
+
+### Design coherence (`design.md`)
+
+| Decision | Followed? | Notes |
+|---|---|---|
+| Package layout (`design.md:67,71,75,76,80,83,85`): `BranchProfile`, `DuplicateBranchCodeException`, `BranchRepositoryPort`, `ManageBranchesUseCase`, `BranchAdminService`, `BranchAdminController`, `BranchJpaEntity`, `BranchSpringDataRepository`, `BranchMapper`, `BranchPersistenceAdapter` | ✅ Yes | Every class lands in the exact package declared in the design |
+| `BranchNotFoundException` added beyond the design's literal list | ⚠️ Deviation, justified | Needed for genuine `404` on edit/disable of unknown `external_id`, mirroring `UserNotFoundException` from slice 5a |
+| `GET /api/admin/branches` added beyond task 5b.5's literal `POST/PUT/PATCH` list | ⚠️ Deviation, necessary | Query requirement needs a reachable HTTP endpoint; `SecurityConfig` matcher is verb-agnostic |
+| Audit entry `branch_id` is the affected branch's own `external_id` | ✅ Yes | Followed the established design decision for resource-level branch audit attribution |
+
+### CLAUDE.md hard invariants — re-checked for Slice 5b's diff
+
+| Invariant | Status | Evidence |
+|---|---|---|
+| Roles `ADMIN`/`BRANCH_MANAGER`/`OPERATOR`, no `ROLE_` prefix; `hasAuthority()` never `hasRole()` | **PASS** | `grep -rn "ROLE_\|hasRole(" backend/src --include="*.java"` → zero executable use (4 doc-comment mentions only). `SecurityConfig:67` gates `/api/admin/branches/**` with `hasAuthority("ADMIN")` |
+| Every stock/audit mutation writes in the same transaction | **PASS** | `BranchAdminService.create`/`edit`/`disable` are `@Transactional`; `AuditWritePort.record` is called synchronously in the method body |
+| Atomic effects via synchronous output port, never event | **PASS** | `AuditWritePort` is called synchronously |
+| Branch derived from session, never client param | **PASS** | `BranchAdminController` extracts `actor` via `PrincipalAccessor.require()` |
+| API exposes only `external_id`, never numeric `id` | **PASS** | `BranchResponse`/`BranchPageResponse` expose `externalId` only; `BranchAdminIT.consultarSucursalesNoExponeElIdNumerico` asserts no `id` key in response JSON |
+| Docker-dependent tests named `*IT` | **PASS** | `BranchAdminIT` (failsafe, Testcontainers) vs `BranchAdminServiceTest` (surefire, unit with in-memory fakes) |
+| No new class in direct base-package subpackage other than business module | **PASS** | Every new class resides under `com.optiplant.inventory.iam.**` |
+| No Flyway added alongside `backend/init-db/` | **PASS** | No schema change this slice; `spring.flyway.enabled: false` unchanged |
+| `shared/` stays framework-free and a leaf | **PASS** | `ModuleBoundariesTest` (5/5) and `SharedIsFrameworkFreeTest` (1/1) green in full verify |
+
+### Conclusion for Slice 5b
+
+Task completion is 8/8. All tests pass independently (`./mvnw test -Dtest=BranchAdminServiceTest`: 8 tests, `./mvnw verify -Dit.test=BranchAdminIT`: 9 tests, full `./mvnw verify`: 49 surefire + 48 failsafe tests, `BUILD SUCCESS`). All 6 spec scenarios are fully compliant with covering tests. All project invariants hold. **Verdict: PASS — ready for Slice 5b PR7 delivery**.
