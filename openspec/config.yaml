@@ -1,0 +1,76 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Java 25, Spring Boot 4.1.1, Maven wrapper (backend/mvnw), PostgreSQL 17.
+  Architecture: modular monolith, hexagonal architecture inside each module.
+  No Spring Modulith; module boundaries enforced by hand-written ArchUnit rules
+  (ModuleBoundariesTest). Do not reintroduce Spring Modulith.
+  Frontend: empty, not started.
+  Docs language: Spanish (docs/); SDD technical artifacts default to English.
+
+strict_tdd: false
+
+testing:
+  test_runner:
+    command: "cd backend && ./mvnw verify"
+    framework: "JUnit 5 (Spring Boot Test) + ArchUnit 1.5.0 + Testcontainers"
+  layers:
+    unit:
+      available: true
+      tool: "JUnit 5, Spring Boot Test (*Test classes, runs on `mvnw test` / surefire)"
+    integration:
+      available: true
+      tool: "Testcontainers PostgreSQL + Spring Boot Testcontainers (*IT classes, runs on `mvnw verify` / failsafe)"
+    e2e:
+      available: false
+      tool: null
+  coverage:
+    available: false
+    command: null
+  quality_tools:
+    linter:
+      available: false
+      command: null
+    type_checker:
+      available: false
+      command: null
+    formatter:
+      available: false
+      command: null
+  auxiliary_commands:
+    - name: "traceability-validator"
+      command: "python3 scripts/validar_trazabilidad.py"
+      purpose: "Validates RF/RNF/RN -> CU -> HU references and links across docs/"
+    - name: "schema-validator"
+      command: "./scripts/validar_esquema.sh"
+      purpose: "Checks 25 invariants against a real PostgreSQL 17 instance; requires Docker"
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - State which backend module(s) (per section 2.4 of docs/decisiones_arquitectura_tecnica.md) are affected
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Cross-reference RF/RNF/RN identifiers from docs/especificacion_requerimientos.md when applicable
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Respect hexagonal boundaries per module; atomic stock/Kardex effects go through synchronous output ports, never events
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - New test classes needing Docker/Testcontainers MUST use the `*IT` suffix (failsafe); plain `*Test` MUST NOT require Docker
+  apply:
+    guidelines:
+      - Follow existing code patterns
+      - No new class directly under a base package subfolder unless it is a real business module (see CLAUDE.md)
+      - Do not add Flyway migrations alongside backend/init-db (see DT-01 in docs/deuda_tecnica.md)
+    tdd: false
+    test_command: "cd backend && ./mvnw verify"
+  verify:
+    test_command: "cd backend && ./mvnw verify"
+    build_command: "cd backend && ./mvnw verify"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

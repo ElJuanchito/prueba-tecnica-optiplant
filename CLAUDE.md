@@ -12,7 +12,7 @@ Toda la documentación está en español. Mantener ese idioma al extenderla.
 
 ```bash
 python3 scripts/validar_trazabilidad.py   # referencias y enlaces entre documentos; sin dependencias
-./scripts/validar_esquema.sh              # 19 invariantes contra PostgreSQL 17 real; requiere Docker
+./scripts/validar_esquema.sh              # 25 invariantes contra PostgreSQL 17 real; requiere Docker
 cd backend && ./mvnw verify               # fronteras de arquitectura + integración con Testcontainers
 ```
 
@@ -58,7 +58,7 @@ Los diez módulos y sus responsabilidades están en la sección 2.4 del document
 
 | Regla del backend | Por qué |
 | :--- | :--- |
-| **Ninguna clase nueva en un subpaquete directo del paquete base** salvo que sea un módulo de negocio | La regla de fronteras trata cada subpaquete de `com.optiplant.inventory` como un módulo. Un `config/` o un `util/` agregarían al grafo verificado una frontera que nadie declaró. Por eso `InventoryApplication`, `SecurityConfig` y `JwtProperties` viven en el paquete base. |
+| **Ninguna clase nueva en un subpaquete directo del paquete base** salvo que sea un módulo de negocio | La regla de fronteras trata cada subpaquete de `com.optiplant.inventory` como un módulo. Un `config/` o un `util/` agregarían al grafo verificado una frontera que nadie declaró. Por eso `InventoryApplication` y `SecurityConfig` viven en el paquete base. `JwtProperties` vivía ahí como recurso provisional y ya migró a `iam/infrastructure/config`, que es su lugar definitivo: una clase de configuración pertenece al módulo que la usa, no a la raíz. |
 | **Las pruebas que necesitan Docker terminan en `IT`**, no en `Test` | `*Test` corre en `package` (surefire) y `*IT` en `verify` (failsafe). Con Data JPA en el classpath, un `@SpringBootTest` sin base no levanta contexto: si esa prueba corriera en `package`, la construcción de la imagen exigiría un demonio Docker. |
 | Las reglas de ArchUnit llevan **`allowEmptyShould(true)`** | Mientras los paquetes de módulo no existan, las reglas no encuentran clases que evaluar y ArchUnit falla ante un conjunto vacío por defecto. El vacío es el estado legítimo del proyecto, no un error de la regla. Cada módulo que aparezca entra automáticamente bajo esas comprobaciones. |
 | `shared/` será **módulo abierto** y debe ser **hoja** | Ningún módulo puede aparecer en sus importaciones, o el desacoplamiento por puertos se rompe por la puerta de atrás. Hay una regla de ArchUnit que lo verifica. |

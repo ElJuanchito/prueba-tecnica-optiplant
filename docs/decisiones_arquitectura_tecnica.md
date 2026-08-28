@@ -100,16 +100,22 @@ Definir qué hace cada capa importa; definir qué **no** hace importa más, porq
 2. **Concurrencia con hilos virtuales (Project Loom).** El sistema es intensivo en E/S: consultas de catálogo, lecturas cross-branch y transacciones. Los hilos virtuales maximizan el rendimiento sin obligar a escribir código reactivo, que complicaría un dominio ya de por sí transaccional. *Sostiene RNF-PER-01 y RNF-PER-02.*
 3. **Gestión transaccional declarativa madura.** `@Transactional` con *rollback* automático es exactamente lo que exige RNF-INT-01: una venta que falla a mitad de camino no deja stock descontado sin su asiento en el Kardex.
 
-### 3.2. Framework de Frontend: React 19 + Vite + TypeScript
+### 3.2. Stack de Frontend: React 19 + Vite + TypeScript + Ecosistema TanStack & shadcn/ui
 
 #### Decisión
-**React 19** con **Vite** como herramienta de construcción y **TypeScript** en modo estricto.
+**React 19** con **Vite**, **TypeScript** (modo estricto) y el siguiente conjunto arquitectónico de soporte:
+* **Enrutamiento:** TanStack Router (enrutamiento seguro con tipado estricto y sincronización de *search params* en URL).
+* **Estado de Servidor / Data Fetching:** TanStack Query v5 (gestión de caché, reintentos, *optimistic updates* e invalidación tras mutaciones).
+* **Componentes y Estilos:** Tailwind CSS + shadcn/ui (componentes accesibles basados en Radix UI, sin runtime overhead).
+* **Formularios y Validación:** React Hook Form + Zod (validación de esquemas en cliente replicando el contrato OpenAPI).
+* **Tablas de Datos:** TanStack Table (tablas densas de inventario y Kardex con soporte de ordenamiento, filtros y virtualización).
 
 #### Justificación Técnica
-1. **TypeScript en modo estricto extiende el contrato de la API hasta el cliente.** Los tipos generados desde la especificación OpenAPI (sección 3.8) hacen que un cambio incompatible en el backend rompa la compilación del frontend, no la producción.
-2. **El dominio es de formularios y tablas densas, no de animación.** React tiene el ecosistema más maduro para tablas virtualizadas, formularios con validación y gráficas — que es literalmente todo lo que este sistema necesita.
-3. **Vite entrega arranque en frío casi instantáneo**, lo que importa en un entorno contenerizado donde el ciclo de desarrollo pasa por reconstruir la imagen.
-4. **Es una decisión reversible.** El frontend consume exclusivamente la API REST; reemplazarlo por Vue o Angular no toca una sola línea del backend. Esa reversibilidad es consecuencia directa de la restricción técnica 2, y es la razón por la que esta decisión es la de menor riesgo del documento.
+1. **Tipado de extremo a extremo y validación en cliente.** TypeScript estricto más Zod y tipos OpenAPI aseguran que cambios en los contratos del backend rompan la compilación del frontend antes de llegar a producción.
+2. **Sincronización de estado en tablas densas.** TanStack Router combinado con TanStack Table y Zod permite validar y persistir filtros, paginación y ordenamiento en los *search params* de la URL de forma completamente tipada, permitiendo compartir enlaces y mantener estado de vistas de stock.
+3. **Desacoplamiento de reglas de negocio y Optimistic UI.** TanStack Query gestiona el ciclo de vida de peticiones y permite actualizar la interfaz de manera optimista en operaciones clave de inventario sin trasladar autoridad de dominio al cliente (*sostiene RNF-USA-02*).
+4. **Vite entrega arranque en frío casi instantáneo**, optimizando el flujo de desarrollo local y la construcción de la imagen contenerizada en Docker.
+5. **Es una decisión reversible.** El frontend consume exclusivamente la API REST; reemplazarlo no modifica el backend, cumpliendo la separación de responsabilidades y la restricción técnica 2.
 
 ### 3.3. Motor de Base de Datos y Modelo de Datos: PostgreSQL 17
 
