@@ -20,12 +20,13 @@ import org.springframework.data.repository.query.Param;
  * bite here either way.
  *
  * <p>{@link #hasActiveProducts} and {@link #countActiveProductsByCategoryIds}
- * read the {@code products} table. They are <strong>native</strong> only because
- * {@code ProductJpaEntity} does not exist until S5 (task 5.1); neither carries a
- * dynamic {@code Sort}, so D-10 is not violated. S5 may migrate them to JPQL
- * against {@code ProductJpaEntity} once it lands (see apply-progress S3 note).
- * The category listing therefore costs exactly two statements regardless of page
- * size — the page query plus one grouped count (design §6.2, task 3.4).
+ * read the product side. S3 shipped them as native SQL because
+ * {@code ProductJpaEntity} did not exist yet; S5 created that entity, so they are
+ * now JPQL over {@code ProductJpaEntity} as design §6.2 always specified (see
+ * apply-progress S5 note). Neither carries a dynamic {@code Sort}, so D-10 is not
+ * in play either way. The category listing still costs exactly two statements
+ * regardless of page size — the page query plus one grouped count (design §6.2,
+ * task 3.4).
  */
 public interface CategorySpringDataRepository extends JpaRepository<CategoryJpaEntity, Long> {
 
@@ -55,13 +56,10 @@ public interface CategorySpringDataRepository extends JpaRepository<CategoryJpaE
 	Page<CategoryJpaEntity> search(@Param("namePattern") String namePattern, @Param("active") Boolean active,
 			Pageable pageable);
 
-	@Query(value = """
-			SELECT EXISTS (
-			    SELECT 1 FROM products p
-			    JOIN categories c ON c.id = p.category_id
-			    WHERE c.external_id = :categoryExternalId AND p.is_active = TRUE
-			)
-			""", nativeQuery = true)
+	@Query("""
+			SELECT COUNT(p) > 0 FROM ProductJpaEntity p
+			WHERE p.category.externalId = :categoryExternalId AND p.active = TRUE
+			""")
 	boolean hasActiveProducts(@Param("categoryExternalId") UUID categoryExternalId);
 
 	/**
@@ -69,11 +67,10 @@ public interface CategorySpringDataRepository extends JpaRepository<CategoryJpaE
 	 * Each element is {@code [category_id (Long), count (Long)]}. Categories with
 	 * no active products are simply absent.
 	 */
-	@Query(value = """
-			SELECT p.category_id, COUNT(*)
-			FROM products p
-			WHERE p.category_id IN (:categoryIds) AND p.is_active = TRUE
-			GROUP BY p.category_id
-			""", nativeQuery = true)
+	@Query("""
+			SELECT p.category.id, COUNT(p) FROM ProductJpaEntity p
+			WHERE p.category.id IN :categoryIds AND p.active = TRUE
+			GROUP BY p.category.id
+			""")
 	List<Object[]> countActiveProductsByCategoryIds(@Param("categoryIds") List<Long> categoryIds);
 }

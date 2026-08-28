@@ -99,19 +99,19 @@ Decision needed before apply: **No.** `design.md` §12 leaves no open question.
 
 ## Phase 5 — S5: Product infrastructure (PR5)
 
-- [ ] 5.1 Create `ProductJpaEntity.java` — `@ManyToOne(fetch = LAZY, optional = false)` to `CategoryJpaEntity`, `@OneToMany(mappedBy = "product", cascade = ALL, orphanRemoval = true)` to units (design §6.2, D-5); `conversionFactor` side is `BigDecimal`.
-- [ ] 5.2 Create `ProductUnitJpaEntity.java` — maps `product_units`; **no** `updated_at` (the table has none).
-- [ ] 5.3 Create `ProductSpringDataRepository.java` — the JPQL `search` of design §6.2 with `JOIN FETCH p.category`, `:q` contains-match against `LOWER(sku)`/`LOWER(name)`, `:categoryId`, `:active`. **JPQL, never native** — a native query rejects a dynamic `Sort` (D-10). Add `findByExternalId` with the units fetched, and `existsBySku`.
-- [ ] 5.4 **[BLOCKING]** Verify by running that `Pageable` with a `Sort` built from `ProductSort` actually sorts, on all three fields and both directions — this is the exact class of fact the repo learned by executing (`AuditWriteAdapter.java:56-58`).
-- [ ] 5.5 Create `ProductMapper.java` and `ProductPersistenceAdapter.java` implementing `ProductRepositoryPort`; `create` persists product and inline units in one save via cascade (R-06); no numeric `id` leaves the adapter.
-- [ ] 5.6 Create `catalog/infrastructure/adapter/in/web/ProductController.java` — the six endpoints of contract §6.2; detail response embeds `category` and `units`, list item omits `units` and `description`; `201 + Location`; `q`/`categoryId`/`active`/`sort`/`direction`/`page`/`size` parsed per design §6.1.
-- [ ] 5.7 Add the `baseUnit` rejection to `EditProductRequest` — the field is declared solely to be refused with `IllegalArgumentException` → `400 invalid_request` (design §6.1, D-8, contract §12.3 point 3). `"baseUnit": null` counts as absent.
-- [ ] 5.8 Extend `CatalogExceptionHandler` with the product mappings and with `MethodArgumentNotValidException` / `MethodArgumentTypeMismatchException` → `400 invalid_request` (design §6.3). Class names verified in `spring-web-7.0.9.jar` (design §0) — do not substitute a remembered Boot 3 package.
-- [ ] 5.9 Test IT: `ProductCatalogIT` — full cycle create (with and without inline units) / edit / disable / enable / read by `externalId`; `409 duplicate_sku` on create **and** edit; `409 category_inactive` on create under an inactive category and on re-enabling under one; `404 category_not_found`; an inactive product still returns `200` with `active: false` (R-10), never `404`.
-- [ ] 5.10 Test IT: `PUT /api/catalog/products/{id}` carrying `"baseUnit": "LITRO"` returns `400 invalid_request` and changes nothing. **Actually send the field** — the Jackson behaviour here is the kind that reads as correct and fails when run (design §6.1).
-- [ ] 5.11 Test IT: listing — active-only default, `active=false`, `active=all`, `active=maybe` → `400`; `size=5000` clamps to 100; `sort=(select 1)` → `400` and is never interpolated; searching `npk` finds `FERT-NPK-151515` (R-12).
-- [ ] 5.12 Test IT: disabling a product with stock in two branches leaves both `branch_inventories` rows untouched (R-10).
-- [ ] 5.13 Run `cd backend && ./mvnw verify`.
+- [x] 5.1 Create `ProductJpaEntity.java` — `@ManyToOne(fetch = LAZY, optional = false)` to `CategoryJpaEntity`, `@OneToMany(mappedBy = "product", cascade = ALL, orphanRemoval = true)` to units (design §6.2, D-5); `conversionFactor` side is `BigDecimal`.
+- [x] 5.2 Create `ProductUnitJpaEntity.java` — maps `product_units`; **no** `updated_at` (the table has none).
+- [x] 5.3 Create `ProductSpringDataRepository.java` — the JPQL `search` of design §6.2 with `JOIN FETCH p.category`, `:q` contains-match against `LOWER(sku)`/`LOWER(name)`, `:categoryId`, `:active`. **JPQL, never native** — a native query rejects a dynamic `Sort` (D-10). Add `findByExternalId` with the units fetched, and `existsBySku`.
+- [x] 5.4 **[BLOCKING]** Verify by running that `Pageable` with a `Sort` built from `ProductSort` actually sorts, on all three fields and both directions — this is the exact class of fact the repo learned by executing (`AuditWriteAdapter.java:56-58`).
+- [x] 5.5 Create `ProductMapper.java` and `ProductPersistenceAdapter.java` implementing `ProductRepositoryPort`; `create` persists product and inline units in one save via cascade (R-06); no numeric `id` leaves the adapter.
+- [x] 5.6 Create `catalog/infrastructure/adapter/in/web/ProductController.java` — the six endpoints of contract §6.2; detail response embeds `category` and `units`, list item omits `units` and `description`; `201 + Location`; `q`/`categoryId`/`active`/`sort`/`direction`/`page`/`size` parsed per design §6.1.
+- [x] 5.7 Add the `baseUnit` rejection to `EditProductRequest` — the field is declared solely to be refused with `IllegalArgumentException` → `400 invalid_request` (design §6.1, D-8, contract §12.3 point 3). `"baseUnit": null` counts as absent.
+- [x] 5.8 Extend `CatalogExceptionHandler` with the product mappings and with `MethodArgumentNotValidException` / `MethodArgumentTypeMismatchException` → `400 invalid_request` (design §6.3). Class names verified in `spring-web-7.0.9.jar` (design §0) — do not substitute a remembered Boot 3 package.
+- [x] 5.9 Test IT: `ProductCatalogIT` — full cycle create (with and without inline units) / edit / disable / enable / read by `externalId`; `409 duplicate_sku` on create **and** edit; `409 category_inactive` on create under an inactive category and on re-enabling under one; `404 category_not_found`; an inactive product still returns `200` with `active: false` (R-10), never `404`.
+- [x] 5.10 Test IT: `PUT /api/catalog/products/{id}` carrying `"baseUnit": "LITRO"` returns `400 invalid_request` and changes nothing. **Actually send the field** — the Jackson behaviour here is the kind that reads as correct and fails when run (design §6.1).
+- [x] 5.11 Test IT: listing — active-only default, `active=false`, `active=all`, `active=maybe` → `400`; `size=5000` clamps to 100; `sort=(select 1)` → `400` and is never interpolated; searching `npk` finds `FERT-NPK-151515` (R-12).
+- [x] 5.12 Test IT: disabling a product with stock in two branches leaves both `branch_inventories` rows untouched (R-10).
+- [x] 5.13 Run `cd backend && ./mvnw verify`.
 
 ## Phase 6 — S6: Units of measure per product (PR6)
 

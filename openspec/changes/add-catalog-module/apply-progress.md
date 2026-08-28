@@ -357,3 +357,110 @@ None. `design.md` §3.1, §3.3, §3.4, §5.1, §5.3, §6.2 and `tasks.md` Phase 
 - Boundary: starts from the S3 branch; ends with the product value objects, aggregate, projections, exceptions, both ports and `ProductAdminService` plus their unit tests. Nothing is wired to HTTP or persistence — `/api/catalog/products` does not exist yet (S5).
 - Rollback: `git revert` of this commit; no consumer of the new types exists outside their own tests.
 - Estimated review budget impact: ~470 lines production + ~430 lines unit tests (design forecast: ~420). Planned S4 slice of the approved 8-PR chain; proceeds as a bounded slice per the tasks `Review Workload Forecast`.
+
+---
+
+## Phase 5 — S5: Product infrastructure (PR5)
+
+**Mode**: Standard (openspec, `strict_tdd: false`).
+**Branch**: `feat/ep-02-catalog-06-s5-productos-infra` (chained on S4).
+**Status**: 13/13 tasks complete. Ready for verify.
+
+### Completed tasks
+
+- [x] 5.1 `catalog/infrastructure/adapter/out/persistence/ProductJpaEntity.java` — `@Entity @Table(name = "products")`, Lombok `@Getter/@Setter/@NoArgsConstructor` as `BranchJpaEntity`. `@ManyToOne(fetch = LAZY, optional = false) @JoinColumn(name = "category_id", nullable = false)` to `CategoryJpaEntity`; `@OneToMany(mappedBy = "product", cascade = ALL, orphanRemoval = true)` to `ProductUnitJpaEntity` with an `addUnit(...)` helper that keeps the back-reference consistent for the cascade. `is_active` → `boolean active`, `base_unit` → `String baseUnit`, `external_id` field-initialised to `UUID.randomUUID()`. `ddl-auto=validate` passes against the real schema.
+- [x] 5.2 `ProductUnitJpaEntity.java` — maps `product_units`; `conversion_factor NUMERIC(12,4)` → `BigDecimal conversionFactor`; `is_default_sale_unit` → `boolean defaultSaleUnit`; `@ManyToOne(fetch = LAZY, optional = false)` back to `ProductJpaEntity`. **No `updatedAt` field** — the table has no such column.
+- [x] 5.3 `ProductSpringDataRepository.java` (`extends JpaRepository<ProductJpaEntity, Long>`) — `search(...)` is **JPQL** (`@Query` value + explicit `countQuery`) with `JOIN FETCH p.category c`, `:q` contains-match against `LOWER(p.sku)` / `LOWER(p.name)`, `:categoryExternalId` (see deviation 1) and `:active`; the `Pageable` carries the `Sort`. `findByExternalIdWithUnits` is `SELECT DISTINCT p ... JOIN FETCH p.category LEFT JOIN FETCH p.units` (see deviation 2). `existsBySku(normalizedSku, excludingExternalId)` JPQL, null-guarded on the create path exactly as S3's `existsByNameIgnoringCase`.
+- [x] 5.4 **[BLOCKING] — passed by execution.** `ProductCatalogIT.pageableSortFromProductSortOrdersAllThreeFieldsInBothDirections` creates three products with `sku`/`name`/`createdAt` deliberately in three *different* orders (20 ms sleeps between creates), then asserts the server-returned order for all six combinations: `sort=sku` asc → `[AAA, MMM, ZZZ]` / desc reversed; `sort=name` asc → `[Aaa, Mmm, Zzz]` / desc reversed; `sort=createdAt` asc → creation order `[1st, 2nd, 3rd]` / desc reversed. All six `assertThat(...).containsExactly(...)` pass against real PostgreSQL 17 — the `Pageable` `Sort` built from `ProductSort` genuinely orders on every field and direction.
+- [x] 5.5 `ProductMapper.java` (MapStruct `@Mapper(componentModel = "spring")`, `toDomain` / `toSummary` / `toCategoryRef` / `toUnit` + `String↔Sku` / `String↔UnitCode` default helpers, same style as `CategoryMapper`). `ProductPersistenceAdapter.java` (`@Component implements ProductRepositoryPort`) — `create` builds the `ProductJpaEntity` + inline `ProductUnitJpaEntity` rows and persists them in **one** `save` via the `cascade = ALL` association (R-06); `update`/`setActive`/`setBaseUnit` load-mutate-save; `list` builds `Sort` from the closed `ProductSort` allow-list. Injects `CategorySpringDataRepository` (same infra package) to resolve `category_id` for writes — the adapter is the only class that sees a numeric `id` and never returns one.
+- [x] 5.6 `catalog/infrastructure/adapter/in/web/ProductController.java` — `@RestController @RequestMapping("/api/catalog/products")`, six endpoints of contract §6.2. `GET /` list with `q`/`categoryId`/`active`/`sort`/`direction`/`page`/`size`; `active` & `sort` bound as `String` and parsed via `ActiveFilter.parse` / `ProductSort.parse`; `direction` parsed to a `boolean ascending` (`asc`/`desc`, else `IllegalArgumentException`); `size` clamped to `[1,100]`, never rejected; `page` floored at 0. `GET /{externalId}` detail embeds `category` + `units`; list item omits `units` and `description`. `POST /` → `201 + Location: /api/catalog/products/{externalId}`. `PATCH /{externalId}/disable|enable` → `200`. No `DELETE`.
+- [x] 5.7 `ProductController.EditProductRequest` declares `String baseUnit` solely to reject it: the controller's `edit` method throws `new IllegalArgumentException("baseUnit cannot be changed through this endpoint")` → `400 invalid_request` **before** calling the use case when `request.baseUnit() != null`. `"baseUnit": null` is indistinguishable from absent and passes through (D-8, contract §12.3 point 3). Proven by IT 5.10.
+- [x] 5.8 `CatalogExceptionHandler` extended: `ProductNotFoundException` → `404 product_not_found`; `DuplicateSkuException` → `409 duplicate_sku`; `DuplicateProductUnitException` → `409 duplicate_product_unit`; `InvalidConversionFactorException` → `400 invalid_conversion_factor` (last two reachable through `POST /products` with inline units). `DataIntegrityViolationException` now also maps a message naming `products_sku_key` / `products_sku` → `409 duplicate_sku`; anything still unidentifiable rethrows → `500` (D-14). `MethodArgumentNotValidException` / `MethodArgumentTypeMismatchException` were already wired in S3 and their fully-qualified names (`org.springframework.web.bind.MethodArgumentNotValidException`, `org.springframework.web.method.annotation.MethodArgumentTypeMismatchException`) plus `org.springframework.http.HttpMethod` were re-confirmed present in `~/.m2/.../spring-web/7.0.9/spring-web-7.0.9.jar` via `unzip -l` (design §0).
+- [x] 5.9 `ProductCatalogIT` — `fullCreateEditDisableEnableReadCycle` (create with inline units + without, Location header, `get` by `externalId`, edit, disable → `200 active:false`, **`get` still `200` with `active:false` not `404`** (R-10), enable); `duplicateSkuIsRejectedOnCreateAndOnEdit` (case-insensitive, both paths, `409 duplicate_sku`); `categoryInactiveIsRejectedOnCreateAndOnReEnable` (`409 category_inactive` creating under a disabled category, and re-enabling a product whose category was disabled after the product); `unknownCategoryReturns404OnCreate` (`404 category_not_found`).
+- [x] 5.10 `ProductCatalogIT.putCarryingABaseUnitFieldReturns400AndChangesNothing` — sends a real JSON body with `"baseUnit": "LITRO"` (dedicated `EditWithBaseUnitBody` record so Jackson actually serialises the field), asserts `400 invalid_request`, then `GET`s and asserts `baseUnit` is still `KG` and the `name` is unchanged.
+- [x] 5.11 `ProductCatalogIT.listingRespectsActiveFilterSizeClampAndSortAllowList` (active-only default, `active=false`, `active=all`, `active=maybe` → `400 invalid_request`, `size=5000` → envelope `size == 100`, `sort=(select 1)` → `400 invalid_request` via `ProductSort.parse` before any query) + `searchFindsTheSeededNpkProduct` (`q=npk` returns the seeded `FERT-NPK-151515` product `d0000000-…-0001`).
+- [x] 5.12 `ProductCatalogIT.disablingAProductWithStockInTwoBranchesLeavesBranchInventoriesUntouched` — creates a product, inserts `branch_inventories` rows for branches 1 and 2 via `JdbcTemplate` (`current_stock` 25.5000 / 10.0000), `PATCH .../disable` → `200 active:false`, then re-reads both rows and asserts count 2 and both `current_stock` values unchanged (R-10 — disable never touches stock).
+- [x] 5.13 `cd backend && ./mvnw verify` — `BUILD SUCCESS` (see gate output).
+
+### Files changed
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/ProductJpaEntity.java` | Created | JPA entity for `products`; `@ManyToOne` LAZY to `CategoryJpaEntity`, `@OneToMany` cascade ALL + orphanRemoval to units; `addUnit` helper |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/ProductUnitJpaEntity.java` | Created | JPA entity for `product_units`; `BigDecimal conversionFactor`; **no `updatedAt`** |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/ProductSpringDataRepository.java` | Created | JPQL `search` (+ explicit `countQuery`), `findByExternalIdWithUnits` (`DISTINCT` + fetch joins), `existsBySku` (null-guarded) |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/ProductMapper.java` | Created | MapStruct entity ↔ domain; `toDomain`/`toSummary`/`toCategoryRef`/`toUnit` + VO helpers |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/ProductPersistenceAdapter.java` | Created | `ProductRepositoryPort` impl; single-save cascade create; `Sort` from `ProductSort`; only class that sees numeric `id` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/in/web/ProductController.java` | Created | Six `/api/catalog/products` endpoints; `201 + Location`; detail embeds category+units, list item omits units+description; `size` clamped; `PUT` rejects `baseUnit` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/in/web/CatalogExceptionHandler.java` | Modified | + `ProductNotFoundException`/`DuplicateSkuException`/`DuplicateProductUnitException`/`InvalidConversionFactorException` mappings; `products_sku_key` branch on `DataIntegrityViolationException` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/CategorySpringDataRepository.java` | Modified | S3 carry-forward: the two product-side reads (`hasActiveProducts`, `countActiveProductsByCategoryIds`) migrated from native SQL to JPQL over `ProductJpaEntity` (now that it exists), matching design §6.2 verbatim; class Javadoc updated |
+| `backend/src/test/java/com/optiplant/inventory/ProductCatalogIT.java` | Created | 9 Testcontainers integration tests (5.4, 5.9–5.12) |
+| `openspec/changes/add-catalog-module/tasks.md` | Modified | Phase 5 tasks 5.1–5.13 marked `[x]` |
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | `cd backend && ./mvnw test -Dtest=ProductAdminServiceTest` — green (14/14); ran inside the full `verify` (surefire total `Tests run: 139, Failures: 0, Errors: 0, Skipped: 0` — unchanged from S4 because S5 adds no `*Test`, only a `*IT`). `ModuleBoundariesTest` 5/5, `SharedIsFrameworkFreeTest` 1/1 stay green with the new `catalog/infrastructure` product classes. |
+| Runtime harness command/scenario and exact result | `cd backend && ./mvnw verify` — real PostgreSQL 17 via Testcontainers. `ProductCatalogIT` **9/9**; `CategoryCatalogIT` **8/8** (unaffected by the native→JPQL migration); failsafe total `Tests run: 70, Failures: 0, Errors: 0, Skipped: 0` (was 61 at S3 → +9 = exactly `ProductCatalogIT`). `BUILD SUCCESS`, total 01:01 min. |
+| Rollback boundary | `git revert` of this commit removes the entire product persistence + web tree (`ProductJpaEntity`, `ProductUnitJpaEntity`, `ProductSpringDataRepository`, `ProductMapper`, `ProductPersistenceAdapter`, `ProductController`), reverts the four new `CatalogExceptionHandler` handlers + the `products_sku_key` branch, reverts `CategorySpringDataRepository` to its S3 native reads, and deletes `ProductCatalogIT`. `/api/catalog/products` disappears; `/api/catalog/categories` and every `iam` route are untouched. |
+
+### Gate output (run, not asserted from memory)
+
+**`cd backend && ./mvnw verify`** — `BUILD SUCCESS`:
+
+```
+[INFO] --- surefire ---
+[INFO] Tests run: 139, Failures: 0, Errors: 0, Skipped: 0
+[INFO]   ModuleBoundariesTest                    Tests run: 5,  Failures: 0, Errors: 0
+[INFO]   SharedIsFrameworkFreeTest               Tests run: 1,  Failures: 0, Errors: 0
+[INFO]   catalog...ProductAdminServiceTest       Tests run: 14, Failures: 0, Errors: 0
+[INFO]   catalog...CategoryAdminServiceTest      Tests run: 13, Failures: 0, Errors: 0
+[INFO]   catalog...ProductInvariantsTest         Tests run: 8,  Failures: 0, Errors: 0
+[INFO]   catalog...SkuTest                       Tests run: 9,  Failures: 0, Errors: 0
+[INFO]   catalog...UnitCodeTest                  Tests run: 11, Failures: 0, Errors: 0
+[INFO]   catalog...ActiveFilterTest              Tests run: 7,  Failures: 0, Errors: 0
+[INFO]   catalog...CategoryNameTest              Tests run: 10, Failures: 0, Errors: 0
+
+[INFO] --- failsafe (*IT, Testcontainers / real PostgreSQL 17) ---
+[INFO] Tests run: 70, Failures: 0, Errors: 0, Skipped: 0
+[INFO]   ProductCatalogIT                        Tests run: 9,  Failures: 0, Errors: 0, Time elapsed: 2.621 s
+[INFO]   CategoryCatalogIT                       Tests run: 8,  Failures: 0, Errors: 0, Time elapsed: 1.548 s
+
+[INFO] BUILD SUCCESS
+[INFO] Total time:  01:01 min
+```
+
+The single `ERROR`-level stack trace in the log is `AuditAtomicityIT`'s own deliberate `AtomicityFixtureFailure` (audit-write rollback fixture); that suite still reports `Tests run: 2, Failures: 0, Errors: 0` — same benign line noted in the S1 progress.
+
+**5.4 blocking verification — real ordering, all three fields × both directions:**
+
+| `sort` | `direction=asc` result | `direction=desc` result |
+|---|---|---|
+| `sku` | `[AAA-SORT, MMM-SORT, ZZZ-SORT]` (2nd, 1st, 3rd created) | reversed |
+| `name` | `[Prod Aaa, Prod Mmm, Prod Zzz]` (3rd, 2nd, 1st created) | reversed |
+| `createdAt` | creation order `[1st, 2nd, 3rd]` | reversed |
+
+All six `containsExactly` assertions passed against real PostgreSQL 17.
+
+### S3 native-read migration — done
+
+The S3 apply-progress flagged that `CategorySpringDataRepository.hasActiveProducts` / `countActiveProductsByCategoryIds` were native SQL only because `ProductJpaEntity` did not exist yet, and that S5 *may* migrate them. **Migrated.** Both are now JPQL over `ProductJpaEntity` (`p.category.externalId = :categoryExternalId AND p.active = TRUE`; `SELECT p.category.id, COUNT(p) ... GROUP BY p.category.id`), which is exactly what design §6.2 always specified. `CategoryCatalogIT` (8/8) was run as part of `./mvnw verify` and stays green, so the migration is behaviour-preserving. The port contract (`hasActiveProducts(UUID)`, `CategorySummary.activeProductCount`) is unchanged. S3 deviation 1 is thereby retired.
+
+### Deviations from design
+
+1. **Product search filters by `c.externalId = :categoryExternalId`, not the design snippet's `c.id = :categoryId`.** Design §6.2 writes the category-filter clause as `c.id = :categoryId`, implying the adapter resolves the UUID → numeric id first. Filtering on `c.externalId` directly is behaviourally identical, keeps `ProductPersistenceAdapter` free of category numeric-id plumbing for the *read* path (it still resolves `category_id` for *writes*, where the `@ManyToOne` needs a managed entity), and matches the "no numeric id crosses a boundary" spirit. No contract, port, API-surface or error-code change.
+2. **`:q` is a pre-lowercased `%contains%` pattern passed as a bind parameter, not `LOWER(CONCAT('%', :q, '%'))` inline.** Identical correction to S3 deviation 2: wrapping a nullable bind parameter in `LOWER(CONCAT(...))` makes PostgreSQL infer `lower(bytea)` and 500 when the parameter is `null`. The adapter builds `null` or `"%" + q.toLowerCase(ROOT) + "%"` and the JPQL keeps `LOWER()` on the `p.sku` / `p.name` columns only. Same case-insensitive contains semantics that task 5.3 asks for ("contains-match against `LOWER(sku)`/`LOWER(name)`"). The load-bearing rule — **JPQL, never native** (D-10) — is honoured.
+3. **`findByExternalIdWithUnits` uses `SELECT DISTINCT p` and an explicit `countQuery` on `search`.** `DISTINCT` is required so a fetch-joined `@OneToMany` (units) does not multiply the root rows and break the `Optional<>` single-result contract; the explicit `countQuery` (without the `JOIN FETCH`) keeps pagination's count valid. Both are standard Spring Data JPA idioms, not design departures.
+4. **`IllegalStateException` from `Product`'s "> 1 default sale unit" invariant is left unmapped in `CatalogExceptionHandler`.** Design §6.3's mapping table does not list it and instructs against adding mappings beyond the table; validating a two-defaults inline-units payload with a clean code belongs to the units subresource work (S6). Reachable today only via `POST /products` with a hand-crafted double-default `units` array; it would currently surface as `500`. Noted rather than silently "fixed".
+
+### Issues found
+
+None that block S5. `design.md` §6.1–§6.3 and `tasks.md` Phase 5 were complete and internally consistent. The only real friction (design's `c.id = :categoryId` assuming an id-resolution step the read adapter would rather not carry, and the `LOWER(CONCAT(...))` null-inference trap already known from S3) is handled by deviations 1–2 without redesigning anything.
+
+### Workload / PR boundary
+
+- Mode: chained PR slice — PR5 of 8 (feature-branch-chain; PR5 targets PR4's branch).
+- Current work unit: S5 — Product infrastructure.
+- Boundary: starts from the S4 branch; ends with the two product JPA entities, the Spring Data repository, MapStruct mapper, persistence adapter, `ProductController`, the four new `CatalogExceptionHandler` mappings, the S3 native→JPQL migration, and `ProductCatalogIT`. `/api/catalog/products` is now live and Testcontainers-verified; the units subresource and the base-unit rule remain unwired (S6, S7).
+- Estimated review budget impact: ~430 lines production + ~330 lines IT (design forecast: ~430). Planned S5 slice of the approved 8-PR chain; proceeds as a bounded slice per the tasks `Review Workload Forecast`.
