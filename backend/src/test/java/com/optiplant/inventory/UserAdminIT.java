@@ -36,6 +36,7 @@ class UserAdminIT {
 	private static final String SEED_PASSWORD = "Password123!";
 	// Seed order is fixed (backend/init-db/02-seed-data.sql).
 	private static final UUID BOGOTA_BRANCH_EXTERNAL_ID = UUID.fromString("b0000000-0000-0000-0000-000000000001");
+	private static final UUID MEDELLIN_BRANCH_EXTERNAL_ID = UUID.fromString("b0000000-0000-0000-0000-000000000002");
 
 	@LocalServerPort
 	private int port;
@@ -45,11 +46,13 @@ class UserAdminIT {
 
 	private RestClient restClient;
 	private String adminToken;
+	private String gerenteBogotaToken;
 
 	@BeforeEach
 	void setUp() {
 		restClient = RestClient.builder().baseUrl("http://localhost:" + port).build();
 		adminToken = tokenPara("admin.corp", SEED_PASSWORD);
+		gerenteBogotaToken = tokenPara("gerente.bogota", SEED_PASSWORD);
 	}
 
 	@Test
@@ -149,18 +152,75 @@ class UserAdminIT {
 	}
 
 	@Test
-	void unGerenteDeSucursalNoAdminEsRechazadoConCuatroCientosTres() {
-		String tokenGerente = tokenPara("gerente.bogota", SEED_PASSWORD);
+	void unOperadorEsRechazadoConCuatroCientosTresAlConsultarUsuarios() {
+		String tokenOperador = tokenPara("operador.bogota", SEED_PASSWORD);
 
 		ResponseEntity<String> respuesta = restClient.get()
 				.uri("/api/admin/users")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenGerente)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenOperador)
 				.retrieve()
 				.onStatus(status -> true, (req, res) -> {
 				})
 				.toEntity(String.class);
 
 		assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+	}
+
+	@Test
+	void unGerenteDeSucursalCreaUnOperadorEnSuPropiaSucursal() {
+		UserResponseBody creado = crearUsuarioComo(gerenteBogotaToken, "it.gerente.crea." + shortSuffix(),
+				"it.gerente.crea." + shortSuffix() + "@optiplant.com", Role.OPERATOR, BOGOTA_BRANCH_EXTERNAL_ID);
+
+		assertThat(creado.role()).isEqualTo("OPERATOR");
+		assertThat(creado.branchId()).isEqualTo(BOGOTA_BRANCH_EXTERNAL_ID);
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeCrearUnOperadorEnOtraSucursal() {
+		ResponseEntity<String> respuesta = crearUsuarioRawComo(gerenteBogotaToken,
+				"it.gerente.otra." + shortSuffix(), "it.gerente.otra." + shortSuffix() + "@optiplant.com",
+				Role.OPERATOR, MEDELLIN_BRANCH_EXTERNAL_ID);
+
+		assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeCrearOtroGerenteDeSucursal() {
+		ResponseEntity<String> respuesta = crearUsuarioRawComo(gerenteBogotaToken,
+				"it.gerente.gerente." + shortSuffix(), "it.gerente.gerente." + shortSuffix() + "@optiplant.com",
+				Role.BRANCH_MANAGER, BOGOTA_BRANCH_EXTERNAL_ID);
+
+		assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeGestionarUnOperadorDeOtraSucursal() {
+		UserResponseBody operadorMedellin = crearUsuario("it.medellin." + shortSuffix(), Role.OPERATOR,
+				MEDELLIN_BRANCH_EXTERNAL_ID);
+
+		ResponseEntity<Void> respuestaDisable = disableComo(gerenteBogotaToken, operadorMedellin.externalId());
+		assertThat(respuestaDisable.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+	}
+
+	@Test
+	void laConsultaDeUnGerenteDeSucursalQuedaAcotadaASuPropiaSucursalYARolOperador() {
+		crearUsuario("it.bogota." + shortSuffix(), Role.OPERATOR, BOGOTA_BRANCH_EXTERNAL_ID);
+		crearUsuario("it.medellin." + shortSuffix(), Role.OPERATOR, MEDELLIN_BRANCH_EXTERNAL_ID);
+
+		Map<String, Object> pagina = restClient.get()
+				.uri("/api/admin/users?size=100")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + gerenteBogotaToken)
+				.retrieve()
+				.body(Map.class);
+
+		assertThat(pagina).isNotNull();
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> content = (List<Map<String, Object>>) pagina.get("content");
+		assertThat(content).isNotEmpty();
+		content.forEach(entry -> {
+			assertThat(entry.get("role")).isEqualTo("OPERATOR");
+			assertThat(entry.get("branchId")).isEqualTo(BOGOTA_BRANCH_EXTERNAL_ID.toString());
+		});
 	}
 
 	@Test
@@ -245,9 +305,14 @@ class UserAdminIT {
 	}
 
 	private UserResponseBody crearUsuarioConEmail(String username, String email, Role role, UUID branchId) {
+		return crearUsuarioComo(adminToken, username, email, role, branchId);
+	}
+
+	private UserResponseBody crearUsuarioComo(String token, String username, String email, Role role,
+			UUID branchId) {
 		ResponseEntity<UserResponseBody> respuesta = restClient.post()
 				.uri("/api/admin/users")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
 				.contentType(MediaType.APPLICATION_JSON)
 				.body(new CreateUserRequestBody(username, email, SEED_PASSWORD, "Usuario de Prueba", role.name(),
 						branchId))
@@ -259,9 +324,14 @@ class UserAdminIT {
 	}
 
 	private ResponseEntity<String> crearUsuarioRaw(String username, String email, Role role, UUID branchId) {
+		return crearUsuarioRawComo(adminToken, username, email, role, branchId);
+	}
+
+	private ResponseEntity<String> crearUsuarioRawComo(String token, String username, String email, Role role,
+			UUID branchId) {
 		return restClient.post()
 				.uri("/api/admin/users")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
 				.contentType(MediaType.APPLICATION_JSON)
 				.body(new CreateUserRequestBody(username, email, SEED_PASSWORD, "Usuario de Prueba", role.name(),
 						branchId))
@@ -272,9 +342,13 @@ class UserAdminIT {
 	}
 
 	private ResponseEntity<Void> disable(UUID externalId) {
+		return disableComo(adminToken, externalId);
+	}
+
+	private ResponseEntity<Void> disableComo(String token, UUID externalId) {
 		return restClient.method(HttpMethod.PATCH)
 				.uri("/api/admin/users/{externalId}/disable", externalId)
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
 				.retrieve()
 				.onStatus(status -> true, (req, res) -> {
 				})

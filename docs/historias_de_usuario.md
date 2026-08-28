@@ -92,6 +92,7 @@ Toda historia del backlog cumple: **I**ndependiente, **N**egociable, **V**aliosa
 * **Dado** un intento de crear una sucursal con un código ya existente, **cuando** se confirma, **entonces** el sistema rechaza la operación indicando el conflicto.
 * **Dado** un usuario creado con rol `OPERATOR`, **cuando** inicia sesión, **entonces** solo accede a las capacidades autorizadas para ese rol.
 * **Dado** un usuario deshabilitado, **cuando** se consulta el histórico, **entonces** sus movimientos previos permanecen visibles e intactos (baja lógica, nunca física).
+* **Dado** un gerente de sucursal, **cuando** da de alta, edita o deshabilita un usuario con rol `OPERATOR` de su propia sucursal, **entonces** la operación se ejecuta; si el usuario objetivo pertenece a otra sucursal o no es `OPERATOR`, el sistema la rechaza.
 
 ---
 

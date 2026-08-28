@@ -29,11 +29,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * {@code /api/admin/users/**} — user create/edit/disable/query
- * (user-administration capability). {@code ADMIN}-gated by {@code
- * SecurityConfig}'s matcher (slice 3); no service-level role check is needed
- * here (mirrors {@code AuditLogController}'s equivalent rationale for {@code
- * OPERATOR}). Every response DTO exposes {@code external_id} only, never the
- * internal numeric {@code id} or the password hash.
+ * (user-administration capability). {@code SecurityConfig}'s matcher admits
+ * {@code ADMIN} and {@code BRANCH_MANAGER}; {@code OPERATOR} never reaches
+ * this controller (mirrors {@code AuditLogController}'s equivalent
+ * rationale). {@code BRANCH_MANAGER}'s scope (only {@code OPERATOR}, only
+ * their own branch) is enforced in {@code UserAdminService}, not here — the
+ * actor is passed through unchanged so the service can apply it. Every
+ * response DTO exposes {@code external_id} only, never the internal numeric
+ * {@code id} or the password hash.
  */
 @RestController
 @RequestMapping("/api/admin/users")
@@ -77,8 +80,9 @@ public class UserAdminController {
 	public UserPageResponse list(@RequestParam(required = false) Boolean active,
 			@RequestParam(required = false) Role role, @RequestParam(required = false) UUID branchId,
 			@RequestParam(defaultValue = "0") int page, @RequestParam(required = false) Integer size) {
+		AuthenticatedPrincipal actor = principalAccessor.require();
 		int pageSize = size == null ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
-		UserPage result = manageUsersUseCase.list(new UserQuery(active, role, branchId, page, pageSize));
+		UserPage result = manageUsersUseCase.list(actor, new UserQuery(active, role, branchId, page, pageSize));
 
 		List<UserResponse> content = result.content().stream().map(UserAdminController::toResponse).toList();
 		return new UserPageResponse(content, result.totalElements(), result.page(), result.size());

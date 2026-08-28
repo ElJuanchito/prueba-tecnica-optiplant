@@ -6,13 +6,23 @@ CRUD over users and their roles, with logical disable only, per RF-SEG-02 (`docs
 
 ## Requirements
 
-### Requirement: Only ADMIN manages users
+### Requirement: ADMIN manages any user; BRANCH_MANAGER manages OPERATOR within their own branch
 
-The system MUST restrict user create, edit, disable, and query-all operations to the `ADMIN` role (`docs/casos_de_uso.md:72`).
+The system MUST allow `ADMIN` to create, edit, disable, and query any user in any branch. The system MUST allow `BRANCH_MANAGER` to create, edit, disable, and query users only when the target user's role is `OPERATOR` and the target user's branch equals the `BRANCH_MANAGER`'s own session branch — this applies both to the pre-existing target (edit/disable) and to the requested role/branch (create/edit), so a `BRANCH_MANAGER` can neither manage a user outside their branch nor promote/move an `OPERATOR` out of that scope. `OPERATOR` MUST NOT manage any user (`docs/casos_de_uso.md:73`).
 
-#### Scenario: Non-ADMIN attempts user management
-- GIVEN an authenticated `BRANCH_MANAGER` or `OPERATOR`
-- WHEN they call a user create, edit, or disable endpoint
+#### Scenario: OPERATOR attempts user management
+- GIVEN an authenticated `OPERATOR`
+- WHEN they call a user create, edit, disable, or query endpoint
+- THEN the system responds `403 Forbidden`
+
+#### Scenario: BRANCH_MANAGER manages an OPERATOR in their own branch
+- GIVEN an authenticated `BRANCH_MANAGER` and an `OPERATOR` belonging to their own branch (or a request to create one there)
+- WHEN they create, edit, or disable that `OPERATOR`
+- THEN the operation succeeds
+
+#### Scenario: BRANCH_MANAGER attempts to manage a user outside their scope
+- GIVEN an authenticated `BRANCH_MANAGER`
+- WHEN they attempt to create, edit, or disable a user in a different branch, or a user whose role is `ADMIN`/`BRANCH_MANAGER`, or attempt to edit an `OPERATOR` into a different role or branch
 - THEN the system responds `403 Forbidden`
 
 ### Requirement: User creation assigns a unique username, unique email, a role, and a branch
@@ -67,9 +77,14 @@ The system MUST disable a user by setting `is_active` to false, and MUST NOT del
 
 ### Requirement: User query lists users without exposing internal identifiers
 
-The system MUST allow an `ADMIN` to query and filter users, including disabled ones, exposing only `external_id`, never the internal numeric `id`.
+The system MUST allow an `ADMIN` to query and filter users, including disabled ones, exposing only `external_id`, never the internal numeric `id`. A `BRANCH_MANAGER`'s query MUST be forced to their own branch and to `role = OPERATOR`, regardless of any filter they submit — mirroring the audit-log capability's role-scoping requirement.
 
 #### Scenario: Query includes disabled users
 - GIVEN a mix of active and disabled users
 - WHEN an `ADMIN` queries the user list
 - THEN both are returned, each identified only by `external_id`
+
+#### Scenario: BRANCH_MANAGER query is scoped to their own branch
+- GIVEN a `BRANCH_MANAGER` and users spanning several branches and roles
+- WHEN they query the user list, with or without a `branch_id`/`role` filter
+- THEN only `OPERATOR` users belonging to their own branch are returned

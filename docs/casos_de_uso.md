@@ -69,7 +69,8 @@ Materializa el requerimiento **RNF-SEC-01** (control de acceso basado en roles) 
 
 | Capacidad | `ADMIN` | `BRANCH_MANAGER` | `OPERATOR` | Sistema Externo |
 | :--- | :---: | :---: | :---: | :---: |
-| Gestionar sucursales y usuarios | ✅ | ❌ | ❌ | ❌ |
+| Gestionar sucursales | ✅ | ❌ | ❌ | ❌ |
+| Gestionar usuarios | ✅ | ⚠️ *(solo `OPERATOR` de su sucursal)* | ❌ | ❌ |
 | Gestionar catálogo maestro y unidades de medida | ✅ | ❌ | ❌ | ❌ |
 | Consultar stock de la sucursal propia | ✅ | ✅ | ✅ | ✅ |
 | Consultar stock de otras sucursales (lectura) | ✅ | ✅ | ✅ | ✅ |

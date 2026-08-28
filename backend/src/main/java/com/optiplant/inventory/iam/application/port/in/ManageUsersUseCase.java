@@ -7,11 +7,13 @@ import com.optiplant.inventory.shared.security.Role;
 import java.util.UUID;
 
 /**
- * Create, edit, disable, and query users — {@code ADMIN}-only (enforced by
- * {@code SecurityConfig}'s {@code /api/admin/users/**} matcher, slice 3;
- * mirrors {@code QueryAuditLogUseCase}'s reuse of its output port's page
- * record for the same reason). Every mutation writes an audit entry in the
- * same transaction (CLAUDE.md's synchronous-effects invariant).
+ * Create, edit, disable, and query users — {@code ADMIN} manages any user in
+ * any branch; {@code BRANCH_MANAGER} may only create/edit/disable/list {@code
+ * OPERATOR} users within their own session branch (enforced by {@code
+ * SecurityConfig}'s {@code /api/admin/users/**} matcher admitting both roles,
+ * plus per-call scoping in {@code UserAdminService}). {@code OPERATOR} never
+ * reaches this port. Every mutation writes an audit entry in the same
+ * transaction (CLAUDE.md's synchronous-effects invariant).
  */
 public interface ManageUsersUseCase {
 
@@ -20,6 +22,9 @@ public interface ManageUsersUseCase {
 	 *     on a duplicate {@code username} or {@code email}
 	 * @throws IllegalArgumentException when a non-{@code ADMIN} role is created
 	 *     with no {@code branchExternalId}
+	 * @throws com.optiplant.inventory.iam.domain.exception.CrossBranchMutationException
+	 *     when a {@code BRANCH_MANAGER} targets a role other than {@code
+	 *     OPERATOR} or a branch other than their own
 	 */
 	UserAccount create(AuthenticatedPrincipal actor, CreateUserCommand command);
 
@@ -30,6 +35,9 @@ public interface ManageUsersUseCase {
 	 *     when {@code command.email()} belongs to a different user
 	 * @throws IllegalArgumentException when a non-{@code ADMIN} role is edited
 	 *     to have no {@code branchExternalId}
+	 * @throws com.optiplant.inventory.iam.domain.exception.CrossBranchMutationException
+	 *     when a {@code BRANCH_MANAGER} targets a user, or a requested new
+	 *     role/branch, outside their own {@code OPERATOR}-in-own-branch scope
 	 */
 	UserAccount edit(AuthenticatedPrincipal actor, UUID externalId, EditUserCommand command);
 
@@ -39,10 +47,15 @@ public interface ManageUsersUseCase {
 	 *
 	 * @throws com.optiplant.inventory.iam.domain.exception.UserNotFoundException
 	 *     when {@code externalId} names no user
+	 * @throws com.optiplant.inventory.iam.domain.exception.CrossBranchMutationException
+	 *     when a {@code BRANCH_MANAGER} targets a user outside their own
+	 *     {@code OPERATOR}-in-own-branch scope
 	 */
 	void disable(AuthenticatedPrincipal actor, UUID externalId);
 
-	UserPage list(UserQuery query);
+	/** A {@code BRANCH_MANAGER}'s {@code query} is forced to their own branch
+	 * and {@code role=OPERATOR}, regardless of what they submit. */
+	UserPage list(AuthenticatedPrincipal actor, UserQuery query);
 
 	record CreateUserCommand(String username, String email, String password, String fullName, Role role,
 			UUID branchExternalId) {
