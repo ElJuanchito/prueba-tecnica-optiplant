@@ -99,6 +99,6 @@ class AuditAtomicityIT {
 	}
 
 	private record LoginResponseBody(String accessToken, String refreshToken, long expiresInSeconds, String role,
-			String branchId) {
+			String branchId, String branchName, String branchCode) {
 	}
 }

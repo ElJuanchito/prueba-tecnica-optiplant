@@ -311,6 +311,6 @@ class BranchAdminIT {
 	}
 
 	private record LoginResponseBody(String accessToken, String refreshToken, long expiresInSeconds, String role,
-			UUID branchId) {
+			UUID branchId, String branchName, String branchCode) {
 	}
 }

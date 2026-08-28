@@ -2,6 +2,7 @@ package com.optiplant.inventory.iam.application.service;
 
 import com.optiplant.inventory.iam.application.port.in.AuthenticateUseCase;
 import com.optiplant.inventory.iam.application.port.out.AccessTokenIssuerPort;
+import com.optiplant.inventory.iam.application.port.out.BranchRepositoryPort;
 import com.optiplant.inventory.iam.application.port.out.LoginThrottlePort;
 import com.optiplant.inventory.iam.application.port.out.PasswordHasherPort;
 import com.optiplant.inventory.iam.application.port.out.RefreshTokenRepositoryPort;
@@ -9,6 +10,7 @@ import com.optiplant.inventory.iam.application.port.out.SecretTokenGeneratorPort
 import com.optiplant.inventory.iam.application.port.out.UserRepositoryPort;
 import com.optiplant.inventory.iam.domain.exception.InvalidCredentialsException;
 import com.optiplant.inventory.iam.domain.exception.UserDisabledException;
+import com.optiplant.inventory.iam.domain.model.BranchProfile;
 import com.optiplant.inventory.iam.domain.model.UserAccount;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.util.Locale;
@@ -24,16 +26,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthenticationService implements AuthenticateUseCase {
 
 	private final UserRepositoryPort userRepository;
+	private final BranchRepositoryPort branchRepository;
 	private final PasswordHasherPort passwordHasher;
 	private final AccessTokenIssuerPort accessTokenIssuer;
 	private final LoginThrottlePort loginThrottle;
 	private final SecretTokenGeneratorPort refreshTokenGenerator;
 	private final RefreshTokenRepositoryPort refreshTokenRepository;
 
-	public AuthenticationService(UserRepositoryPort userRepository, PasswordHasherPort passwordHasher,
-			AccessTokenIssuerPort accessTokenIssuer, LoginThrottlePort loginThrottle,
+	public AuthenticationService(UserRepositoryPort userRepository, BranchRepositoryPort branchRepository,
+			PasswordHasherPort passwordHasher, AccessTokenIssuerPort accessTokenIssuer, LoginThrottlePort loginThrottle,
 			SecretTokenGeneratorPort refreshTokenGenerator, RefreshTokenRepositoryPort refreshTokenRepository) {
 		this.userRepository = userRepository;
+		this.branchRepository = branchRepository;
 		this.passwordHasher = passwordHasher;
 		this.accessTokenIssuer = accessTokenIssuer;
 		this.loginThrottle = loginThrottle;
@@ -67,8 +71,18 @@ public class AuthenticationService implements AuthenticateUseCase {
 		refreshTokenRepository.persist(
 				new RefreshTokenRepositoryPort.NewRefreshToken(user.externalId(), UUID.randomUUID(), rawRefreshToken));
 
+		String branchName = null;
+		String branchCode = null;
+		if (user.branchExternalId() != null) {
+			BranchProfile branch = branchRepository.findByExternalId(user.branchExternalId()).orElse(null);
+			if (branch != null) {
+				branchName = branch.name();
+				branchCode = branch.code();
+			}
+		}
+
 		return new LoginResult(accessToken.token(), accessToken.expiresInSeconds(), rawRefreshToken,
-				user.role().name(), user.branchExternalId());
+				user.role().name(), user.branchExternalId(), branchName, branchCode);
 	}
 
 	private static String throttleKey(String username, String clientIp) {
