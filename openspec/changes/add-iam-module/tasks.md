@@ -107,14 +107,14 @@ Chain strategy: feature-branch-chain (user-selected): PR1 targets the tracker br
 
 ## Phase 5a — Slice 5a: User Admin (PR6)
 
-- [ ] 5a.1 Create `iam/domain/exception/DuplicateUsernameException.java`.
-- [ ] 5a.2 Create `application/port/in/ManageUsersUseCase` + `application/service/UserAdminService` — create (unique username+email, role/branch validation), edit (role/branch/profile, `external_id` immutable), disable (`is_active=false` + revoke every live refresh token via `RefreshTokenRepositoryPort`, same transaction), query (no numeric `id` exposed).
-- [ ] 5a.3 Wire `UserAdminService` mutations through `AuditWritePort` (slice 4) so create/edit/disable each write an audit entry in the same transaction.
-- [ ] 5a.4 Extend `UserPersistenceAdapter`/`UserJpaEntity`/mapper with save, update, and paginated list-with-filter operations.
-- [ ] 5a.5 Create `adapter/in/web/UserAdminController` — `POST/PUT/PATCH /api/admin/users/**`, `ADMIN`-gated by `SecurityConfig` (Slice 3); duplicate-username/email → `409`.
-- [ ] 5a.6 Test: `UserAdminServiceTest` (role/branch validation matrix, duplicate rejection).
-- [ ] 5a.7 Test IT: `UserAdminIT` — disable revokes every live token (P2/P4); no physical delete; historical movements remain intact.
-- [ ] 5a.8 Run `cd backend && ./mvnw verify`.
+- [x] 5a.1 Create `iam/domain/exception/DuplicateUsernameException.java`.
+- [x] 5a.2 Create `application/port/in/ManageUsersUseCase` + `application/service/UserAdminService` — create (unique username+email, role/branch validation), edit (role/branch/profile, `external_id` immutable), disable (`is_active=false` + revoke every live refresh token via `RefreshTokenRepositoryPort`, same transaction), query (no numeric `id` exposed).
+- [x] 5a.3 Wire `UserAdminService` mutations through `AuditWritePort` (slice 4) so create/edit/disable each write an audit entry in the same transaction.
+- [x] 5a.4 Extend `UserPersistenceAdapter`/`UserJpaEntity`/mapper with save, update, and paginated list-with-filter operations.
+- [x] 5a.5 Create `adapter/in/web/UserAdminController` — `POST/PUT/PATCH /api/admin/users/**`, `ADMIN`-gated by `SecurityConfig` (Slice 3); duplicate-username/email → `409`.
+- [x] 5a.6 Test: `UserAdminServiceTest` (role/branch validation matrix, duplicate rejection).
+- [x] 5a.7 Test IT: `UserAdminIT` — disable revokes every live token (P2/P4); no physical delete; historical movements remain intact.
+- [x] 5a.8 Run `cd backend && ./mvnw verify`.
 
 ## Phase 5b — Slice 5b: Branch Admin (PR7)
 

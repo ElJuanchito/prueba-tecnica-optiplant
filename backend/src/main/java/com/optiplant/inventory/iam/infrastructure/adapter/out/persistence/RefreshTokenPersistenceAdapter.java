@@ -58,6 +58,13 @@ public class RefreshTokenPersistenceAdapter implements RefreshTokenRepositoryPor
 		refreshTokenRepository.revokeByFamilyId(familyId, Instant.now(), reason.name());
 	}
 
+	@Override
+	public void revokeAllForUser(UUID userExternalId, RevocationReason reason) {
+		Long userId = userRepository.findIdByExternalId(userExternalId)
+				.orElseThrow(() -> new IllegalStateException("No user found for external id " + userExternalId));
+		refreshTokenRepository.revokeByUserId(userId, Instant.now(), reason.name());
+	}
+
 	private RefreshTokenGrant toGrant(RefreshTokenJpaEntity entity) {
 		UUID userExternalId = userRepository.findExternalIdById(entity.getUserId())
 				.orElseThrow(() -> new IllegalStateException("No user found for id " + entity.getUserId()));

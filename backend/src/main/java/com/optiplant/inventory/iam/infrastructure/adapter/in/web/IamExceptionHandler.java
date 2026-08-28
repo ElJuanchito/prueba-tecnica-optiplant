@@ -1,10 +1,13 @@
 package com.optiplant.inventory.iam.infrastructure.adapter.in.web;
 
 import com.optiplant.inventory.iam.domain.exception.CrossBranchMutationException;
+import com.optiplant.inventory.iam.domain.exception.DuplicateUsernameException;
 import com.optiplant.inventory.iam.domain.exception.InvalidCredentialsException;
 import com.optiplant.inventory.iam.domain.exception.RefreshTokenRejectedException;
 import com.optiplant.inventory.iam.domain.exception.TooManyLoginAttemptsException;
 import com.optiplant.inventory.iam.domain.exception.UserDisabledException;
+import com.optiplant.inventory.iam.domain.exception.UserNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -50,6 +53,36 @@ class IamExceptionHandler {
 	ResponseEntity<ErrorResponse> onCrossBranchMutation() {
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(new ErrorResponse("cross_branch_mutation", "Cannot mutate a resource of another branch"));
+	}
+
+	// user-administration "Duplicate username" / "Duplicate email": the system
+	// must reject the operation, indicating the conflict — no existence-leak
+	// concern here (the caller is an already-authenticated ADMIN who supplied
+	// the colliding value itself).
+	@ExceptionHandler(DuplicateUsernameException.class)
+	ResponseEntity<ErrorResponse> onDuplicateUsername(DuplicateUsernameException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("duplicate_user_field", ex.getMessage()));
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	ResponseEntity<ErrorResponse> onDataIntegrityViolation(DataIntegrityViolationException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ErrorResponse("duplicate_user_field", "Duplicate unique field"));
+	}
+
+	@ExceptionHandler(UserNotFoundException.class)
+	ResponseEntity<ErrorResponse> onUserNotFound() {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("user_not_found", "User not found"));
+	}
+
+	// Role/branch validation (user-administration "Non-ADMIN role without a
+	// branch") and an unresolvable branch external_id both surface as a plain
+	// IllegalArgumentException from UserAdminService/UserPersistenceAdapter —
+	// scoped to this package's advice only, so it cannot swallow an
+	// IllegalArgumentException thrown by some future module's controller.
+	@ExceptionHandler(IllegalArgumentException.class)
+	ResponseEntity<ErrorResponse> onIllegalArgument(IllegalArgumentException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("invalid_request", ex.getMessage()));
 	}
 
 	record ErrorResponse(String code, String message) {

@@ -31,6 +31,13 @@ public interface RefreshTokenRepositoryPort {
 	 * P4 keeps other families/devices alive). */
 	void revokeFamily(UUID familyId, RevocationReason reason);
 
+	/** Revokes every still-live session of the given user, across every family —
+	 * unlike {@link #revokeFamily}, this closes every device at once
+	 * (user-administration "User disable is logical and revokes active
+	 * sessions": disabling MUST immediately revoke every one of the user's
+	 * refresh tokens, P2/P4). */
+	void revokeAllForUser(UUID userExternalId, RevocationReason reason);
+
 	record NewRefreshToken(UUID userExternalId, UUID familyId, String rawToken) {
 	}
 }
