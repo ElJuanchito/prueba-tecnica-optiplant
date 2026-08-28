@@ -62,7 +62,7 @@ public class UserAdminService implements ManageUsersUseCase {
 		UserAccount created = userRepository.create(new UserRepositoryPort.NewUser(command.username(),
 				command.email(), passwordHash, command.fullName(), command.role(), command.branchExternalId()));
 
-		auditWritePort.record(new AuditEntryCommand(actor.userId(), actor.branchId(), AuditAction.CREATE.name(),
+		auditWritePort.record(new AuditEntryCommand(actor.userId(), created.branchExternalId(), AuditAction.CREATE.name(),
 				"users", created.externalId().toString(), null, null, null));
 		return created;
 	}
@@ -77,7 +77,7 @@ public class UserAdminService implements ManageUsersUseCase {
 		UserAccount updated = userRepository.update(externalId,
 				new UserUpdate(command.email(), command.fullName(), command.role(), command.branchExternalId()));
 
-		auditWritePort.record(new AuditEntryCommand(actor.userId(), actor.branchId(), AuditAction.UPDATE.name(),
+		auditWritePort.record(new AuditEntryCommand(actor.userId(), updated.branchExternalId(), AuditAction.UPDATE.name(),
 				"users", externalId.toString(), null, null, null));
 		return updated;
 	}
@@ -85,7 +85,8 @@ public class UserAdminService implements ManageUsersUseCase {
 	@Override
 	@Transactional
 	public void disable(AuthenticatedPrincipal actor, UUID externalId) {
-		userRepository.findByExternalId(externalId).orElseThrow(() -> new UserNotFoundException(externalId));
+		UserAccount target = userRepository.findByExternalId(externalId)
+				.orElseThrow(() -> new UserNotFoundException(externalId));
 
 		userRepository.disable(externalId);
 		// Same transaction as the disable itself — a live access token still
@@ -93,7 +94,7 @@ public class UserAdminService implements ManageUsersUseCase {
 		// session across every device at once (P4).
 		refreshTokenRepository.revokeAllForUser(externalId, RevocationReason.USER_DISABLED);
 
-		auditWritePort.record(new AuditEntryCommand(actor.userId(), actor.branchId(), AuditAction.DISABLE.name(),
+		auditWritePort.record(new AuditEntryCommand(actor.userId(), target.branchExternalId(), AuditAction.DISABLE.name(),
 				"users", externalId.toString(), null, null, null));
 	}
 
