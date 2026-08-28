@@ -464,3 +464,112 @@ None that block S5. `design.md` §6.1–§6.3 and `tasks.md` Phase 5 were comple
 - Current work unit: S5 — Product infrastructure.
 - Boundary: starts from the S4 branch; ends with the two product JPA entities, the Spring Data repository, MapStruct mapper, persistence adapter, `ProductController`, the four new `CatalogExceptionHandler` mappings, the S3 native→JPQL migration, and `ProductCatalogIT`. `/api/catalog/products` is now live and Testcontainers-verified; the units subresource and the base-unit rule remain unwired (S6, S7).
 - Estimated review budget impact: ~430 lines production + ~330 lines IT (design forecast: ~430). Planned S5 slice of the approved 8-PR chain; proceeds as a bounded slice per the tasks `Review Workload Forecast`.
+
+---
+
+## Phase 6 — S6: Units of measure per product (PR6)
+
+**Mode**: Standard (openspec, `strict_tdd: false`).
+**Branch**: `feat/ep-02-catalog-07-s6-unidades` (chained on S5).
+**Status**: 14/14 tasks complete. `./mvnw verify` green. Ready for verify.
+
+### Completed tasks
+
+- [x] 6.1 `catalog/domain/service/ProductUnitPolicy.java` — pure static functions `addUnit(Product, ProductUnit)`, `replaceUnit(Product, UUID, UnitCode, BigDecimal, boolean)`, `removeUnit(Product, UUID)`, each returning a new `Product`. When the incoming unit is a default, the flag is cleared on every sibling (`replaceAll` / per-element copy) before the new one is applied, so `Product`'s compact constructor never sees two defaults. Base-unit homonym rule (factor 1 only) and duplicate-name rule are re-asserted by `Product.withUnits`. `removeUnit`/`replaceUnit` throw `ProductUnitNotFoundException` when the id is not among `product.units()` — which also covers "belongs to another product", since the aggregate only carries its own units. Framework-free (imports: `catalog.domain.*`, `java.*`).
+- [x] 6.2 `catalog/application/port/out/ProductUnitRepositoryPort.java` — `findByProduct`, `find(productExternalId, unitExternalId)` (scoped — a unit of another product resolves to `Optional.empty()`), `clearDefaultSaleUnit(productExternalId)`, `add`, `replace`, `delete`, plus nested `record NewUnitRow(String, BigDecimal, boolean)` (own copy, matching the per-port style of `ProductRepositoryPort`/`CategoryRepositoryPort`). Javadoc pins the load-bearing ordering of design §8.2.
+- [x] 6.3 `catalog/application/port/in/ManageProductUnitsUseCase.java` (`list`/`add`/`replace`/`delete`, mutations take `AuthenticatedPrincipal actor`, reads do not — D-7; nested `record UnitCommand`) and `catalog/application/service/ProductUnitAdminService.java` — one `@Transactional` per mutation, `@Transactional(readOnly = true)` on `list`; each mutation loads the product (`ProductNotFoundException` if absent), applies `ProductUnitPolicy` to assert R-13/R-14 **before any SQL**, persists through the port, and ends with `auditWritePort.record(...)` carrying `entityName = "product_units"`, `branchId = null`, `AuditAction.CREATE|UPDATE|DELETE`. Same throwaway-aggregate validation pattern as `ProductAdminService.create`.
+- [x] 6.4 `ProductUnitSpringDataRepository.java` — `clearDefaultSaleUnit` is `@Modifying(flushAutomatically = true, clearAutomatically = true)` bulk JPQL `UPDATE ProductUnitJpaEntity u SET u.defaultSaleUnit = FALSE WHERE u.product.externalId = :productExternalId AND u.defaultSaleUnit = TRUE`. Also `findByProductExternalId` (ordered `createdAt, id`), `findScoped(productExternalId, unitExternalId)`, and `deleteScoped` (bulk `@Modifying(flush+clear)` — see deviation 1).
+- [x] 6.5 `ProductUnitPersistenceAdapter.java` — `add` and `replace` run design §8.2's two steps in order: **(1)** `clearDefaultSaleUnit(productExternalId)` (flushed `@Modifying`) **only when the incoming unit is a default**, **(2)** then insert / update the row that ends `is_default_sale_unit = TRUE`. `add` clears *before* loading the product so it comes back managed (clearAutomatically detaches everything). `replace` loads the unit first for the not-found guard, then clears, then re-loads, then sets. Skipped entirely for `defaultSaleUnit = false`. Proven by 6.9/6.10 against real PostgreSQL.
+- [x] 6.6 `ProductPersistenceAdapter.create` gained a method Javadoc stating **no clearing step is needed** on the inline-units path: the product is brand new so no sibling can hold the flag, and `Product`'s compact constructor already rejected a two-default payload in `ProductAdminService.create` before any SQL. The `uq_product_units_single_default` partial index never sees an intermediate two-`TRUE` state on that path.
+- [x] 6.7 `catalog/infrastructure/adapter/in/web/ProductUnitController.java` — `GET` (list, **not paginated** — returns a bare JSON array), `POST` (`201 + Location` carrying `external_id` values only), `PUT /{unitExternalId}`, `DELETE /{unitExternalId}` (`@ResponseStatus(NO_CONTENT)` → `204`). Class-level `@RequestMapping("/api/catalog/products/{productExternalId}/units")`. Authorization is the existing `SecurityConfig` `/api/catalog/**` matchers (GET → authenticated, mutations → `hasAuthority("ADMIN")`); no `SecurityConfig` edit needed.
+- [x] 6.8 `CatalogExceptionHandler` extended: `ProductUnitNotFoundException` → `404 product_unit_not_found`; `DataIntegrityViolationException` gains a `uq_product_units_single_default` branch → `409 duplicate_product_unit` ("a product may have only one default sale unit") and a `uq_product_unit` branch → `409 duplicate_product_unit` ("this unit is already defined for the product") — hand-written messages, no constraint name (§7.1 point 2), code per design §6.3. `DuplicateProductUnitException` → `409` was already mapped in S5, unchanged. Plus the S5-hole fix (see below).
+- [x] 6.9 **[BLOCKING]** `ProductUnitCatalogIT.replacingTheDefaultSaleUnitCommits` — `@Order(1)`, real PostgreSQL 17. `PUT /api/catalog/products/d0000000-…-001/units/10000000-…-002` (BULTITO_10KG) with `defaultSaleUnit: true`. Asserts all three: **(a)** `200 OK` — committed, no abort on `uq_product_units_single_default`; **(b)** `SELECT count(*) FROM product_units WHERE product_id = 1 AND is_default_sale_unit` → `1`; **(c)** `SELECT unit_name … WHERE product_id = 1 AND is_default_sale_unit` → `BULTITO_10KG`. Green.
+- [x] 6.10 `ProductUnitCatalogIT.swappingTheDefaultBackToTheOriginalAlsoCommits` — `@Order(2)`, swaps `SACO_50KG` back to default and asserts the same three (count `1`, surviving row `SACO_50KG`). Restores the seeded state for the rest of `./mvnw verify`. Green.
+- [x] 6.11 `catalog/domain/service/ProductUnitPolicyTest.java` — 8 tests: factor `0`/`-1` rejected on `replaceUnit`; base-unit homonym factor ≠ 1 rejected, factor 1 accepted; marking a new default via `addUnit` and via `replaceUnit` leaves exactly one; removing the current default leaves none; duplicate `unitName` rejected; unknown id on `removeUnit`/`replaceUnit` → `ProductUnitNotFoundException`. No Docker.
+- [x] 6.12 `ProductUnitCatalogIT` — `twoDifferentProductsCanEachMarkTheirOwnDefault` (both `201`, each `product_id` ends with exactly one default), `aProductWithNoDefaultUnitReadsBackFine` (add a non-default unit, `GET` → `200`, none default), `aDirectSecondDefaultWriteSurfacesAsAConflictNotAServerError` (raw `jdbcTemplate` `INSERT … is_default_sale_unit = TRUE` on a product that already has a default → `DataIntegrityViolationException`, i.e. a conflict, not a `500`).
+- [x] 6.13 `ProductUnitCatalogIT` — `deletingAUnitAffectsNoBalanceAndLeavesSiblingsUntouched` (insert a `branch_inventories` row, `DELETE` one of two units → `204`, sibling and the balance row both intact), `deletingTheCurrentDefaultLeavesTheProductWithNone` (`DELETE` the default → `204`, list empty, default count `0`), `aUnitIdBelongingToAnotherProductReturns404` (`DELETE` and `PUT` a unit of product A under product B → `404 product_unit_not_found`).
+- [x] 6.14 `cd backend && ./mvnw verify` — BUILD SUCCESS (see gate output).
+
+### Files changed
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `catalog/domain/exception/ProductUnitNotFoundException.java` | Created | `RuntimeException`, ctor takes `UUID`; design §3.4 (covers "hangs off another product") |
+| `catalog/domain/service/ProductUnitPolicy.java` | Created | Pure `addUnit`/`replaceUnit`/`removeUnit`; clears sibling defaults before applying a new one (R-13, R-14) |
+| `catalog/application/port/out/ProductUnitRepositoryPort.java` | Created | Secondary port + nested `NewUnitRow`; scoped `find`, `clearDefaultSaleUnit`, `add`/`replace`/`delete` |
+| `catalog/application/port/in/ManageProductUnitsUseCase.java` | Created | Primary port + nested `UnitCommand`; mutations take `actor`, reads do not |
+| `catalog/application/service/ProductUnitAdminService.java` | Created | `@Transactional` per mutation; policy-validate → persist → audit (`product_units`, `branchId = null`) |
+| `catalog/infrastructure/adapter/out/persistence/ProductUnitSpringDataRepository.java` | Created | `clearDefaultSaleUnit` (flush+clear bulk UPDATE), `deleteScoped` (flush+clear bulk DELETE), `findScoped`, `findByProductExternalId` |
+| `catalog/infrastructure/adapter/out/persistence/ProductUnitPersistenceAdapter.java` | Created | The design §8.2 write sequence: clear-then-set on `add`/`replace`, skipped for non-defaults |
+| `catalog/infrastructure/adapter/in/web/ProductUnitController.java` | Created | Four endpoints of contract §6.3; unpaginated list, `201 + Location`, `DELETE` → `204` |
+| `catalog/infrastructure/adapter/in/web/CatalogExceptionHandler.java` | Modified | `+ ProductUnitNotFoundException` → `404`; `+ IllegalStateException` (doble-default) → `400`; `+ uq_product_units_single_default` / `uq_product_unit` branches on `DataIntegrityViolationException` → `409` |
+| `catalog/infrastructure/adapter/out/persistence/ProductPersistenceAdapter.java` | Modified | `create` Javadoc — why the inline-units path needs no clearing step (task 6.6) |
+| `backend/src/test/java/com/optiplant/inventory/catalog/domain/service/ProductUnitPolicyTest.java` | Created | 8 unit tests (R-13, R-14), no Docker |
+| `backend/src/test/java/com/optiplant/inventory/ProductUnitCatalogIT.java` | Created | 9 IT tests incl. the blocking 6.9/6.10 swap pair and the S5-hole doble-default assertion |
+| `openspec/changes/add-catalog-module/tasks.md` | Modified | Phase 6 tasks 6.1–6.14 marked `[x]` |
+
+### How the S5 doble-default inline hole was closed
+
+S5 left `POST /api/catalog/products` with two inline `defaultSaleUnit: true` units returning `500`: `Product`'s compact constructor throws `IllegalStateException` for R-14 and nothing mapped it. Design §3.3 fixes that exception type and `ProductInvariantsTest` asserts it, so the type was **not** changed. Instead `CatalogExceptionHandler` gained `@ExceptionHandler(IllegalStateException.class)` mapping it to **`400 invalid_request`**, scoped by a message match (`contains("default sale unit")`) so a genuine server-fault `IllegalStateException` (e.g. the audit-payload serialization wrapper) still falls through to `500`.
+
+**Why 400 and not 409:** design §6.3 routes every malformed *inline-units* payload caught in that same constructor — `IllegalArgumentException`, `InvalidConversionFactorException` — to `400`, and the two-defaults case is caught pre-SQL with no persisted state to conflict with. `409` is reserved for the database rejecting a genuine concurrent/persisted conflict (`uq_product_units_single_default`, task 6.8's `DataIntegrityViolationException` branch). `ProductUnitCatalogIT.postingAProductWithTwoInlineDefaultUnitsIs4xxNot500` sends the payload and asserts `400 invalid_request` + nothing persisted.
+
+### Task 6.6 confirmation
+
+`ProductPersistenceAdapter.create` was reviewed and left functionally unchanged — it already needs no clearing step. The reason is now in its method Javadoc: a brand-new product has no sibling units, and `ProductAdminService.create` constructs the `Product` aggregate (which asserts R-14) before calling the adapter, so `uq_product_units_single_default` never sees two `TRUE` rows on the inline path. Only `ProductUnitPersistenceAdapter.add`/`replace` — where a pre-existing default can be present — run the clear-then-set sequence.
+
+### Deviations from design
+
+1. **Unit deletion uses a bulk `@Modifying(flushAutomatically = true, clearAutomatically = true)` `deleteScoped` JPQL, not `repository.delete(entity)`.** Found by executing: the first `./mvnw verify` failed 6.13 with the deleted unit still present. The service loads the parent `Product` aggregate (with its managed `@OneToMany(cascade = ALL, orphanRemoval = true)` units collection) to drive `ProductUnitPolicy`; an `em.remove` on a child still reachable from that managed collection is silently reconciled away at flush (a well-known JPA gotcha). A bulk `DELETE` bypasses the collection and hits the DB directly, and `clearAutomatically` drops the now-stale collection. This is the same bulk-statement shape design §8.2/D-11 already mandates for `clearDefaultSaleUnit`, so it is consistent with the design's own persistence strategy rather than a departure from its intent. Existence is still validated by the service via `ProductUnitRepositoryPort.find` before the delete, so the `404` semantics are unaffected.
+2. **`ProductUnitRepositoryPort` declares its own nested `NewUnitRow`** rather than reusing `ProductRepositoryPort.NewUnitRow` (identical shape). Matches the existing per-port convention (`ProductRepositoryPort`, `CategoryRepositoryPort` each declare all their own nested records) and avoids coupling two out-ports. Design §5.3 uses the bare name `NewUnitRow`; the name is preserved.
+3. **`add` clears the previous default *before* loading the product entity** (design §8.2 lists "clear" as step 1 and "set" as step 2 without pinning where the product load sits). Loading after the `clearAutomatically` bulk update guarantees the `ProductJpaEntity` comes back managed, avoiding a detached-association `save`. Ordering of the two SQL statements that matter (clear `SET FALSE` before insert `... TRUE`) is unchanged.
+
+### Issues found
+
+None that block S6. `design.md` §4.1, §5.1, §5.3, §6.2, §6.3, §8.1, §8.2 and `tasks.md` Phase 6 were complete and internally consistent for this slice. The only real friction (the managed-collection delete gotcha) was caught by `./mvnw verify` and resolved with a bulk statement that matches the design's own §8.2 pattern — no redesign.
+
+### Final gate output (run, not asserted from memory)
+
+**`cd backend && ./mvnw verify`** — BUILD SUCCESS, total time 01:38 min.
+
+Surefire (`./mvnw test`, no Docker):
+
+```
+[INFO] Running com.optiplant.inventory.catalog.domain.service.ProductUnitPolicyTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0 -- in ProductUnitPolicyTest
+[INFO] Running com.optiplant.inventory.ModuleBoundariesTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in ModuleBoundariesTest
+...
+[INFO] Results:
+[INFO] Tests run: 147, Failures: 0, Errors: 0, Skipped: 0
+```
+
+Failsafe (`*IT`, Testcontainers / real PostgreSQL 17):
+
+```
+[INFO] Running com.optiplant.inventory.ProductUnitCatalogIT
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.311 s -- in ProductUnitCatalogIT
+[INFO] Running com.optiplant.inventory.CategoryCatalogIT   → Tests run: 8, Failures: 0
+[INFO] Running com.optiplant.inventory.ProductCatalogIT     → Tests run: 9, Failures: 0
+...
+[INFO] Results:
+[INFO] Tests run: 79, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+**Blocking task 6.9 — `ProductUnitCatalogIT.replacingTheDefaultSaleUnitCommits`, the three assertions against real PostgreSQL 17:**
+
+| Assertion | Result |
+|---|---|
+| (a) `PUT …/units/10000000-…-002` (BULTITO_10KG) `defaultSaleUnit: true` → HTTP status | `200 OK` — transaction **committed**, no abort on `uq_product_units_single_default` |
+| (b) `SELECT count(*) FROM product_units WHERE product_id = 1 AND is_default_sale_unit` | `1` |
+| (c) `SELECT unit_name FROM product_units WHERE product_id = 1 AND is_default_sale_unit` | `BULTITO_10KG` |
+
+6.10 then swaps `SACO_50KG` back to default (`200`, count `1`, surviving row `SACO_50KG`) — the sequence holds in both directions, and the seeded product-1 state is restored for the rest of the suite.
+
+### Workload / PR boundary
+
+- Mode: chained PR slice — PR6 of 8 (feature-branch-chain; PR6 targets PR5's branch `feat/ep-02-catalog-06-s5-productos-infra`).
+- Current work unit: S6 — Units of measure per product.
+- Boundary: starts from the S5 branch; ends with `ProductUnitPolicy`, the two unit ports, `ProductUnitAdminService`, `ProductUnitSpringDataRepository`, `ProductUnitPersistenceAdapter`, `ProductUnitController`, the three `CatalogExceptionHandler` additions (incl. the S5 doble-default hole), `ProductPersistenceAdapter.create`'s Javadoc, `ProductUnitPolicyTest` and `ProductUnitCatalogIT`. `/api/catalog/products/{id}/units` is now live and Testcontainers-verified. The base-unit rule (S7) and cross-cutting verification (S8) remain.
+- Estimated review budget impact: ~470 lines production + ~290 lines tests (design forecast: ~430). Planned S6 slice of the approved 8-PR chain.

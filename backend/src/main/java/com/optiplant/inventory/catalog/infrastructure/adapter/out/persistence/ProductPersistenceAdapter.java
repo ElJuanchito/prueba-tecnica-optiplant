@@ -47,6 +47,19 @@ public class ProductPersistenceAdapter implements ProductRepositoryPort {
 		return productRepository.existsBySku(normalizedSku, excludingExternalId);
 	}
 
+	/**
+	 * Persists the product and its inline units in one save via the
+	 * {@code @OneToMany(cascade = ALL)} association (R-06).
+	 *
+	 * <p><strong>No default-sale-unit clearing step is needed here</strong>,
+	 * unlike {@code ProductUnitPersistenceAdapter#add} / {@code replace} (design
+	 * §8.2): the product is brand new, so no sibling row can already hold
+	 * {@code is_default_sale_unit = TRUE}, and {@code Product}'s compact
+	 * constructor has already rejected a payload carrying two defaults inside
+	 * {@code ProductAdminService.create} before any SQL is issued. The
+	 * {@code uq_product_units_single_default} partial index therefore never sees an
+	 * intermediate two-{@code TRUE} state on this path.
+	 */
 	@Override
 	public Product create(NewProduct newProduct) {
 		ProductJpaEntity entity = new ProductJpaEntity();
