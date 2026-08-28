@@ -129,5 +129,5 @@ Chain strategy: feature-branch-chain (user-selected): PR1 targets the tracker br
 
 ## Phase 6 — Cross-Cutting Verification (all slices)
 
-- [ ] 6.1 Run `python3 scripts/validar_trazabilidad.py`, `./scripts/validar_esquema.sh`, `cd backend && ./mvnw verify` together.
-- [ ] 6.2 Walk the proposal's Success Criteria checklist end to end (login/refresh/logout flow, cross-branch `403`/`200`, no client-supplied branch id, no `ROLE_`, throttling, disable-revokes-tokens).
+- [x] 6.1 Run `python3 scripts/validar_trazabilidad.py`, `./scripts/validar_esquema.sh`, `cd backend && ./mvnw verify` together.
+- [x] 6.2 Walk the proposal's Success Criteria checklist end to end (login/refresh/logout flow, cross-branch `403`/`200`, no client-supplied branch id, no `ROLE_`, throttling, disable-revokes-tokens).
