@@ -36,19 +36,19 @@ Decision needed before apply: **No.** `design.md` §12 leaves no open question.
 
 ## Phase 1 — S1: Schema, validator and the `shared` port (PR1)
 
-- [ ] 1.1 Edit `backend/init-db/01-init-schema.sql` `:78-85`: add `is_active BOOLEAN NOT NULL DEFAULT TRUE` and `updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP` to `categories` (S-1, S-2; design §10.1 edit 1). Verify: the block matches §10.1 verbatim.
-- [ ] 1.2 Edit `01-init-schema.sql` after `:87`: add `CREATE UNIQUE INDEX uq_categories_name_ci ON categories (LOWER(name));` with its Spanish comment (S-4; design §10.1 edit 2, D-2). **Keep** the column's existing `UNIQUE` — dropping it would make the change non-additive.
-- [ ] 1.3 Edit `01-init-schema.sql` after `:117`: add `CREATE UNIQUE INDEX uq_product_units_single_default ON product_units(product_id) WHERE is_default_sale_unit;` with its comment (S-3; design §10.1 edit 3).
-- [ ] 1.4 Do **not** edit `backend/init-db/02-seed-data.sql`. Verify instead: `:45` uses an explicit column list; `:58-65` has exactly one `TRUE` per product; the four names at `:46-49` have no case-insensitive collision (design §10.2).
-- [ ] 1.5 **[BLOCKING for 1.7]** Append section `G. Catálogo maestro` to `scripts/validar_esquema.sh` after section F (before the summary block at `:140`), with the five checks verbatim from design §10.3. Verify: `./scripts/validar_esquema.sh` reports 30 correct checks and no failure.
-- [ ] 1.6 Edit `CLAUDE.md:15` ("25 invariantes" → "30 invariantes") and `openspec/config.yaml:46` ("Checks 25 invariants" → "Checks 30 invariants") to match 1.5's real count.
-- [ ] 1.7 Run `./scripts/validar_esquema.sh` against a clean volume; confirm `igual "20 tablas creadas"` still passes (indexes are not tables) and both `02-seed-data.sql` and the new G checks are green.
-- [ ] 1.8 Edit `docs/diagrama_er.md`: add `boolean is_active` to the Mermaid `CATEGORIES` block (`:105-110`), and `* is_active : BOOLEAN` + `updated_at : TIMESTAMPTZ` to the PlantUML `categories` entity (`:347-355`) (design §10.4, D-12). Spanish; no `RF`/`RNF`/`RN` identifier introduced.
-- [ ] 1.9 Create `backend/src/main/java/com/optiplant/inventory/shared/stock/ProductStockPresencePort.java` — one method `boolean isProductUntouched(UUID productExternalId)`, Javadoc pinning the exact two-clause predicate of contract §2.2, `java.util.UUID` the only import (design §5.3, D-4).
-- [ ] 1.10 Edit `shared/audit/AuditAction.java`: add `ENABLE` and `DELETE` to the enum; extend its Javadoc to say the enum holds generic CRUD verbs while `AuditEntryCommand.action` stays a `String` for module-specific names (design D-9).
-- [ ] 1.11 Test: run `cd backend && ./mvnw test -Dtest=SharedIsFrameworkFreeTest,ModuleBoundariesTest` — confirm `sharedEsUnaHoja` and `SharedIsFrameworkFreeTest` stay green with the new `shared/stock` package.
-- [ ] 1.12 Run `python3 scripts/validar_trazabilidad.py` — green (1.8 adds no identifier; `validar_trazabilidad.py:44-99` only tracks identifiers and relative links).
-- [ ] 1.13 Run `cd backend && ./mvnw verify`.
+- [x] 1.1 Edit `backend/init-db/01-init-schema.sql` `:78-85`: add `is_active BOOLEAN NOT NULL DEFAULT TRUE` and `updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP` to `categories` (S-1, S-2; design §10.1 edit 1). Verify: the block matches §10.1 verbatim.
+- [x] 1.2 Edit `01-init-schema.sql` after `:87`: add `CREATE UNIQUE INDEX uq_categories_name_ci ON categories (LOWER(name));` with its Spanish comment (S-4; design §10.1 edit 2, D-2). **Keep** the column's existing `UNIQUE` — dropping it would make the change non-additive.
+- [x] 1.3 Edit `01-init-schema.sql` after `:117`: add `CREATE UNIQUE INDEX uq_product_units_single_default ON product_units(product_id) WHERE is_default_sale_unit;` with its comment (S-3; design §10.1 edit 3).
+- [x] 1.4 Do **not** edit `backend/init-db/02-seed-data.sql`. Verify instead: `:45` uses an explicit column list; `:58-65` has exactly one `TRUE` per product; the four names at `:46-49` have no case-insensitive collision (design §10.2).
+- [x] 1.5 **[BLOCKING for 1.7]** Append section `G. Catálogo maestro` to `scripts/validar_esquema.sh` after section F (before the summary block at `:140`), with the five checks verbatim from design §10.3. Verify: `./scripts/validar_esquema.sh` reports 30 correct checks and no failure.
+- [x] 1.6 Edit `CLAUDE.md:15` ("25 invariantes" → "30 invariantes") and `openspec/config.yaml:46` ("Checks 25 invariants" → "Checks 30 invariants") to match 1.5's real count.
+- [x] 1.7 Run `./scripts/validar_esquema.sh` against a clean volume; confirm `igual "20 tablas creadas"` still passes (indexes are not tables) and both `02-seed-data.sql` and the new G checks are green.
+- [x] 1.8 Edit `docs/diagrama_er.md`: add `boolean is_active` to the Mermaid `CATEGORIES` block (`:105-110`), and `* is_active : BOOLEAN` + `updated_at : TIMESTAMPTZ` to the PlantUML `categories` entity (`:347-355`) (design §10.4, D-12). Spanish; no `RF`/`RNF`/`RN` identifier introduced.
+- [x] 1.9 Create `backend/src/main/java/com/optiplant/inventory/shared/stock/ProductStockPresencePort.java` — one method `boolean isProductUntouched(UUID productExternalId)`, Javadoc pinning the exact two-clause predicate of contract §2.2, `java.util.UUID` the only import (design §5.3, D-4).
+- [x] 1.10 Edit `shared/audit/AuditAction.java`: add `ENABLE` and `DELETE` to the enum; extend its Javadoc to say the enum holds generic CRUD verbs while `AuditEntryCommand.action` stays a `String` for module-specific names (design D-9).
+- [x] 1.11 Test: run `cd backend && ./mvnw test -Dtest=SharedIsFrameworkFreeTest,ModuleBoundariesTest` — confirm `sharedEsUnaHoja` and `SharedIsFrameworkFreeTest` stay green with the new `shared/stock` package.
+- [x] 1.12 Run `python3 scripts/validar_trazabilidad.py` — green (1.8 adds no identifier; `validar_trazabilidad.py:44-99` only tracks identifiers and relative links).
+- [x] 1.13 Run `cd backend && ./mvnw verify`.
 
 ## Phase 2 — S2: Category domain and application (PR2)
 

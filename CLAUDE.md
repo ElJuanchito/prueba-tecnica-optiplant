@@ -12,7 +12,7 @@ Toda la documentación está en español. Mantener ese idioma al extenderla.
 
 ```bash
 python3 scripts/validar_trazabilidad.py   # referencias y enlaces entre documentos; sin dependencias
-./scripts/validar_esquema.sh              # 25 invariantes contra PostgreSQL 17 real; requiere Docker
+./scripts/validar_esquema.sh              # 30 invariantes contra PostgreSQL 17 real; requiere Docker
 cd backend && ./mvnw verify               # fronteras de arquitectura + integración con Testcontainers
 ```
 

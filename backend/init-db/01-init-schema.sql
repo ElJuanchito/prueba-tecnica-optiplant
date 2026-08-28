@@ -80,10 +80,17 @@ CREATE TABLE categories (
     external_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_categories_external_id ON categories(external_id);
+-- La unicidad del nombre debe ser insensible a mayúsculas: el UNIQUE de la columna
+-- distingue mayúsculas y dejaría convivir 'Fertilizantes' con 'fertilizantes'
+-- (RNF-INT-03; el mismo papel que products.sku UNIQUE cumple para el SKU, que sí
+-- llega normalizado en mayúsculas desde el dominio).
+CREATE UNIQUE INDEX uq_categories_name_ci ON categories (LOWER(name));
 
 CREATE TABLE products (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -115,6 +122,11 @@ CREATE TABLE product_units (
 
 CREATE INDEX idx_product_units_external_id ON product_units(external_id);
 CREATE INDEX idx_product_units_product ON product_units(product_id);
+-- Un producto tiene a lo sumo una unidad de venta predeterminada (RN-13 / RNF-INT-03).
+-- Mismo patrón que uq_price_lists_single_default (:145), que resuelve el problema
+-- idéntico un módulo más allá.
+CREATE UNIQUE INDEX uq_product_units_single_default
+    ON product_units(product_id) WHERE is_default_sale_unit;
 
 -- ============================================================================
 -- 2.B MÓDULO: LISTAS DE PRECIOS COMERCIALES (Commercial Pricing)

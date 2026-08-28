@@ -107,6 +107,7 @@ erDiagram
         uuid external_id UK
         varchar name UK
         text description
+        boolean is_active
     }
 
     PRODUCTS {
@@ -350,7 +351,9 @@ package "Catálogo Maestro" {
         * external_id : UUID <<UK>>
         * name : VARCHAR(100) <<UK>>
         description : TEXT
+        * is_active : BOOLEAN
         created_at : TIMESTAMPTZ
+        updated_at : TIMESTAMPTZ
     }
 
     entity "products" as products {

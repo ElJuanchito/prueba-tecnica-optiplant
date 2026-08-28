@@ -138,6 +138,21 @@ igual "el Kardex sembrado cuadra con el stock de la sucursal 1" \
   "SELECT count(*) FROM kardex_movements WHERE resulting_stock < 0" "0"
 
 echo
+echo "G. Catálogo maestro"
+igual  "toda categoría tiene estado de actividad" \
+  "SELECT count(*) FROM categories WHERE is_active IS NULL" "0"
+igual  "las categorías sembradas nacen activas" \
+  "SELECT count(*) FROM categories WHERE is_active" "4"
+rechaza "RN-13 · un producto no puede tener dos unidades de venta predeterminadas" \
+  "UPDATE product_units SET is_default_sale_unit = TRUE WHERE product_id = 1 AND unit_name = 'BULTITO_10KG'"
+acepta "dos productos distintos tienen cada uno su unidad predeterminada" \
+  "INSERT INTO products (category_id, sku, name, base_unit) VALUES (1,'SKU-TEST-G','Producto G','KG');
+   INSERT INTO product_units (product_id, unit_name, conversion_factor, is_default_sale_unit)
+   VALUES ((SELECT id FROM products WHERE sku='SKU-TEST-G'),'CAJA_G',12.0,TRUE)"
+rechaza "el nombre de una categoría es único sin distinguir mayúsculas" \
+  "INSERT INTO categories (name) VALUES ('sistemas de riego e insumos')"
+
+echo
 echo "------------------------------------------------------------"
 if [ "$FALLOS" -gt 0 ]; then
   echo "RESULTADO: $FALLOS comprobación(es) fallida(s), $OK correcta(s)"

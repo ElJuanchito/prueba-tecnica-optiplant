@@ -43,7 +43,7 @@ testing:
       purpose: "Validates RF/RNF/RN -> CU -> HU references and links across docs/"
     - name: "schema-validator"
       command: "./scripts/validar_esquema.sh"
-      purpose: "Checks 25 invariants against a real PostgreSQL 17 instance; requires Docker"
+      purpose: "Checks 30 invariants against a real PostgreSQL 17 instance; requires Docker"
 
 rules:
   proposal:
