@@ -270,3 +270,90 @@ None of these change the contract, the ports, the API surface or any error code 
 - Current work unit: S3 — Category infrastructure + the `/api/catalog/**` authorization decision.
 - Boundary: starts from the S2 branch; ends with the category JPA entity, Spring Data repository, MapStruct mapper, persistence adapter, `CatalogExceptionHandler`, `CategoryController`, the 8-line `SecurityConfig` matcher addition, and `CategoryCatalogIT`. `/api/catalog/categories` is now live and Testcontainers-verified; products/units remain unwired (S4+).
 - Estimated review budget impact: ~470 lines production + ~270 lines IT (design forecast: ~460). Planned S3 slice of the approved 8-PR chain, proceeds as a bounded slice per the tasks `Review Workload Forecast`.
+
+---
+
+## Phase 4 — S4: Product domain and application (PR4)
+
+**Mode**: Standard (openspec, `strict_tdd: false`).
+**Branch**: `feat/ep-02-catalog-05-s4-productos-dominio` (chained on S3).
+**Status**: 15/15 tasks complete. Ready for verify.
+
+### Completed tasks
+
+- [x] 4.1 `catalog/domain/model/Sku.java` — record; compact constructor rejects `null`, `strip()`s then `toUpperCase(Locale.ROOT)`, rejects the empty result, rejects `> 50` chars (all `IllegalArgumentException`). Every persisted SKU is upper-case, so the existing `UNIQUE (sku)` is a sufficient R-06 guarantee.
+- [x] 4.2 `catalog/domain/model/UnitCode.java` — record; canonical constructor normalizes (strip + upper-case) and enforces `^[A-Z0-9_]+$` + `1..50`; `static UnitCode.baseUnit(String)` runs the same `normalize(...)` with the tighter `1..20` bound. Whitespace inside the value is rejected by the charset (`"Saco de 50"` → `"SACO DE 50"` → fails).
+- [x] 4.3 `catalog/domain/model/ProductSort.java` — enum `SKU/NAME/CREATED_AT`; `static parse(String)` accepts exactly `"sku"`/`"name"`/`"createdAt"`, throws `IllegalArgumentException` on `null` or anything else, so `sort=(select 1)` becomes `400` and is never interpolated (R-12).
+- [x] 4.4 `catalog/domain/model/ProductUnit.java` — record `(externalId, UnitCode unitName, BigDecimal conversionFactor, boolean defaultSaleUnit, Instant createdAt)`; compact constructor throws `InvalidConversionFactorException` when `conversionFactor` is `null` or `signum() <= 0`. `BigDecimal`, never `double`.
+- [x] 4.5 `catalog/domain/model/Product.java` — record per design §3.3; compact constructor does `List.copyOf(units)` (null → `List.of()`) then asserts: no duplicate `unitName` (`DuplicateProductUnitException`), no base-unit homonym with `conversionFactor.compareTo(BigDecimal.ONE) != 0` (`InvalidConversionFactorException`), at most one `defaultSaleUnit` (`IllegalStateException`). Added `withDetails` / `withActive` / `withBaseUnit` (advance `updatedAt`) and `withUnits` (re-asserts invariants; leaves `updatedAt` untouched — the product row is unchanged).
+- [x] 4.6 `catalog/domain/model/ProductSummary.java` — list projection `(externalId, Sku sku, String name, UnitCode baseUnit, boolean active, CategoryRef category, Instant createdAt, Instant updatedAt)`; deliberately **without** `units` and `description`.
+- [x] 4.7 `catalog/domain/exception/` — `ProductNotFoundException(UUID)`, `DuplicateSkuException(String)`, `DuplicateProductUnitException(String)`, `InvalidConversionFactorException(String)`, all extending `RuntimeException`, mirroring the category exceptions' style. **No** `CatalogExceptionHandler` mapping added (that is S5's task 5.8).
+- [x] 4.8 `catalog/application/port/out/ProductRepositoryPort.java` — per design §5.3: `findByExternalId`, `existsBySku(normalizedSku, excludingExternalId)`, `create`, `update`, `setActive`, `setBaseUnit` (R-08, used only by S7), `list`; nested records `NewProduct`, `NewUnitRow`, `ProductUpdate`, `ProductFilter`, `ProductPage`.
+- [x] 4.9 `catalog/application/port/in/ManageProductsUseCase.java` — per design §5.1: `list`/`get` (no actor), `create`/`edit`/`disable`/`enable`/`changeBaseUnit` (take `AuthenticatedPrincipal actor`). `EditProductCommand` has **no** `baseUnit` field. Javadoc names the exception each method may throw, as `ManageBranchesUseCase` does. `changeBaseUnit` declared here, wired in S7.
+- [x] 4.10 `catalog/application/service/ProductAdminService.java` — `@Service` implementing `ManageProductsUseCase`. `@Transactional` on mutations, `@Transactional(readOnly = true)` on `list`/`get`. Each mutation: resolve category ref via `CategoryRepositoryPort.findRefByExternalId` first — missing → `CategoryNotFoundException` (404), inactive → `CategoryInactiveException` (409) (R-05); SKU uniqueness via `productRepository.existsBySku(sku.value(), excludingExternalId)` — `null` on create, `externalId` on edit (R-09); `enable` re-checks `existing.category().active()` (R-11); `create` builds a transient `Product` aggregate to assert R-13/R-14 across inline units before any SQL (design §8.2); every mutation ends with `auditWritePort.record(...)` carrying `entityName = "products"`, `branchId = null`; `disable`/`enable` are idempotent no-ops when already in the target state. `changeBaseUnit` throws `UnsupportedOperationException("changeBaseUnit is delivered in slice S7")` — body **not** guessed.
+- [x] 4.11 `SkuTest` (9 tests) — `abc-1` and `ABC-1` yield the same value `ABC-1`; mixed-case upper-cased; trimming; null/empty/whitespace rejected; 50 accepted (also after trimming); 51 rejected.
+- [x] 4.12 `UnitCodeTest` (11 tests) — `kg` → `KG`; trimming; `"Saco de 50"` and `"KG-2"` rejected (charset); null/blank rejected; canonical factory 50 ok / 51 rejected; `baseUnit` normalizes like the canonical factory, 20 ok, 21 rejected **while `new UnitCode("A".repeat(21))` succeeds** — the two bounds shown side by side.
+- [x] 4.13 `ProductInvariantsTest` (8 tests) — two units of the same name → `DuplicateProductUnitException`; base-unit homonym factor `2` → `InvalidConversionFactorException`, factor `1.0000` accepted; two defaults → `IllegalStateException`, one/zero defaults accepted; unit-level factor `0`/`-1` rejected; unit list copied defensively.
+- [x] 4.14 `ProductAdminServiceTest` (14 tests) — hand-written in-memory fakes (`FakeProductRepositoryPort`, `FakeCategoryRepositoryPort`, `FakeAuditWritePort`, no Mockito): `category_not_found` and `category_inactive` on create/edit/enable, `duplicate_sku` (case-insensitive) on create and edit, editing a product to its own SKU is **not** a conflict, unknown product → `ProductNotFoundException`, `disable` idempotent, and every mutation writes an audit entry with `entityName = "products"`, `branchId = null`, the actor id and the product `external_id`, in order `CREATE, UPDATE, DISABLE, ENABLE`.
+- [x] 4.15 `cd backend && ./mvnw test` — BUILD SUCCESS.
+
+### Files changed
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/model/Sku.java` | Created | SKU value object — trim + upper-case, `1..50`, `IllegalArgumentException` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/model/UnitCode.java` | Created | Unit-code value object — normalize + `^[A-Z0-9_]+$`; `1..50` canonical, `baseUnit(String)` `1..20` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/model/ProductSort.java` | Created | Closed sort allow-list `SKU/NAME/CREATED_AT` + `parse(String)` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/model/ProductUnit.java` | Created | Alternative-unit record; compact ctor rejects null / non-positive factor |
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/model/Product.java` | Created | Product aggregate; compact ctor copies units + asserts R-13/R-14; four `with*` copies |
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/model/ProductSummary.java` | Created | List projection without `units`/`description` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/exception/ProductNotFoundException.java` | Created | `RuntimeException`, `UUID` ctor |
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/exception/DuplicateSkuException.java` | Created | `RuntimeException`, `String` ctor |
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/exception/DuplicateProductUnitException.java` | Created | `RuntimeException`, `String` ctor |
+| `backend/src/main/java/com/optiplant/inventory/catalog/domain/exception/InvalidConversionFactorException.java` | Created | `RuntimeException`, `String` ctor |
+| `backend/src/main/java/com/optiplant/inventory/catalog/application/port/out/ProductRepositoryPort.java` | Created | Secondary port + `NewProduct`/`NewUnitRow`/`ProductUpdate`/`ProductFilter`/`ProductPage` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/application/port/in/ManageProductsUseCase.java` | Created | Primary port; `EditProductCommand` without `baseUnit`; `changeBaseUnit` declared |
+| `backend/src/main/java/com/optiplant/inventory/catalog/application/service/ProductAdminService.java` | Created | `@Service`; create/edit/disable/enable + audit; `changeBaseUnit` → `UnsupportedOperationException` |
+| `backend/src/test/java/com/optiplant/inventory/catalog/domain/model/SkuTest.java` | Created | 9 tests (R-06) |
+| `backend/src/test/java/com/optiplant/inventory/catalog/domain/model/UnitCodeTest.java` | Created | 11 tests (R-07, R-13) |
+| `backend/src/test/java/com/optiplant/inventory/catalog/domain/model/ProductInvariantsTest.java` | Created | 8 tests (R-13, R-14) |
+| `backend/src/test/java/com/optiplant/inventory/catalog/application/service/ProductAdminServiceTest.java` | Created | 14 tests (R-05, R-06, R-09, R-15) |
+| `openspec/changes/add-catalog-module/tasks.md` | Modified | Phase 4 tasks 4.1–4.15 marked `[x]` |
+
+### `./mvnw test` output (run, not asserted from memory)
+
+```
+[INFO] Running com.optiplant.inventory.catalog.application.service.ProductAdminServiceTest
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0 -- in ...ProductAdminServiceTest
+[INFO] Running com.optiplant.inventory.catalog.domain.model.ProductInvariantsTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0 -- in ...ProductInvariantsTest
+[INFO] Running com.optiplant.inventory.catalog.domain.model.SkuTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0 -- in ...SkuTest
+[INFO] Running com.optiplant.inventory.catalog.domain.model.UnitCodeTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0 -- in ...UnitCodeTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.ModuleBoundariesTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.SharedIsFrameworkFreeTest
+[INFO] Tests run: 139, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+Surefire total 139 (was 67 at S1; S2/S3/S4 added the rest), all green. `ModuleBoundariesTest` 5/5 — the new `catalog/domain` product model imports only the JDK (`java.util.*`, `java.time.Instant`, `java.math.BigDecimal`, `java.util.regex.Pattern`) plus `catalog/domain/exception`, so `elDominioNoConoceInfraestructuraNiFramework` and `sharedEsUnaHoja` stay green. `./mvnw verify` (Testcontainers) is deliberately **not** run for S4 — this slice wires no adapter and the tasks `Suggested Work Units` table lists its runtime harness as `none`.
+
+### Deviations from design
+
+1. **`ProductAdminService.create` constructs a throwaway `Product` aggregate purely to assert R-13/R-14 across inline units before calling the port.** Design §8.2 states "`Product`'s compact constructor has already rejected a payload carrying two defaults before any SQL is issued", but the out-port takes primitive `NewProduct`/`NewUnitRow` rows, not a domain `Product`. To make §8.2's claim literally true on the create path, the service builds `List<ProductUnit>` (each validates its own factor) and then `new Product(PLACEHOLDER_ID, sku, name, description, baseUnit, true, category, units, Instant.EPOCH, Instant.EPOCH)` — the id/timestamps are placeholders discarded immediately; only the constructor's invariant assertions matter. The persisted rows are then derived from the validated `ProductUnit` list. No behavioural or contract change; it is the single place the cross-unit invariants are enforced on create, as the design intends.
+2. **`enable` re-checks the category via the `CategoryRef` already embedded in the loaded `Product`, not a fresh `CategoryRepositoryPort` call.** `Product` carries `CategoryRef category` (design §3.3) with its `active` flag, loaded in the same transaction by `findByExternalId`, so it reflects current state. This avoids a redundant port round-trip and keeps R-11's "re-enabling under an inactive category → `category_inactive`" satisfied. `create`/`edit` still resolve through the port because they take a *new* `categoryExternalId` that is not yet on any loaded aggregate.
+
+Neither changes the ports, the API surface, or any error code.
+
+### Issues found
+
+None. `design.md` §3.1, §3.3, §3.4, §5.1, §5.3, §6.2 and `tasks.md` Phase 4 were complete and internally consistent for S4. The one genuine friction point (out-port shape vs. §8.2's "the `Product` constructor rejects it" phrasing) is resolved by deviation 1 above without redesigning anything.
+
+### Workload / PR boundary
+
+- Mode: chained PR slice — PR4 of 8 (feature-branch-chain; PR4 targets PR3's branch).
+- Current work unit: S4 — Product domain + application.
+- Boundary: starts from the S3 branch; ends with the product value objects, aggregate, projections, exceptions, both ports and `ProductAdminService` plus their unit tests. Nothing is wired to HTTP or persistence — `/api/catalog/products` does not exist yet (S5).
+- Rollback: `git revert` of this commit; no consumer of the new types exists outside their own tests.
+- Estimated review budget impact: ~470 lines production + ~430 lines unit tests (design forecast: ~420). Planned S4 slice of the approved 8-PR chain; proceeds as a bounded slice per the tasks `Review Workload Forecast`.
