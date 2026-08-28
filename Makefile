@@ -1,15 +1,20 @@
 # Makefile — orquestacion local del sistema de inventario multi-sucursal.
 #
-# La DB y el backend corren en contenedores (compose.yml). El frontend todavia
-# no tiene servicio de Compose: se levanta local con `pnpm dev` (HMR). Los
-# objetivos de ciclo de vida (stop / down / logs / ps) operan sobre los
+# Docker se usa SOLO para la base de datos (`make db`) y para levantar todo
+# junto (`make up`). El backend y el frontend, por separado, corren nativos:
+#   - backend:  ./mvnw spring-boot:run   (necesita `make db` corriendo)
+#   - frontend: pnpm dev                 (HMR)
+#
+# Los objetivos de ciclo de vida (stop / down / logs / ps) operan sobre los
 # contenedores de Compose.
 #
 # Uso: `make` o `make help` para ver los objetivos.
 
 COMPOSE      ?= docker compose
 PNPM         ?= pnpm
+MVNW         ?= ./mvnw
 FRONTEND_DIR := frontend
+BACKEND_DIR  := backend
 
 .DEFAULT_GOAL := help
 
@@ -27,15 +32,15 @@ help: ## Muestra esta ayuda
 # ---------------------------------------------------------------------------
 
 .PHONY: db
-db: ## Levanta solo PostgreSQL (contenedor, segundo plano)
+db: ## Levanta solo PostgreSQL (unico objetivo que usa Docker por si solo)
 	$(COMPOSE) up -d db
 
 .PHONY: backend
-backend: ## Levanta backend + su DB (contenedor, segundo plano; reconstruye la imagen)
-	$(COMPOSE) up -d --build backend
+backend: ## Levanta el backend nativo con Maven (requiere `make db` corriendo)
+	cd $(BACKEND_DIR) && $(MVNW) spring-boot:run
 
 .PHONY: frontend
-frontend: frontend-install ## Levanta el frontend en modo dev (local, HMR, primer plano)
+frontend: frontend-install ## Levanta el frontend nativo en modo dev (HMR)
 	$(PNPM) --dir $(FRONTEND_DIR) dev
 
 .PHONY: frontend-install
@@ -43,11 +48,11 @@ frontend-install: ## Instala dependencias del frontend si faltan
 	@test -d $(FRONTEND_DIR)/node_modules || $(PNPM) --dir $(FRONTEND_DIR) install
 
 # ---------------------------------------------------------------------------
-# Todo junto
+# Todo junto (Docker)
 # ---------------------------------------------------------------------------
 
 .PHONY: up
-up: frontend-install ## DB + backend (contenedores, segundo plano) y frontend (local, primer plano)
+up: frontend-install ## DB + backend en contenedores; frontend nativo en primer plano
 	$(COMPOSE) up -d --build db backend
 	$(PNPM) --dir $(FRONTEND_DIR) dev
 
@@ -72,7 +77,7 @@ down-v: ## Baja los contenedores y BORRA el volumen pgdata
 	$(COMPOSE) down -v
 
 .PHONY: logs
-logs: ## Sigue los registros de DB + backend
+logs: ## Sigue los registros de los contenedores
 	$(COMPOSE) logs -f
 
 .PHONY: ps
@@ -87,7 +92,7 @@ ps: ## Estado de los contenedores
 verify: ## Las tres validaciones del proyecto (trazabilidad, esquema, backend)
 	python3 scripts/validar_trazabilidad.py
 	./scripts/validar_esquema.sh
-	cd backend && ./mvnw verify
+	cd $(BACKEND_DIR) && $(MVNW) verify
 
 .PHONY: verify-frontend
 verify-frontend: frontend-install ## Lint + typecheck + test del frontend
