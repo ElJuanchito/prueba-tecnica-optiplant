@@ -18,15 +18,47 @@ public interface UserSpringDataRepository extends JpaRepository<UserJpaEntity, L
 	Optional<UserJpaEntity> findByEmail(String email);
 
 	/** Filtered, paginated listing for admin queries (user-administration "User
-	 * query lists users..."). Plain JPQL, not native — unlike {@code
-	 * AuditLogSpringDataRepository.search}'s {@code Instant} filters (slice 4
-	 * deviation 4), every filter here is {@code Boolean}/{@code String}/{@code
-	 * Long}, which Hibernate already gives the driver an explicit type for, so
-	 * {@code Pageable}'s dynamic sort still works (rejected on a native query). */
-	@Query("SELECT u FROM UserJpaEntity u WHERE (:active IS NULL OR u.active = :active) "
-			+ "AND (:role IS NULL OR u.role = :role) AND (:branchId IS NULL OR u.branchId = :branchId)")
-	Page<UserJpaEntity> search(@Param("active") Boolean active, @Param("role") String role,
+	 * query lists users..."). Native query with LEFT JOIN on branches eliminates
+	 * N+1 round trips for branch external_id and active status. Ordering (most
+	 * recent first) is fixed in SQL, matching AuditLogSpringDataRepository. */
+	@Query(value = """
+			SELECT u.external_id AS externalId,
+			       u.username AS username,
+			       u.email AS email,
+			       u.password_hash AS passwordHash,
+			       u.full_name AS fullName,
+			       u.role AS role,
+			       u.is_active AS active,
+			       b.external_id AS branchExternalId,
+			       b.is_active AS branchActive
+			FROM users u
+			LEFT JOIN branches b ON b.id = u.branch_id
+			WHERE (:active IS NULL OR u.is_active = :active)
+			  AND (:role IS NULL OR u.role = :role)
+			  AND (:branchId IS NULL OR u.branch_id = :branchId)
+			ORDER BY u.created_at DESC
+			""",
+			countQuery = """
+					SELECT count(*) FROM users u
+					WHERE (:active IS NULL OR u.is_active = :active)
+					  AND (:role IS NULL OR u.role = :role)
+					  AND (:branchId IS NULL OR u.branch_id = :branchId)
+					""",
+			nativeQuery = true)
+	Page<UserSummaryProjection> search(@Param("active") Boolean active, @Param("role") String role,
 			@Param("branchId") Long branchId, Pageable pageable);
+
+	public interface UserSummaryProjection {
+		UUID getExternalId();
+		String getUsername();
+		String getEmail();
+		String getPasswordHash();
+		String getFullName();
+		String getRole();
+		boolean isActive();
+		UUID getBranchExternalId();
+		Boolean getBranchActive();
+	}
 
 	@Query(value = "SELECT id FROM users WHERE external_id = :externalId", nativeQuery = true)
 	Optional<Long> findIdByExternalId(@Param("externalId") UUID externalId);

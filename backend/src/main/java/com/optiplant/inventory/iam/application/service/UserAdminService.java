@@ -16,6 +16,8 @@ import com.optiplant.inventory.shared.audit.AuditEntryCommand;
 import com.optiplant.inventory.shared.audit.AuditWritePort;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import com.optiplant.inventory.shared.security.Role;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,8 @@ public class UserAdminService implements ManageUsersUseCase {
 	private final RefreshTokenRepositoryPort refreshTokenRepository;
 	private final AuditWritePort auditWritePort;
 
+	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
 	public UserAdminService(UserRepositoryPort userRepository, PasswordHasherPort passwordHasher,
 			RefreshTokenRepositoryPort refreshTokenRepository, AuditWritePort auditWritePort) {
 		this.userRepository = userRepository;
@@ -63,14 +67,15 @@ public class UserAdminService implements ManageUsersUseCase {
 				command.email(), passwordHash, command.fullName(), command.role(), command.branchExternalId()));
 
 		auditWritePort.record(new AuditEntryCommand(actor.userId(), created.branchExternalId(), AuditAction.CREATE.name(),
-				"users", created.externalId().toString(), null, null, null));
+				"users", created.externalId().toString(), null, serializePayload(created), null));
 		return created;
 	}
 
 	@Override
 	@Transactional
 	public UserAccount edit(AuthenticatedPrincipal actor, UUID externalId, EditUserCommand command) {
-		userRepository.findByExternalId(externalId).orElseThrow(() -> new UserNotFoundException(externalId));
+		UserAccount existing = userRepository.findByExternalId(externalId)
+				.orElseThrow(() -> new UserNotFoundException(externalId));
 		requireBranchForNonAdmin(command.role(), command.branchExternalId());
 		requireUniqueEmail(command.email(), externalId);
 
@@ -78,7 +83,7 @@ public class UserAdminService implements ManageUsersUseCase {
 				new UserUpdate(command.email(), command.fullName(), command.role(), command.branchExternalId()));
 
 		auditWritePort.record(new AuditEntryCommand(actor.userId(), updated.branchExternalId(), AuditAction.UPDATE.name(),
-				"users", externalId.toString(), null, null, null));
+				"users", externalId.toString(), serializePayload(existing), serializePayload(updated), null));
 		return updated;
 	}
 
@@ -94,8 +99,11 @@ public class UserAdminService implements ManageUsersUseCase {
 		// session across every device at once (P4).
 		refreshTokenRepository.revokeAllForUser(externalId, RevocationReason.USER_DISABLED);
 
+		UserAccount disabledTarget = new UserAccount(target.externalId(), target.username(), target.email(),
+				target.passwordHash(), target.fullName(), target.role(), target.branchExternalId(), false);
+
 		auditWritePort.record(new AuditEntryCommand(actor.userId(), target.branchExternalId(), AuditAction.DISABLE.name(),
-				"users", externalId.toString(), null, null, null));
+				"users", externalId.toString(), serializePayload(target), serializePayload(disabledTarget), null));
 	}
 
 	@Override
@@ -128,5 +136,23 @@ public class UserAdminService implements ManageUsersUseCase {
 				.ifPresent(existing -> {
 					throw new DuplicateUsernameException("email '" + email + "' is already in use");
 				});
+	}
+
+	private String serializePayload(UserAccount user) {
+		if (user == null) {
+			return null;
+		}
+		try {
+			return OBJECT_MAPPER.writeValueAsString(UserAuditPayload.from(user));
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("Failed to serialize audit payload", e);
+		}
+	}
+
+	private record UserAuditPayload(String role, UUID branchExternalId, boolean active, String email, String fullName) {
+		static UserAuditPayload from(UserAccount user) {
+			return new UserAuditPayload(user.role().name(), user.branchExternalId(), user.active(), user.email(),
+					user.fullName());
+		}
 	}
 }

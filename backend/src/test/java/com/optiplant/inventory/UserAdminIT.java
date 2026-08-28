@@ -180,6 +180,62 @@ class UserAdminIT {
 		content.forEach(entry -> assertThat(entry).doesNotContainKey("id").doesNotContainKey("passwordHash"));
 	}
 
+	@Test
+	void mutacionesRegistranAuditoriaConPayloads() {
+		String username = "it.audit." + shortSuffix();
+		String email = username + "@optiplant.com";
+		UserResponseBody creado = crearUsuarioConEmail(username, email, Role.OPERATOR, BOGOTA_BRANCH_EXTERNAL_ID);
+
+		// 1. CREATE audit entry
+		Map<String, Object> createAudit = jdbcTemplate.queryForMap(
+				"SELECT payload_before, payload_after FROM audit_logs WHERE entity_name = 'users' AND entity_id = ? AND action = 'CREATE'",
+				creado.externalId().toString());
+		assertThat(createAudit.get("payload_before")).isNull();
+		assertThat(createAudit.get("payload_after")).isNotNull();
+		String createPayloadAfter = createAudit.get("payload_after").toString();
+		assertThat(createPayloadAfter).contains("OPERATOR").contains(email).contains("true");
+
+		// 2. UPDATE audit entry
+		EditUserRequestBody edicion = new EditUserRequestBody(email, "Nombre Editado", "BRANCH_MANAGER",
+				BOGOTA_BRANCH_EXTERNAL_ID);
+		restClient.put()
+				.uri("/api/admin/users/{externalId}", creado.externalId())
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(edicion)
+				.retrieve()
+				.toBodilessEntity();
+
+		Map<String, Object> updateAudit = jdbcTemplate.queryForMap(
+				"SELECT payload_before, payload_after FROM audit_logs WHERE entity_name = 'users' AND entity_id = ? AND action = 'UPDATE'",
+				creado.externalId().toString());
+		assertThat(updateAudit.get("payload_before")).isNotNull();
+		assertThat(updateAudit.get("payload_after")).isNotNull();
+		assertThat(updateAudit.get("payload_before").toString()).contains("OPERATOR");
+		assertThat(updateAudit.get("payload_after").toString()).contains("BRANCH_MANAGER");
+
+		// 3. DISABLE audit entry
+		disable(creado.externalId());
+		Map<String, Object> disableAudit = jdbcTemplate.queryForMap(
+				"SELECT payload_before, payload_after FROM audit_logs WHERE entity_name = 'users' AND entity_id = ? AND action = 'DISABLE'",
+				creado.externalId().toString());
+		assertThat(disableAudit.get("payload_before")).isNotNull();
+		assertThat(disableAudit.get("payload_after")).isNotNull();
+		assertThat(disableAudit.get("payload_before").toString()).contains("true");
+		assertThat(disableAudit.get("payload_after").toString()).contains("false");
+	}
+
+	@Test
+	void violacionDeConstraintUnicoEnBaseDeDatosDevuelve409() {
+		String username = "it.race." + shortSuffix();
+		crearUsuario(username, Role.OPERATOR, BOGOTA_BRANCH_EXTERNAL_ID);
+
+		ResponseEntity<String> intento = crearUsuarioRaw(username, "otro." + shortSuffix() + "@optiplant.com",
+				Role.OPERATOR, BOGOTA_BRANCH_EXTERNAL_ID);
+		assertThat(intento.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+		assertThat(intento.getBody()).contains("duplicate_user_field");
+	}
+
 	private UserResponseBody crearUsuario(String username, Role role, UUID branchId) {
 		return crearUsuarioConEmail(username, username + "@optiplant.com", role, branchId);
 	}

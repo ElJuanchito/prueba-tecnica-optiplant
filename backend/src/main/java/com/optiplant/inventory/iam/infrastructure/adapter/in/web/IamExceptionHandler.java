@@ -7,6 +7,7 @@ import com.optiplant.inventory.iam.domain.exception.RefreshTokenRejectedExceptio
 import com.optiplant.inventory.iam.domain.exception.TooManyLoginAttemptsException;
 import com.optiplant.inventory.iam.domain.exception.UserDisabledException;
 import com.optiplant.inventory.iam.domain.exception.UserNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -61,6 +62,12 @@ class IamExceptionHandler {
 	@ExceptionHandler(DuplicateUsernameException.class)
 	ResponseEntity<ErrorResponse> onDuplicateUsername(DuplicateUsernameException ex) {
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("duplicate_user_field", ex.getMessage()));
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	ResponseEntity<ErrorResponse> onDataIntegrityViolation(DataIntegrityViolationException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ErrorResponse("duplicate_user_field", "Duplicate unique field"));
 	}
 
 	@ExceptionHandler(UserNotFoundException.class)

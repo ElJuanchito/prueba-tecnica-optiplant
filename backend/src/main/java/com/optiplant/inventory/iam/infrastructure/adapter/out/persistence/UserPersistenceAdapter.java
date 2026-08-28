@@ -2,13 +2,13 @@ package com.optiplant.inventory.iam.infrastructure.adapter.out.persistence;
 
 import com.optiplant.inventory.iam.application.port.out.UserRepositoryPort;
 import com.optiplant.inventory.iam.domain.model.UserAccount;
+import com.optiplant.inventory.shared.security.Role;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -85,8 +85,8 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
 		Long branchId = filter.branchExternalId() != null ? resolveBranchId(filter.branchExternalId()) : null;
 		String role = filter.role() != null ? filter.role().name() : null;
 
-		Page<UserJpaEntity> page = userRepository.search(filter.active(), role, branchId, PageRequest
-				.of(filter.page(), filter.size(), Sort.by(Sort.Direction.DESC, "createdAt")));
+		Page<UserSpringDataRepository.UserSummaryProjection> page = userRepository.search(filter.active(), role,
+				branchId, PageRequest.of(filter.page(), filter.size()));
 
 		List<UserAccount> content = page.getContent().stream().map(this::toDomain).toList();
 		return new UserPage(content, page.getTotalElements(), filter.page(), filter.size());
@@ -104,6 +104,14 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
 		}
 		return userRepository.findBranchIdByExternalId(branchExternalId)
 				.orElseThrow(() -> new IllegalArgumentException("No branch found for external id " + branchExternalId));
+	}
+
+	private UserAccount toDomain(UserSpringDataRepository.UserSummaryProjection projection) {
+		Role role = Role.valueOf(projection.getRole());
+		boolean active = projection.isActive()
+				&& (projection.getBranchExternalId() == null || Boolean.TRUE.equals(projection.getBranchActive()));
+		return new UserAccount(projection.getExternalId(), projection.getUsername(), projection.getEmail(),
+				projection.getPasswordHash(), projection.getFullName(), role, projection.getBranchExternalId(), active);
 	}
 
 	private UserAccount toDomain(UserJpaEntity entity) {

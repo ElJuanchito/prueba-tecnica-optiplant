@@ -114,8 +114,17 @@ class UserAdminServiceTest {
 				"Nuevo Operador", Role.OPERATOR, SUCURSAL_BOGOTA));
 
 		assertThat(auditWritePort.recorded).hasSize(1);
-		assertThat(auditWritePort.recorded.get(0).action()).isEqualTo("CREATE");
-		assertThat(auditWritePort.recorded.get(0).entityName()).isEqualTo("users");
+		AuditEntryCommand entry = auditWritePort.recorded.get(0);
+		assertThat(entry.action()).isEqualTo("CREATE");
+		assertThat(entry.entityName()).isEqualTo("users");
+		assertThat(entry.payloadBefore()).isNull();
+		assertThat(entry.payloadAfter()).contains("\"role\":\"OPERATOR\"")
+				.contains("\"email\":\"nuevo.operador@optiplant.com\"")
+				.contains("\"fullName\":\"Nuevo Operador\"")
+				.contains("\"active\":true")
+				.contains(SUCURSAL_BOGOTA.toString())
+				.doesNotContain("Password123!")
+				.doesNotContain("hashed");
 	}
 
 	@Test
@@ -127,6 +136,11 @@ class UserAdminServiceTest {
 				new EditUserCommand(existing.email(), existing.fullName(), Role.BRANCH_MANAGER, SUCURSAL_BOGOTA));
 
 		assertThat(updated.role()).isEqualTo(Role.BRANCH_MANAGER);
+		assertThat(auditWritePort.recorded).hasSize(1);
+		AuditEntryCommand entry = auditWritePort.recorded.get(0);
+		assertThat(entry.action()).isEqualTo("UPDATE");
+		assertThat(entry.payloadBefore()).contains("\"role\":\"OPERATOR\"").contains("\"active\":true");
+		assertThat(entry.payloadAfter()).contains("\"role\":\"BRANCH_MANAGER\"").contains("\"active\":true");
 	}
 
 	@Test
@@ -172,7 +186,10 @@ class UserAdminServiceTest {
 		assertThat(refreshTokenRepository.revokedForUser).containsEntry(existing.externalId(),
 				RevocationReason.USER_DISABLED);
 		assertThat(auditWritePort.recorded).hasSize(1);
-		assertThat(auditWritePort.recorded.get(0).action()).isEqualTo("DISABLE");
+		AuditEntryCommand entry = auditWritePort.recorded.get(0);
+		assertThat(entry.action()).isEqualTo("DISABLE");
+		assertThat(entry.payloadBefore()).contains("\"active\":true");
+		assertThat(entry.payloadAfter()).contains("\"active\":false");
 	}
 
 	@Test
