@@ -173,6 +173,8 @@ class UserAdminIT {
 
 		assertThat(creado.role()).isEqualTo("OPERATOR");
 		assertThat(creado.branchId()).isEqualTo(BOGOTA_BRANCH_EXTERNAL_ID);
+		assertThat(creado.branchName()).isEqualTo("Sucursal Central Bogotá");
+		assertThat(creado.branchCode()).isEqualTo("SUC-BOG");
 	}
 
 	@Test
@@ -398,13 +400,13 @@ class UserAdminIT {
 	}
 
 	private record UserResponseBody(UUID externalId, String username, String email, String fullName, String role,
-			UUID branchId, boolean active) {
+			UUID branchId, String branchName, String branchCode, boolean active) {
 	}
 
 	private record LoginRequestBody(String username, String password) {
 	}
 
 	private record LoginResponseBody(String accessToken, String refreshToken, long expiresInSeconds, String role,
-			UUID branchId) {
+			UUID branchId, String branchName, String branchCode) {
 	}
 }

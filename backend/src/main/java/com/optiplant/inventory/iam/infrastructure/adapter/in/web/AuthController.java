@@ -40,7 +40,7 @@ public class AuthController {
 						httpRequest.getRemoteAddr()));
 
 		return new LoginResponse(result.accessToken(), result.refreshToken(), result.expiresInSeconds(),
-				result.role(), result.branchId());
+				result.role(), result.branchId(), result.branchName(), result.branchCode());
 	}
 
 	@PostMapping("/refresh")
@@ -59,7 +59,7 @@ public class AuthController {
 	}
 
 	public record LoginResponse(String accessToken, String refreshToken, long expiresInSeconds, String role,
-			UUID branchId) {
+			UUID branchId, String branchName, String branchCode) {
 	}
 
 	public record RefreshRequest(@NotBlank String refreshToken) {

@@ -4,7 +4,9 @@ import com.optiplant.inventory.iam.application.port.in.ManageUsersUseCase;
 import com.optiplant.inventory.iam.application.port.in.ManageUsersUseCase.CreateUserCommand;
 import com.optiplant.inventory.iam.application.port.in.ManageUsersUseCase.EditUserCommand;
 import com.optiplant.inventory.iam.application.port.in.ManageUsersUseCase.UserQuery;
+import com.optiplant.inventory.iam.application.port.out.BranchRepositoryPort;
 import com.optiplant.inventory.iam.application.port.out.UserRepositoryPort.UserPage;
+import com.optiplant.inventory.iam.domain.model.BranchProfile;
 import com.optiplant.inventory.iam.domain.model.UserAccount;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import com.optiplant.inventory.shared.security.PrincipalAccessor;
@@ -46,10 +48,13 @@ public class UserAdminController {
 	private static final int MAX_PAGE_SIZE = 100;
 
 	private final ManageUsersUseCase manageUsersUseCase;
+	private final BranchRepositoryPort branchRepository;
 	private final PrincipalAccessor principalAccessor;
 
-	public UserAdminController(ManageUsersUseCase manageUsersUseCase, PrincipalAccessor principalAccessor) {
+	public UserAdminController(ManageUsersUseCase manageUsersUseCase, BranchRepositoryPort branchRepository,
+			PrincipalAccessor principalAccessor) {
 		this.manageUsersUseCase = manageUsersUseCase;
+		this.branchRepository = branchRepository;
 		this.principalAccessor = principalAccessor;
 	}
 
@@ -84,13 +89,22 @@ public class UserAdminController {
 		int pageSize = size == null ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
 		UserPage result = manageUsersUseCase.list(actor, new UserQuery(active, role, branchId, page, pageSize));
 
-		List<UserResponse> content = result.content().stream().map(UserAdminController::toResponse).toList();
+		List<UserResponse> content = result.content().stream().map(this::toResponse).toList();
 		return new UserPageResponse(content, result.totalElements(), result.page(), result.size());
 	}
 
-	private static UserResponse toResponse(UserAccount account) {
+	private UserResponse toResponse(UserAccount account) {
+		String branchName = null;
+		String branchCode = null;
+		if (account.branchExternalId() != null) {
+			BranchProfile branch = branchRepository.findByExternalId(account.branchExternalId()).orElse(null);
+			if (branch != null) {
+				branchName = branch.name();
+				branchCode = branch.code();
+			}
+		}
 		return new UserResponse(account.externalId(), account.username(), account.email(), account.fullName(),
-				account.role(), account.branchExternalId(), account.active());
+				account.role(), account.branchExternalId(), branchName, branchCode, account.active());
 	}
 
 	public record CreateUserRequest(@NotBlank String username, @NotBlank @Email String email,
@@ -103,7 +117,7 @@ public class UserAdminController {
 	}
 
 	public record UserResponse(UUID externalId, String username, String email, String fullName, Role role,
-			UUID branchId, boolean active) {
+			UUID branchId, String branchName, String branchCode, boolean active) {
 	}
 
 	public record UserPageResponse(List<UserResponse> content, long totalElements, int page, int size) {

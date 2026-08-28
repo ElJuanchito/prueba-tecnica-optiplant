@@ -14,7 +14,8 @@ public interface AuthenticateUseCase {
 	record LoginCommand(String username, String password, String clientIp) {
 	}
 
-	/** {@code branchId} is {@code null} for a corporate {@code ADMIN}. */
-	record LoginResult(String accessToken, long expiresInSeconds, String refreshToken, String role, UUID branchId) {
+	/** {@code branchId}, {@code branchName}, and {@code branchCode} are {@code null} for a corporate {@code ADMIN}. */
+	record LoginResult(String accessToken, long expiresInSeconds, String refreshToken, String role, UUID branchId,
+			String branchName, String branchCode) {
 	}
 }

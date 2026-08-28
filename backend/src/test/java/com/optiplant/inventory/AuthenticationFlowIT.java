@@ -83,6 +83,8 @@ class AuthenticationFlowIT {
 		assertThat(body).isNotNull();
 		assertThat(body.role()).isEqualTo("BRANCH_MANAGER");
 		assertThat(body.branchId()).isNotNull();
+		assertThat(body.branchName()).isEqualTo("Sucursal Central Bogotá");
+		assertThat(body.branchCode()).isEqualTo("SUC-BOG");
 	}
 
 	@Test
@@ -411,7 +413,7 @@ class AuthenticationFlowIT {
 	}
 
 	private record LoginResponseBody(String accessToken, String refreshToken, long expiresInSeconds, String role,
-			UUID branchId) {
+			UUID branchId, String branchName, String branchCode) {
 	}
 
 	private record RefreshRequestBody(String refreshToken) {

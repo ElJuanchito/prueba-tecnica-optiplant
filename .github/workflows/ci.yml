@@ -1,10 +1,10 @@
 # Integración continua — OptiPlant
 #
-# Corre las mismas tres verificaciones que CLAUDE.md exige antes de dar por
+# Corre las mismas verificaciones que el proyecto exige antes de dar por
 # terminado un cambio, para que revisar un pull request se reduzca a mirar si
-# los tres jobs están en verde.
+# los jobs están en verde.
 #
-# Los tres son independientes y corren en paralelo: un fallo de esquema no
+# Los cuatro jobs son independientes y corren en paralelo: un fallo de esquema no
 # oculta un fallo de trazabilidad, y viceversa.
 name: CI
 
@@ -69,3 +69,39 @@ jobs:
       # Docker del runner). El wrapper fija la versión de Maven.
       - name: Compilar y verificar
         run: ./mvnw --batch-mode --no-transfer-progress verify
+
+  frontend:
+    name: Frontend — tipos, lint, pruebas y build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.24.0
+
+      - name: Preparar Node.js 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Pruebas unitarias y de componentes
+        run: pnpm test
+
+      - name: Compilar build de producción
+        run: pnpm build
