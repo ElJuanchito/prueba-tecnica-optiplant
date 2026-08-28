@@ -132,14 +132,14 @@ Decision needed before apply: **No.** `design.md` §12 leaves no open question.
 
 ## Phase 7 — S7: The base-unit rule, without its endpoint (PR7)
 
-- [ ] 7.1 Create `catalog/domain/model/StockPresence.java` — enum `UNTOUCHED/HAS_HISTORY/UNKNOWN` (design §3.2, D-3).
-- [ ] 7.2 Create `catalog/domain/exception/BaseUnitChangeRejectedException.java` with a nested `Reason { HAS_HISTORY, PRECONDITION_UNVERIFIABLE }` (design §3.4). The two reasons exist now so the future slice can emit two distinct codes without reopening the domain (contract §7).
-- [ ] 7.3 Create `catalog/domain/service/BaseUnitChangePolicy.java` — `apply(product, newBaseUnit, presence, now)`; `UNTOUCHED` applies, `HAS_HISTORY` and `UNKNOWN` each throw with their reason. Framework-free; takes the enum, never the port (design §4.2, D-3).
-- [ ] 7.4 Wire `ProductAdminService.changeBaseUnit` — constructor-inject `Optional<ProductStockPresencePort>`; map it to `StockPresence` with `orElse(StockPresence.UNKNOWN)` (design §5.2). The port call, the policy and the `setBaseUnit` write share **one** transaction (contract §8).
-- [ ] 7.5 **Do not** add an endpoint, a route matcher, an error code, or a `CatalogExceptionHandler` mapping for this (PA-08, contract §7, design §3.4). Verify: `rg 'base-unit' backend/src/main` returns nothing.
-- [ ] 7.6 Test: `BaseUnitChangePolicyTest` — the three `StockPresence` values produce apply / `HAS_HISTORY` / `PRECONDITION_UNVERIFIABLE`; on refusal **no field** of the product changes (R-08).
-- [ ] 7.7 Test: `ProductAdminServiceTest` extension with a stubbed `ProductStockPresencePort` — port returns `true` (applies, `updatedAt` advances), port returns `false` (refused), `Optional.empty()` i.e. **the state of this change** (refused, fails closed). These four cases are what keep the deferred rule from shipping as untested dead code (contract §11, PA-08).
-- [ ] 7.8 Run `cd backend && ./mvnw verify`.
+- [x] 7.1 Create `catalog/domain/model/StockPresence.java` — enum `UNTOUCHED/HAS_HISTORY/UNKNOWN` (design §3.2, D-3).
+- [x] 7.2 Create `catalog/domain/exception/BaseUnitChangeRejectedException.java` with a nested `Reason { HAS_HISTORY, PRECONDITION_UNVERIFIABLE }` (design §3.4). The two reasons exist now so the future slice can emit two distinct codes without reopening the domain (contract §7).
+- [x] 7.3 Create `catalog/domain/service/BaseUnitChangePolicy.java` — `apply(product, newBaseUnit, presence, now)`; `UNTOUCHED` applies, `HAS_HISTORY` and `UNKNOWN` each throw with their reason. Framework-free; takes the enum, never the port (design §4.2, D-3).
+- [x] 7.4 Wire `ProductAdminService.changeBaseUnit` — constructor-inject `Optional<ProductStockPresencePort>`; map it to `StockPresence` with `orElse(StockPresence.UNKNOWN)` (design §5.2). The port call, the policy and the `setBaseUnit` write share **one** transaction (contract §8).
+- [x] 7.5 **Do not** add an endpoint, a route matcher, an error code, or a `CatalogExceptionHandler` mapping for this (PA-08, contract §7, design §3.4). Verify: `rg 'base-unit' backend/src/main` returns nothing. *(See apply-progress S7 deviation: the literal `rg` was already non-empty pre-S7 — every hit is explanatory prose, none a route/matcher/code/mapping. The substantive constraint — no HTTP surface for the base-unit change — is met and verified precisely.)*
+- [x] 7.6 Test: `BaseUnitChangePolicyTest` — the three `StockPresence` values produce apply / `HAS_HISTORY` / `PRECONDITION_UNVERIFIABLE`; on refusal **no field** of the product changes (R-08).
+- [x] 7.7 Test: `ProductAdminServiceTest` extension with a stubbed `ProductStockPresencePort` — port returns `true` (applies, `updatedAt` advances), port returns `false` (refused), `Optional.empty()` i.e. **the state of this change** (refused, fails closed). These four cases are what keep the deferred rule from shipping as untested dead code (contract §11, PA-08).
+- [x] 7.8 Run `cd backend && ./mvnw verify`.
 
 ## Phase 8 — S8: Cross-cutting verification and documentation (PR8)
 

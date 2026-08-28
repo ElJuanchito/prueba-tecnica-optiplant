@@ -18,14 +18,18 @@ import com.optiplant.inventory.catalog.domain.model.CategoryRef;
 import com.optiplant.inventory.catalog.domain.model.Product;
 import com.optiplant.inventory.catalog.domain.model.ProductUnit;
 import com.optiplant.inventory.catalog.domain.model.Sku;
+import com.optiplant.inventory.catalog.domain.model.StockPresence;
 import com.optiplant.inventory.catalog.domain.model.UnitCode;
+import com.optiplant.inventory.catalog.domain.service.BaseUnitChangePolicy;
 import com.optiplant.inventory.shared.audit.AuditAction;
 import com.optiplant.inventory.shared.audit.AuditEntryCommand;
 import com.optiplant.inventory.shared.audit.AuditWritePort;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
+import com.optiplant.inventory.shared.stock.ProductStockPresencePort;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,9 +42,13 @@ import org.springframework.transaction.annotation.Transactional;
  * the catalog is corporate, R-15, R-16). Reads take no actor and are
  * {@code readOnly}.
  *
- * <p>{@code changeBaseUnit} (R-08) is declared by the use case so the port and
- * transaction boundary are settled, but its body is deferred to slice S7 (PA-08);
- * it throws {@link UnsupportedOperationException} until then.
+ * <p>{@code changeBaseUnit} (R-08) is wired in slice S7 against an
+ * {@code Optional<ProductStockPresencePort>}. No controller calls it in this
+ * change (PA-08), so {@code base_unit} stays de-facto immutable; the wiring exists
+ * so the rule, the fail-closed default and the transaction boundary are settled
+ * before {@code inventory} implements the port. With no bean present the
+ * {@code Optional} is empty, {@link #presenceOf} yields {@link StockPresence#UNKNOWN}
+ * and {@link BaseUnitChangePolicy} refuses — fail closed (contract §2.2).
  */
 @Service
 public class ProductAdminService implements ManageProductsUseCase {
@@ -49,16 +57,25 @@ public class ProductAdminService implements ManageProductsUseCase {
 	private final CategoryRepositoryPort categoryRepository;
 	private final AuditWritePort auditWritePort;
 
+	/**
+	 * The R-08 precondition source. Spring supplies {@code Optional.empty()} when no
+	 * bean implements the interface — the state of this change, since {@code inventory}
+	 * is not built. {@link #presenceOf} maps the empty case to
+	 * {@link StockPresence#UNKNOWN}, which {@link BaseUnitChangePolicy} refuses.
+	 */
+	private final Optional<ProductStockPresencePort> stockPresencePort;
+
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
 	/** Transient id for the validation-only aggregate built in {@link #create}; persistence assigns the real one. */
 	private static final UUID PLACEHOLDER_ID = new UUID(0L, 0L);
 
 	public ProductAdminService(ProductRepositoryPort productRepository, CategoryRepositoryPort categoryRepository,
-			AuditWritePort auditWritePort) {
+			AuditWritePort auditWritePort, Optional<ProductStockPresencePort> stockPresencePort) {
 		this.productRepository = productRepository;
 		this.categoryRepository = categoryRepository;
 		this.auditWritePort = auditWritePort;
+		this.stockPresencePort = stockPresencePort;
 	}
 
 	@Override
@@ -164,10 +181,41 @@ public class ProductAdminService implements ManageProductsUseCase {
 	}
 
 	@Override
+	@Transactional
 	public Product changeBaseUnit(AuthenticatedPrincipal actor, UUID externalId, String newBaseUnit) {
-		// Delivered in slice S7 (PA-08 defers the endpoint). The rule lives in
-		// BaseUnitChangePolicy and the fail-closed port wiring; not guessed here.
-		throw new UnsupportedOperationException("changeBaseUnit is delivered in slice S7");
+		Product existing = productRepository.findByExternalId(externalId)
+				.orElseThrow(() -> new ProductNotFoundException(externalId));
+
+		// R-07 normalization applies identically to a future controller and to a test.
+		UnitCode baseUnit = UnitCode.baseUnit(newBaseUnit);
+		Instant now = Instant.now();
+
+		// The port call, the policy and the setBaseUnit write share this one
+		// transaction (contract §8): a concurrent goods receipt cannot create the
+		// first movement between the check and the commit. BaseUnitChangePolicy
+		// throws BaseUnitChangeRejectedException on HAS_HISTORY / UNKNOWN, so a
+		// refusal leaves nothing written and no audit entry (R-08).
+		BaseUnitChangePolicy.apply(existing, baseUnit, presenceOf(externalId), now);
+
+		Product updated = productRepository.setBaseUnit(externalId, baseUnit.value(), now);
+
+		auditWritePort.record(new AuditEntryCommand(actor.userId(), null, AuditAction.UPDATE.name(), "products",
+				externalId.toString(), serializePayload(existing), serializePayload(updated), null));
+		return updated;
+	}
+
+	/**
+	 * Maps the {@code Optional<ProductStockPresencePort>} bean to a
+	 * {@link StockPresence} (design §5.2). {@code orElse(StockPresence.UNKNOWN)} is
+	 * the fail-closed default and {@link BaseUnitChangePolicy} refuses on
+	 * {@code UNKNOWN}, so there is no arrangement of these lines that lets the
+	 * change through unproven (contract §2.2).
+	 */
+	private StockPresence presenceOf(UUID productExternalId) {
+		return stockPresencePort
+				.map(port -> port.isProductUntouched(productExternalId)
+						? StockPresence.UNTOUCHED : StockPresence.HAS_HISTORY)
+				.orElse(StockPresence.UNKNOWN);
 	}
 
 	private CategoryRef resolveActiveCategory(UUID categoryExternalId) {
