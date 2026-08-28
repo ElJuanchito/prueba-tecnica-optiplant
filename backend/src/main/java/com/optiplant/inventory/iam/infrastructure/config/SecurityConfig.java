@@ -64,7 +64,10 @@ class SecurityConfig {
 						// logout exige el bearer emitido en login (design's SecurityConfig block).
 						.requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
 						.requestMatchers("/api/auth/logout").authenticated()
-						.requestMatchers("/api/admin/users/**", "/api/admin/branches/**").hasAuthority("ADMIN")
+						// BRANCH_MANAGER may only manage OPERATOR users in their own branch —
+						// that scoping is enforced in UserAdminService, not here.
+						.requestMatchers("/api/admin/users/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
+						.requestMatchers("/api/admin/branches/**").hasAuthority("ADMIN")
 						.requestMatchers("/api/audit/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						.anyRequest().authenticated())
 				.build();

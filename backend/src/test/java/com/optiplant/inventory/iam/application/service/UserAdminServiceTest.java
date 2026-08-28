@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.optiplant.inventory.iam.application.port.in.ManageUsersUseCase.CreateUserCommand;
 import com.optiplant.inventory.iam.application.port.in.ManageUsersUseCase.EditUserCommand;
+import com.optiplant.inventory.iam.application.port.in.ManageUsersUseCase.UserQuery;
 import com.optiplant.inventory.iam.application.port.out.PasswordHasherPort;
 import com.optiplant.inventory.iam.application.port.out.RefreshTokenRepositoryPort;
 import com.optiplant.inventory.iam.application.port.out.UserRepositoryPort;
+import com.optiplant.inventory.iam.application.port.out.UserRepositoryPort.UserPage;
+import com.optiplant.inventory.iam.domain.exception.CrossBranchMutationException;
 import com.optiplant.inventory.iam.domain.exception.DuplicateUsernameException;
 import com.optiplant.inventory.iam.domain.exception.UserNotFoundException;
 import com.optiplant.inventory.iam.domain.model.RevocationReason;
@@ -36,12 +39,14 @@ import org.junit.jupiter.api.Test;
 class UserAdminServiceTest {
 
 	private static final UUID SUCURSAL_BOGOTA = UUID.randomUUID();
+	private static final UUID SUCURSAL_MEDELLIN = UUID.randomUUID();
 
 	private FakeUserRepositoryPort userRepository;
 	private FakeRefreshTokenRepositoryPort refreshTokenRepository;
 	private FakeAuditWritePort auditWritePort;
 	private UserAdminService service;
 	private AuthenticatedPrincipal admin;
+	private AuthenticatedPrincipal gerenteBogota;
 
 	@BeforeEach
 	void setUp() {
@@ -51,6 +56,8 @@ class UserAdminServiceTest {
 		service = new UserAdminService(userRepository, new FakePasswordHasherPort(), refreshTokenRepository,
 				auditWritePort);
 		admin = new AuthenticatedPrincipal(UUID.randomUUID(), "admin.corp", Role.ADMIN, null);
+		gerenteBogota = new AuthenticatedPrincipal(UUID.randomUUID(), "gerente.bogota", Role.BRANCH_MANAGER,
+				SUCURSAL_BOGOTA);
 	}
 
 	@Test
@@ -125,6 +132,121 @@ class UserAdminServiceTest {
 				.contains(SUCURSAL_BOGOTA.toString())
 				.doesNotContain("Password123!")
 				.doesNotContain("hashed");
+	}
+
+	@Test
+	void unGerenteDeSucursalCreaUnOperadorEnSuPropiaSucursal() {
+		UserAccount created = service.create(gerenteBogota, new CreateUserCommand("nuevo.operador",
+				"nuevo.operador@optiplant.com", "Password123!", "Nuevo Operador", Role.OPERATOR, SUCURSAL_BOGOTA));
+
+		assertThat(created.role()).isEqualTo(Role.OPERATOR);
+		assertThat(created.branchExternalId()).isEqualTo(SUCURSAL_BOGOTA);
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeCrearUnOperadorEnOtraSucursal() {
+		CreateUserCommand command = new CreateUserCommand("operador.medellin", "operador.medellin@optiplant.com",
+				"Password123!", "Operador Medellín", Role.OPERATOR, SUCURSAL_MEDELLIN);
+
+		assertThatThrownBy(() -> service.create(gerenteBogota, command))
+				.isInstanceOf(CrossBranchMutationException.class);
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeCrearOtroGerenteDeSucursal() {
+		CreateUserCommand command = new CreateUserCommand("otro.gerente", "otro.gerente@optiplant.com",
+				"Password123!", "Otro Gerente", Role.BRANCH_MANAGER, SUCURSAL_BOGOTA);
+
+		assertThatThrownBy(() -> service.create(gerenteBogota, command))
+				.isInstanceOf(CrossBranchMutationException.class);
+	}
+
+	@Test
+	void unGerenteDeSucursalEditaUnOperadorDeSuPropiaSucursal() {
+		UserAccount existing = userRepository.seed(
+				existingUser("operador.bogota", "operador.bog@optiplant.com", Role.OPERATOR, SUCURSAL_BOGOTA));
+
+		UserAccount updated = service.edit(gerenteBogota, existing.externalId(),
+				new EditUserCommand(existing.email(), "Nombre Actualizado", Role.OPERATOR, SUCURSAL_BOGOTA));
+
+		assertThat(updated.fullName()).isEqualTo("Nombre Actualizado");
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeEditarUnOperadorDeOtraSucursal() {
+		UserAccount existing = userRepository.seed(
+				existingUser("operador.medellin", "operador.med@optiplant.com", Role.OPERATOR, SUCURSAL_MEDELLIN));
+		EditUserCommand command = new EditUserCommand(existing.email(), existing.fullName(), Role.OPERATOR,
+				SUCURSAL_MEDELLIN);
+
+		assertThatThrownBy(() -> service.edit(gerenteBogota, existing.externalId(), command))
+				.isInstanceOf(CrossBranchMutationException.class);
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeEditarAOtroGerenteDeSucursal() {
+		UserAccount existing = userRepository.seed(
+				existingUser("otro.gerente", "otro.gerente@optiplant.com", Role.BRANCH_MANAGER, SUCURSAL_BOGOTA));
+		EditUserCommand command = new EditUserCommand(existing.email(), existing.fullName(), Role.BRANCH_MANAGER,
+				SUCURSAL_BOGOTA);
+
+		assertThatThrownBy(() -> service.edit(gerenteBogota, existing.externalId(), command))
+				.isInstanceOf(CrossBranchMutationException.class);
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeAscenderUnOperadorAGerenteDeSucursal() {
+		UserAccount existing = userRepository.seed(
+				existingUser("operador.bogota", "operador.bog@optiplant.com", Role.OPERATOR, SUCURSAL_BOGOTA));
+		EditUserCommand command = new EditUserCommand(existing.email(), existing.fullName(), Role.BRANCH_MANAGER,
+				SUCURSAL_BOGOTA);
+
+		assertThatThrownBy(() -> service.edit(gerenteBogota, existing.externalId(), command))
+				.isInstanceOf(CrossBranchMutationException.class);
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeMoverUnOperadorAOtraSucursal() {
+		UserAccount existing = userRepository.seed(
+				existingUser("operador.bogota", "operador.bog@optiplant.com", Role.OPERATOR, SUCURSAL_BOGOTA));
+		EditUserCommand command = new EditUserCommand(existing.email(), existing.fullName(), Role.OPERATOR,
+				SUCURSAL_MEDELLIN);
+
+		assertThatThrownBy(() -> service.edit(gerenteBogota, existing.externalId(), command))
+				.isInstanceOf(CrossBranchMutationException.class);
+	}
+
+	@Test
+	void unGerenteDeSucursalDeshabilitaUnOperadorDeSuPropiaSucursal() {
+		UserAccount existing = userRepository.seed(
+				existingUser("operador.bogota", "operador.bog@optiplant.com", Role.OPERATOR, SUCURSAL_BOGOTA));
+
+		service.disable(gerenteBogota, existing.externalId());
+
+		assertThat(userRepository.disabled).contains(existing.externalId());
+	}
+
+	@Test
+	void unGerenteDeSucursalNoPuedeDeshabilitarUnOperadorDeOtraSucursal() {
+		UserAccount existing = userRepository.seed(
+				existingUser("operador.medellin", "operador.med@optiplant.com", Role.OPERATOR, SUCURSAL_MEDELLIN));
+
+		assertThatThrownBy(() -> service.disable(gerenteBogota, existing.externalId()))
+				.isInstanceOf(CrossBranchMutationException.class);
+	}
+
+	@Test
+	void laConsultaDeUnGerenteDeSucursalQuedaForzadaASuPropiaSucursalYARolOperador() {
+		userRepository.seed(existingUser("operador.bogota", "operador.bog@optiplant.com", Role.OPERATOR,
+				SUCURSAL_BOGOTA));
+		userRepository.seed(existingUser("operador.medellin", "operador.med@optiplant.com", Role.OPERATOR,
+				SUCURSAL_MEDELLIN));
+		userRepository.seed(existingUser("otro.gerente.bogota", "otro.gerente.bog@optiplant.com", Role.BRANCH_MANAGER,
+				SUCURSAL_BOGOTA));
+
+		UserPage result = service.list(gerenteBogota, new UserQuery(null, Role.ADMIN, SUCURSAL_MEDELLIN, 0, 20));
+
+		assertThat(result.content()).extracting(UserAccount::username).containsExactly("operador.bogota");
 	}
 
 	@Test
@@ -258,7 +380,11 @@ class UserAdminServiceTest {
 
 		@Override
 		public UserPage list(UserFilter filter) {
-			List<UserAccount> content = List.copyOf(byExternalId.values());
+			List<UserAccount> content = byExternalId.values().stream()
+					.filter(u -> filter.active() == null || filter.active().equals(u.active()))
+					.filter(u -> filter.role() == null || filter.role().equals(u.role()))
+					.filter(u -> filter.branchExternalId() == null || filter.branchExternalId().equals(u.branchExternalId()))
+					.toList();
 			return new UserPage(content, content.size(), filter.page(), filter.size());
 		}
 	}
