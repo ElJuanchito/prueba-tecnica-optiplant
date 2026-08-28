@@ -1,0 +1,4 @@
+# pnpm 11 movió aquí ajustes que antes vivían en el campo "pnpm" de package.json.
+# esbuild necesita ejecutar su script de instalación (descarga su binario nativo).
+allowBuilds:
+  esbuild: true
