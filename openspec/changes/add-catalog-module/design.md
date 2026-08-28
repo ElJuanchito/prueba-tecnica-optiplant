@@ -27,9 +27,12 @@ Nothing below was written from memory. What was executed, and what it proved:
 | `AuditWriteAdapter` carries no `@Transactional` of its own | Read from `iam/infrastructure/adapter/out/persistence/AuditWriteAdapter.java:14-30` |
 | `@EnableMethodSecurity` / `@PreAuthorize` absent from `backend/src/main` | `rg` over `backend/src/main` returned zero hits (re-confirming contract §2.4) |
 
-**Not verified, and named as such:** the p95 latency target of §9 of the contract. No load test
-exists and none is created by this change; §8.4 below states what the design actually guarantees
-instead of repeating a number nobody measured.
+**Not verified at design time, and named as such:** the latency target of contract §9. No
+measurement exists today, so §8.4 states what the design actually guarantees instead of repeating a
+number nobody has measured — and, rather than leaving it at that, task 8.15 creates the integration
+test that turns the claim into a measurement, with `DT-08` holding the escalation if it fails.
+Contract §9 has also been corrected: its `idx_products_sku` assertion about the free-text search was
+false, and the design says so in the contract rather than only in its own margin (D-16).
 
 ---
 
@@ -610,9 +613,46 @@ So a category listing costs two queries regardless of page size: the page, then 
 ```java
 // ProductUnitSpringDataRepository — §8.2. flushAutomatically is what makes the ordering real.
 @Modifying(flushAutomatically = true, clearAutomatically = true)
-@Query("UPDATE ProductUnitJpaEntity u SET u.defaultSaleUnit = FALSE WHERE u.product.externalId = :p")
+@Query("""
+        UPDATE ProductUnitJpaEntity u SET u.defaultSaleUnit = FALSE
+        WHERE u.product.externalId = :p AND u.defaultSaleUnit = TRUE
+        """)
 void clearDefaultSaleUnit(@Param("p") UUID productExternalId);
 ```
+
+The `AND u.defaultSaleUnit = TRUE` predicate is not decoration: it restricts the write to the at
+most one row that can actually hold the flag, so the statement touches one row instead of every unit
+of the product and is a no-op when there is no previous default.
+
+#### The default-sale-unit write sequence — specified, not warned about
+
+`ProductUnitPersistenceAdapter` is the class that keeps S-3 satisfiable. **Every** method that can
+leave a row with `is_default_sale_unit = TRUE` — `add`, `replace`, and the inline-units path of
+`ProductPersistenceAdapter.create` — executes these two steps in this order and never the reverse:
+
+1. **Clear.** Call `clearDefaultSaleUnit(productExternalId)`. Because it is
+   `@Modifying(flushAutomatically = true, clearAutomatically = true)`, pending changes are flushed
+   before it runs and the persistence context is cleared after, so the `UPDATE … SET FALSE` reaches
+   the database ahead of anything that follows and no stale managed entity survives to overwrite it.
+2. **Set.** Only then insert or update the row that carries `is_default_sale_unit = TRUE`.
+
+Skipped entirely when the incoming unit carries `defaultSaleUnit = false`: there is nothing to clear
+and clearing would wrongly unset an unrelated sibling.
+
+**Why this is the specification and not an optimisation.** RNF-INT-03 puts the invariant in the
+schema as well as the domain, and S-3 is that schema half — the last line of defence for R-13/R-14's
+"at most one default sale unit per product". `uq_product_units_single_default` is a **partial unique
+index**, and PostgreSQL cannot defer an index: only constraints are `DEFERRABLE`, and a partial
+unique index cannot be expressed as a `UNIQUE` constraint at all. So the index is checked per
+statement, not at commit. Hibernate does not guarantee that a pending `UPDATE … SET FALSE` flushes
+before an `UPDATE … SET TRUE` issued later in the same transaction; if the order inverts, the table
+transiently holds two `TRUE` rows for one `product_id` and the whole transaction aborts. The domain
+would have been right, the schema would have been right, and the operation would still have failed.
+The adapter's write order is the only place this can be fixed, so it is fixed here and specified,
+not left as a caution.
+
+Its proof is `ProductUnitCatalogIT` against real PostgreSQL (task 6.9): a unit test cannot observe a
+flush ordering that only exists when a real database checks a real index.
 
 **Persistence adapters** implement the out-ports, map entity ↔ domain through MapStruct mappers
 (`@Mapper(componentModel = "spring")`, as `BranchMapper`), and are the only classes that ever see a
@@ -739,7 +779,7 @@ Every mutating use case is one `@Transactional` at the application-service metho
 | `POST /products` | `INSERT products` + `INSERT product_units` × n (cascade) + audit | none | none | `products.sku UNIQUE`, `uq_product_unit`, `uq_product_units_single_default` |
 | `PUT /products/{id}` | `UPDATE products` + audit | none | none | `products.sku UNIQUE` |
 | `PATCH /products/{id}/disable\|enable` | `UPDATE products` (`is_active`, `updated_at`) + audit. **Balances, Kardex and sales rows are not read and not written** (R-10) | none | none | — |
-| `POST` / `PUT` unit | `clearDefaultSaleUnit` (flushed) → `INSERT`/`UPDATE product_units` + audit | none | none | `uq_product_unit`, `uq_product_units_single_default` — see §8.2 |
+| `POST` / `PUT` unit | **Ordered within the one transaction:** (1) `clearDefaultSaleUnit` — `UPDATE … SET is_default_sale_unit = FALSE WHERE product_id = ? AND is_default_sale_unit = TRUE`, flushed; (2) `INSERT`/`UPDATE` the row that ends `TRUE`; (3) audit. Never (2) before (1) — §8.2 | none | none | `uq_product_unit`, `uq_product_units_single_default` |
 | `DELETE` unit | `DELETE product_units` + audit | none | none | — |
 | `changeBaseUnit` *(no endpoint in this change)* | port call + `UPDATE products` + audit, **in one transaction** | none | none | the transaction itself: a concurrent goods receipt cannot create the first movement between the check and the commit (contract §2.2) |
 | every `GET` | `@Transactional(readOnly = true)` | — | — | — |
@@ -753,34 +793,47 @@ than a convention.
 transaction the catalog service opened. If the audit insert fails, the catalog mutation rolls back
 with it — R-15's second scenario, and CLAUDE.md's atomic-effects invariant.
 
-### 8.2. The default-sale-unit swap — the trap in this change
+### 8.2. The default-sale-unit swap — resolved by write order
 
-R-14 requires clearing the previous default and setting the new one in one transaction. S-3 makes
-the database enforce it. Together they create a failure mode that reads as correct:
+**Decision: the swap is made safe by the order in which the adapter writes, and that order is part
+of the specification.** It is not a risk to watch for during implementation.
 
-> Hibernate does not guarantee that the `UPDATE` clearing the old flag is written before the
-> `UPDATE` setting the new one. If the setting statement flushes first, the table transiently holds
-> **two** rows with `is_default_sale_unit = TRUE` for the same `product_id`, and
-> `uq_product_units_single_default` aborts the transaction.
+R-14 requires clearing the previous default and setting the new one in one transaction, and RNF-INT-03
+requires the invariant to live in the schema too — which is what S-3 is. The two together create a
+failure mode that reads as correct on the page:
 
-`uq_product_units_single_default` is a **partial unique index**, and PostgreSQL cannot defer an
-index — only constraints are `DEFERRABLE`, and a partial unique index cannot be expressed as a
-`UNIQUE` constraint at all. So the fix cannot be deferral; it has to be write order:
+> `uq_product_units_single_default` is a **partial unique index**, so PostgreSQL checks it *per
+> statement*, not at commit. It cannot be deferred: only constraints are `DEFERRABLE`, and a partial
+> unique index cannot be expressed as a `UNIQUE` constraint at all. Hibernate does not guarantee
+> that an `UPDATE … SET FALSE` flushes before an `UPDATE … SET TRUE` issued later in the same
+> transaction. If the order inverts, the table transiently holds **two** `TRUE` rows for one
+> `product_id` and the transaction aborts — with a correct domain and a correct schema.
 
-1. `ProductUnitRepositoryPort.clearDefaultSaleUnit(productExternalId)` issues the bulk
-   `UPDATE … SET is_default_sale_unit = FALSE` as a `@Modifying(flushAutomatically = true,
-   clearAutomatically = true)` query. `flushAutomatically` pushes any pending changes out first;
-   `clearAutomatically` drops the now-stale persistence context so the subsequent read sees the
-   cleared rows.
-2. Only then does the adapter write the row that sets `TRUE`.
+**The required sequence**, inside the single `@Transactional` of the use case:
 
-This ordering is required on **three** paths: `POST` a unit with `defaultSaleUnit = true`, `PUT` a
-unit to `defaultSaleUnit = true`, and — not needed but worth stating — `POST /products` with inline
-units, where the product is new so no sibling can already hold the flag and the domain's compact
-constructor has already rejected two inline defaults.
+| Step | Statement | Why it must be here |
+| :---: | :--- | :--- |
+| 1 | `UPDATE product_units SET is_default_sale_unit = FALSE WHERE product_id = ? AND is_default_sale_unit = TRUE`, issued as `@Modifying(flushAutomatically = true, clearAutomatically = true)` | `flushAutomatically` pushes pending changes out **before** this statement, so it genuinely reaches the database first; `clearAutomatically` drops the now-stale persistence context so no managed entity can write the old `TRUE` back afterwards |
+| 2 | `INSERT`/`UPDATE` the row that ends with `is_default_sale_unit = TRUE` | Runs only after step 1 has landed, so the index never sees two `TRUE` rows for one product |
+| 3 | `auditWritePort.record(...)` | Same transaction, synchronous (R-15) |
 
-`tasks.md` requires an integration test that actually performs the swap against real PostgreSQL. A
-unit test cannot catch this: it is a flush-ordering fact of the real database.
+**Never step 2 before step 1.** Reversing them is the whole defect.
+
+Applies to the paths that can leave a row `TRUE`: `POST /products/{p}/units` and
+`PUT /products/{p}/units/{u}` with `defaultSaleUnit = true`. `POST /products` with inline units is
+safe for a different reason worth stating explicitly — the product is new, so no sibling can already
+hold the flag, and `Product`'s compact constructor has already rejected a payload carrying two
+defaults before any SQL is issued. Steps 1–2 are skipped entirely when the incoming unit carries
+`defaultSaleUnit = false`: there is nothing to clear, and clearing would wrongly unset an unrelated
+sibling.
+
+**Anchors:** R-13 and R-14 (the business invariant), RNF-INT-03 (the invariant also lives in the
+schema, as S-3), RNF-INT-01 (the whole operation is one atomic unit).
+
+**Proof obligation.** `ProductUnitCatalogIT` (task 6.9, blocking for slice S6) performs a real swap
+against real PostgreSQL and asserts two things: the transaction **commits**, and exactly one row of
+the product ends with `is_default_sale_unit = TRUE`. A unit test cannot substitute for it — the
+ordering only has consequences when a real database checks a real index.
 
 ### 8.3. What the schema guarantees that the application cannot
 
@@ -791,24 +844,43 @@ Both real races in this module are resolved by constraints, not locks (contract 
   make exactly one commit; the loser surfaces as `DataIntegrityViolationException` → `409` (§6.3).
 - **Concurrent marking of two default sale units.** `uq_product_units_single_default`.
 
-### 8.4. What is honestly claimed about performance
+### 8.4. Free-text search — the contract's index claim, corrected and its escalation filed
 
-Contract §9 asserts *"SKU search uses `idx_products_sku`"*. That is not true of the search the
-contract itself specifies: R-12 requires a **contains** match (`%npk%`), and a leading wildcard makes
-a plain btree index unusable. What the design actually guarantees:
+The first draft of contract §9 asserted *"SKU search uses `idx_products_sku`"*. **That was false**,
+and it has been corrected in `contract.md` itself rather than quietly worked around here: R-12
+specifies a **contains** match (`%npk%`), and a leading wildcard makes any B-Tree index unusable.
 
-- The **category filter** uses `idx_products_category`, and **lookup by `external_id`** uses
-  `idx_products_external_id` — both index scans.
-- Free-text `q` is a sequential scan with an `ILIKE`-equivalent predicate. At the contracted
-  volumetry (10 000 products, `especificacion_requerimientos.md:217`) that is a scan of a small
-  table and comfortably inside p95 < 200 ms; it has not been measured, and this document does not
-  claim it has.
-- If the catalog ever outgrows that, the fix is a `pg_trgm` GIN index on `sku` and `name`. It is
-  **not** added now: an index for a load nobody has measured is speculation, and `pg_trgm` is an
-  extension the schema does not currently enable.
-- The listing is paginated with a hard cap of 100 (RNF-PER-04), so no query is unbounded.
+**Decision: the sequential scan is accepted for now; `pg_trgm` is not built; the escalation is filed
+as `DT-08` with an explicit trigger.** Adding an extension and two GIN indexes today would be a
+fifth schema change bought against a load nobody has measured.
+
+What this design actually guarantees:
+
+- The **category filter** uses `idx_products_category` and **lookup by `external_id`** uses
+  `idx_products_external_id` — both genuine index scans.
+- `idx_products_sku` serves the equality lookup it can serve: the SKU uniqueness check behind
+  `duplicate_sku` on create and edit (R-06, R-09). It does **not** serve the search.
+- Free-text `q` resolves by **sequential scan**. At the contracted volumetry (10 000 products,
+  `especificacion_requerimientos.md:217`) that is a scan of a narrow table and sits comfortably
+  inside RNF-PER-01's budget — but until task 8.15 runs, that is a reasoned expectation, not a
+  measurement, and this document does not pretend otherwise.
+- The listing is paginated with a hard cap of 100 (RNF-PER-04), so no response is unbounded
+  regardless of how the predicate resolves.
 - The two N+1 risks — units per product row, active-product count per category row — are closed
   structurally (§6.2: `ProductSummary` carries no units; one grouped count query per page).
+
+**Escalation, filed rather than remembered — `DT-08`** (`docs/deuda_tecnica.md`). Trigger: the
+catalog exceeds ~50 000 products, **or** the latency integration test stops meeting its threshold.
+Payment: `CREATE EXTENSION pg_trgm` plus `gin (sku gin_trgm_ops)` and `gin (name gin_trgm_ops)`. The
+ficha records the two details that decide whether those indexes are used at all — the query's
+case-handling must match the index's (`LOWER(...)` on both sides, or `ILIKE`), and `pg_trgm` needs
+at least three characters to form a trigram, so a one- or two-character term falls back to the scan
+regardless. A sequential scan degrades linearly and silently: nothing errors, latency just rises,
+which is precisely why this needed a trigger written down instead of a note.
+
+**Proof obligation.** Task 8.15 seeds ~10 000 products and asserts the search stays under a generous
+threshold, with `EXPLAIN` confirming the sequential scan this section declares rather than the index
+scan the contract used to claim. Failing it is the trigger to pay `DT-08` — not to soften the claim.
 
 ---
 
@@ -1053,15 +1125,24 @@ to "no `docs/` edit at all", and `docs/diagrama_er.md` is a named source of trut
 that CLAUDE.md requires to stay in sync with any schema change. A schema change that leaves the ER
 diagram stale is a documentation defect regardless of what the traceability validator thinks.
 
+The same applies to `docs/deuda_tecnica.md`, which gains `DT-07` and `DT-08` (§11). `DT` identifiers
+are tracked by the validator, but its rule is only that a declared `DT-nn` has a matching `### DT-nn`
+ficha (`validar_trazabilidad.py:83-86`) — both entries have one.
+
 **Corrected DoD item, to be used instead:** *no `RF`/`RNF`/`RN` identifier is created and
 `docs/casos_de_uso.md`'s traceability matrix is untouched; `python3 scripts/validar_trazabilidad.py`
-is green.* `tasks.md` verifies exactly that.
+is green.* This correction has been applied to `contract.md` §11 itself, not only recorded here —
+leaving the accepted contract demanding an empty `docs/` diff would make its own DoD unpassable.
+The two deliberate `docs/` edits are `diagrama_er.md` and `deuda_tecnica.md`.
 
 ---
 
 ## 11. New technical debt
 
-### 11.1. Filed: `DT-07`
+Two entries, **both already written** into `docs/deuda_tecnica.md` (registry rows + fichas, which is
+what `validar_trazabilidad.py:83-86` checks), not left for the implementer to remember.
+
+### 11.1. Filed: `DT-07` — the deferred base-unit endpoint
 
 The deferred base-unit endpoint (PA-08) is a deliberate deferral with a named repayment slice —
 precisely what `docs/deuda_tecnica.md` records. Without a ficha, the only trace of it lives inside an
@@ -1082,17 +1163,36 @@ existing DT format (a `**DT-07**` row in the summary table plus a `### DT-07` fi
 > —uno para «el producto tiene historial» y otro para «no puedo verificarlo»—, porque unificarlos
 > haría que una carencia de infraestructura pareciera un rechazo de negocio.
 
-This adds `DT-07` to `docs/`, which the same corrected DoD item of §10.4 covers: it introduces no
-`RF`/`RNF`/`RN` identifier, and it satisfies the DT-has-a-ficha rule.
+### 11.2. Filed: `DT-08` — free-text search resolved by sequential scan
 
-### 11.2. Not filed, with reasons
+The escalation path of §8.4, written down with a trigger instead of trusted to memory. A sequential
+scan degrades linearly and *silently* — nothing ever errors, latency just rises — so an
+undocumented "we'll index it if it gets slow" would be discovered by a user, not by the team.
+
+> **DT-08 — Búsqueda de productos por texto libre resuelta con recorrido secuencial**
+> *Severidad*: baja. *Origen*: diseño de `catalog`.
+> R-12 exige coincidencia **por contenido**, y un comodín a la izquierda inutiliza cualquier índice
+> B-Tree. `idx_products_sku` **no** atiende la búsqueda: sirve al control de unicidad del SKU, que
+> es lo que produce `duplicate_sku`.
+> *Disparador* (lo que ocurra primero): el catálogo supera ~50 000 productos, **o** la prueba de
+> integración de latencia deja de cumplir su umbral.
+> *Plan de pago*: `CREATE EXTENSION pg_trgm` + `gin (sku gin_trgm_ops)` + `gin (name gin_trgm_ops)`,
+> midiendo con `EXPLAIN (ANALYZE, BUFFERS)` antes y después. La ficha registra los dos detalles sin
+> los cuales esos índices no se usan: el manejo de mayúsculas de la consulta debe coincidir con el
+> del índice, y `pg_trgm` necesita tres caracteres para formar un trigrama.
+
+Both entries introduce `DT` identifiers only — no `RF`/`RNF`/`RN` — so the corrected DoD item of
+§10.4 covers them, and each has both a registry row and a ficha as the validator requires.
+
+### 11.3. Not filed, with reasons
 
 - **`ErrorResponse` duplicated in `catalog` and `iam`.** A two-field record whose shape is pinned by
   contract §7 and asserted by integration tests in both modules. The drift risk is real but tiny,
   and the alternative (promoting it to `shared/web`) widens this change into `iam`, which contract
   §2.1 limits to one point. Revisit when a third module needs it.
-- **Free-text product search is a sequential scan.** Not debt at 10 000 rows; §8.4 states the
-  honest position and names `pg_trgm` as the fix if the volumetry ever changes.
+- **The default-sale-unit write ordering.** Not debt: §8.2 specifies the sequence and task 6.9
+  proves it against real PostgreSQL. A resolved design decision with a test behind it is not a
+  deferral.
 - **A disabled category may still hold inactive products.** Contract §12.2 point 1 already records
   this as an accepted behaviour, not debt: no cascade exists by decision (PA-11), and R-11's guard
   prevents re-entering the inconsistent state.
@@ -1116,17 +1216,22 @@ and architecture invariants, (3) professional judgment about the larger future p
 | **D-8** | `EditProductRequest` declares `baseUnit` explicitly in order to reject it | Contract §12.3 point 3; `@JsonIgnoreProperties(ignoreUnknown = false)` does not re-enable failing and the global mapper flag would change `iam` | 2 |
 | **D-9** | Extend `shared/audit/AuditAction` with `ENABLE` and `DELETE` rather than creating a `catalog`-local enum | The type's own Javadoc scopes it to generic CRUD verbs while keeping `AuditEntryCommand.action` a `String` for module-specific names; `ENABLE`/`DELETE` are generic. Contract §2.1 lists `shared` as "Extended". No switch over the enum exists, so adding constants breaks nothing | 2 |
 | **D-10** | Product search is **JPQL**, never a native query | Spring Data JPA rejects a dynamic `Sort` on a native query — a fact this repo learned by executing (`AuditWriteAdapter.java:56-58`); R-12 needs three sort fields | 1 |
-| **D-11** | The default-unit swap clears the old flag through a flushed `@Modifying` bulk update **before** setting the new one | S-3 is a partial unique index and PostgreSQL cannot defer an index; Hibernate does not guarantee flush order (§8.2) | 2 |
+| **D-11** | **Specified**, not flagged: the default-unit swap clears the old flag through a flushed `@Modifying` bulk update **before** setting the new one, on every path that can leave a row `TRUE` | R-13/R-14 (the invariant) + RNF-INT-03 (S-3 puts it in the schema, as a partial unique index PostgreSQL cannot defer) + RNF-INT-01. Hibernate does not guarantee flush order, so the adapter's write order is the only place this is fixable (§6.2, §8.1, §8.2). Proven by task 6.9 against real PostgreSQL | 2 |
 | **D-12** | `docs/diagrama_er.md` **is** edited, and contract §11's `git diff --stat docs/` empty item is restated | CLAUDE.md's documentation map makes the ER diagram a source of truth that must follow the schema; §3.3's actual argument is about identifiers, which still holds (§10.4) | 2 |
-| **D-13** | File `DT-07` for the deferred base-unit endpoint | Project convention: deferred work with a repayment plan belongs in `docs/deuda_tecnica.md`, not only inside a change folder that gets archived | 3 |
+| **D-13** | File `DT-07` (deferred base-unit endpoint) **and `DT-08`** (free-text search escalation), both written into `docs/deuda_tecnica.md` during design rather than deferred to apply | Project convention: deferred work with a repayment plan belongs in `docs/deuda_tecnica.md`, not only inside a change folder that gets archived. `DT-08` needs a written **trigger** because a sequential scan degrades silently — nothing errors, latency just rises | 3 |
+| **D-16** | Correct contract §9's `idx_products_sku` claim **in `contract.md` itself**, and do **not** build `pg_trgm` now | The claim was false: R-12's *contains* match cannot use a B-Tree. Correcting it only in the design would leave the accepted contract asserting something untrue. Building the GIN index now would be a fifth schema change against an unmeasured load; `DT-08` + the latency test (task 8.15) replace the guess with a trigger and a measurement (§8.4) | 1 |
 | **D-14** | An unmapped `DataIntegrityViolationException` becomes a `500`, not a fallback `409` | §7.1 point 2 forbids leaking constraint names, but a tidy wrong `409` would tell the caller to fix a duplicate that does not exist. An unmapped integrity violation is a defect and should be loud | 3 |
 | **D-15** | `catalog/infrastructure/config/` is not created | Nothing to configure: authorization lives in `iam` (D-1) and the module introduces no properties. An empty package would only invite a future misplacement | 2 |
 
 **Open questions: none.** Every point the contract delegated (§2.4) or left implicit is settled
-above with its anchor. The four places a reviewer should look first, because they are where this
-design chose rather than transcribed: **D-2** (a schema edit the contract did not list), **D-12**
-(a DoD item declared wrong), **D-13** (a `docs/` file the contract said not to touch), and **D-5**
-(a deliberate divergence from the reference module).
+above with its anchor, and the two traps the first draft of this design merely flagged — the
+default-unit flush ordering and the false SKU-index claim — are now **resolved** in the artifacts:
+specified in §8.2 with a blocking test, and corrected in `contract.md` §9 with a filed escalation.
+
+The five places a reviewer should look first, because they are where this design chose rather than
+transcribed: **D-2** (a schema edit the contract did not list), **D-12** (a DoD item declared wrong),
+**D-13** (two `docs/` entries the contract said not to touch), **D-16** (an assertion corrected
+inside the accepted contract), and **D-5** (a deliberate divergence from the reference module).
 
 ---
 
@@ -1144,6 +1249,8 @@ design chose rather than transcribed: **D-2** (a schema edit the contract did no
 | A native `@Query` for the product search | Spring Data JPA rejects a dynamic `Sort` on native queries; R-12 requires three sort fields (D-10) |
 | Publishing a `CategoryDisabled` / `ProductCreated` domain event | Contract §8 "zero domain events". No consumer exists. An `AFTER_COMMIT` event with no recipient is coupling with no purpose — and the audit write, the one effect that does exist, must be synchronous anyway (R-15) |
 | A per-row `activeProductCount` subquery on the category listing | N+1 at page size 100. One grouped count query per page instead (§6.2) |
-| Adding `pg_trgm` + a GIN index now, for the free-text search | An index for a load nobody has measured. §8.4 names it as the fix if the volumetry changes |
+| Adding `pg_trgm` + a GIN index now, for the free-text search | An extension and two indexes bought against a load nobody has measured, and a fifth schema change on top of S-1…S-4. Replaced by something better than a guess: the corrected claim in contract §9, `DT-08`'s written trigger, and the latency test of task 8.15 (§8.4, D-16) |
+| Leaving contract §9's false `idx_products_sku` claim in place and only correcting it in the design | The contract is the accepted artifact; a design that silently disagrees with it produces two sources of truth and the reviewer trusts the wrong one. Corrected in `contract.md` itself (D-16) |
+| Treating the default-unit flush ordering as an implementation risk to watch for | A "risk" nobody specified is a defect waiting for whoever writes the adapter first. §8.2 fixes the statement order, §6.2 fixes where it lives, and task 6.9 proves it against a real database (D-11) |
 | Promoting `ErrorResponse` to `shared/web` | Widens this change into `iam`, which contract §2.1 limits to a single point (§11.2) |
 | Splitting the catalog into `/api/catalog/**` for reads and `/api/admin/catalog/**` for mutations, mirroring `iam`'s path convention | Contract §6: it would duplicate every path. The correct split for this module is by HTTP method, which is what D-1 implements |

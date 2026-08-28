@@ -683,9 +683,9 @@ insufficient role.
 
 | Obligation | Measurable target | Source |
 | :--- | :--- | :--- |
-| Read latency | p95 < 200 ms on listing and detail with 10 000 products in the catalog. | RNF-PER-01 + volumetry `:217` |
+| Read latency | p95 < 200 ms on listing and detail with 10 000 products in the catalog. **Subject to verification** — no load test exists today; the integration test named in §11 is what turns this from an assertion into a measurement. | RNF-PER-01 + volumetry `:217` |
 | Bounded pagination | Every listing paginated; `size` default 20, cap 100 (same as `iam`); a larger `size` is clamped, not rejected. | RNF-PER-04 |
-| Existing indexes used | SKU search uses `idx_products_sku`, category filter uses `idx_products_category`, UUID lookup uses `idx_products_external_id` (`01-init-schema.sql:101-103`). The only new index is S-3, which serves an invariant rather than a query. | RNF-PER-01 |
+| Existing indexes used, honestly | Category filter uses `idx_products_category`; UUID lookup uses `idx_products_external_id` (`01-init-schema.sql:101-103`). **The free-text search does NOT use `idx_products_sku`**: R-12 specifies a *contains* match (`%npk%`), and a leading wildcard makes any B-Tree index unusable, so that query resolves by **sequential scan**. `idx_products_sku` serves the equality lookup it can serve — the SKU uniqueness check behind `duplicate_sku` on create and edit. At the contracted volumetry a sequential scan over a narrow table meets the latency target with room to spare, and the listing's hard page cap keeps every response bounded. The escalation path (a `pg_trgm` GIN index) is filed as **DT-08** with its trigger, and is deliberately **not** built now: an index for an unmeasured load would be a fifth schema change bought against a problem that does not exist. The only new index in this change is S-3, which serves an invariant rather than a query. | RNF-PER-01, RNF-PER-04 |
 | Backend validation | Every client input validated before reaching the domain; queries exclusively parameterized. | RNF-SEC-05 |
 | No internal identifiers | No primary-key `BIGINT` crosses the HTTP boundary. | RNF-API-02, RNF-SEC-05 |
 | Audit | Every master-data mutation leaves an entry with actor, entity, action and payloads. Retention ≥ 5 years (a property of the table, not of this module). | RF-VAL-02, RNF-SEC-08 |
@@ -719,8 +719,14 @@ Every item is a command someone runs or a file someone opens.
 - [ ] `./scripts/validar_esquema.sh` green — **mandatory now**, since `backend/init-db/` changes
       (S-1, S-2, S-3).
 - [ ] `python3 scripts/validar_trazabilidad.py` green.
-- [ ] `git diff --stat docs/` **empty**: this change creates no identifier and does not touch the
-      traceability matrix (§3.3).
+- [ ] **No `RF`/`RNF`/`RN` identifier is created and `docs/casos_de_uso.md`'s traceability matrix is
+      untouched** (§3.3). *Revised during design.* The first draft of this item demanded
+      `git diff --stat docs/` be **empty**, generalising "no new identifier" into "no `docs/` edit at
+      all". Two edits under `docs/` are in fact required and are deliberate: `docs/diagrama_er.md`
+      must follow the S-1/S-2 columns (CLAUDE.md makes the E-R diagram a source of truth for the
+      data model), and `docs/deuda_tecnica.md` gains `DT-07` and `DT-08`. Neither introduces an
+      identifier the validator tracks — it only walks `RF`/`RNF`/`RN`/`CU`/`DT` references and
+      relative links (`validar_trazabilidad.py:44-99`) — so §3.3's actual argument survives intact.
 
 **New invariants in `scripts/validar_esquema.sh`** (written with the existing
 `rechaza` / `acepta` / `igual` helpers, in a new catalog section)
@@ -759,9 +765,19 @@ Every item is a command someone runs or a file someone opens.
 - [ ] `409 duplicate_sku` on both create and edit (R-06, R-09).
 - [ ] `400 invalid_request` when `PUT /products/{externalId}` carries a `baseUnit` field, and no
       route in the published OpenAPI document mutates a base unit (§6.2, PA-08).
+- [ ] **Replacing the default sale unit commits**: marking a second unit as default through the API
+      succeeds, the transaction does **not** abort, and exactly one row of the product ends with
+      `is_default_sale_unit = TRUE` (R-14, S-3). This is the positive half of the S-3 pair and it
+      only holds because the adapter clears the previous default in a flushed statement *before*
+      writing the new one — a partial unique index cannot be deferred, so the ordering is what
+      prevents a transient two-`TRUE` state from aborting the operation.
 - [ ] **Schema-level rejection of a second default sale unit**: a direct insert/update through the
       repository is refused by `uq_product_units_single_default` and surfaces as a conflict, not a
       500 (R-14, S-3).
+- [ ] **Free-text search latency at the contracted volumetry**: with ~10 000 products seeded, a
+      *contains* search stays under the latency budget, and `EXPLAIN` confirms the sequential scan
+      §9 now declares rather than the index scan it previously claimed. Failing this test is the
+      trigger to pay `DT-08`, not to weaken the assertion.
 - [ ] RBAC: `OPERATOR` and `BRANCH_MANAGER` receive `403` on every §6 mutation endpoint, and `200`
       on every read endpoint (R-01).
 - [ ] `401` with no token on any endpoint of the module.
