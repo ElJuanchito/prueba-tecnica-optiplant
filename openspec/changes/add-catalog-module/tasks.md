@@ -52,18 +52,18 @@ Decision needed before apply: **No.** `design.md` §12 leaves no open question.
 
 ## Phase 2 — S2: Category domain and application (PR2)
 
-- [ ] 2.1 Create `catalog/domain/model/CategoryName.java` — record, compact constructor trims, rejects blank and `> 100`; `comparisonKey()` returns `toLowerCase(Locale.ROOT)`; case preserved in `value` (design §3.1, R-02).
-- [ ] 2.2 Create `catalog/domain/model/ActiveFilter.java` — enum `ACTIVE/INACTIVE/ALL` + `static parse(String)` accepting only `true`/`false`/`all`, else `IllegalArgumentException` (design §3.2, R-12).
-- [ ] 2.3 Create `catalog/domain/model/Category.java`, `CategorySummary.java`, `CategoryRef.java` — records per design §3.3; `withName` and `withActive` each advance `updatedAt` (R-03).
-- [ ] 2.4 Create `catalog/domain/exception/`: `CategoryNotFoundException`, `DuplicateCategoryNameException`, `CategoryInUseException`, `CategoryInactiveException` (design §3.4).
-- [ ] 2.5 Create `catalog/application/port/out/CategoryRepositoryPort.java` — the eight methods and four nested records of design §5.3, incl. `existsByNameIgnoringCase(key, excludingExternalId)` and `hasActiveProducts`.
-- [ ] 2.6 Create `catalog/application/port/in/ManageCategoriesUseCase.java` — six methods per design §5.1; mutations take `AuthenticatedPrincipal actor`, **reads do not** (R-16, D-7); Javadoc names the exception each may throw, as `ManageBranchesUseCase` does.
-- [ ] 2.7 Create `catalog/application/service/CategoryAdminService.java` — `@Transactional` on mutations, `@Transactional(readOnly = true)` on reads; each mutation ends with `auditWritePort.record(...)` carrying `branchId = null`, `entityName = "categories"` (R-15); disable checks `hasActiveProducts` first (R-04); enable is idempotent (R-03).
-- [ ] 2.8 Verify no `catalog` class imports `org.springframework..` or `jakarta.persistence..` under `domain/` — `rg` over `catalog/domain`.
-- [ ] 2.9 Test: `CategoryNameTest` — trimming, blank rejection, 100/101 boundary, case-insensitive `comparisonKey` (R-02).
-- [ ] 2.10 Test: `ActiveFilterTest` — `true`/`false`/`all` parse; `maybe`, `""` and `null` throw (R-12).
-- [ ] 2.11 Test: `CategoryAdminServiceTest` — stubbed ports: duplicate name `409` path, disable blocked by an active product, disable allowed with only inactive products, idempotent double-disable, audit written on every mutation (R-02, R-03, R-04, R-15).
-- [ ] 2.12 Run `cd backend && ./mvnw test` (surefire only; this slice needs no Docker).
+- [x] 2.1 Create `catalog/domain/model/CategoryName.java` — record, compact constructor trims, rejects blank and `> 100`; `comparisonKey()` returns `toLowerCase(Locale.ROOT)`; case preserved in `value` (design §3.1, R-02).
+- [x] 2.2 Create `catalog/domain/model/ActiveFilter.java` — enum `ACTIVE/INACTIVE/ALL` + `static parse(String)` accepting only `true`/`false`/`all`, else `IllegalArgumentException` (design §3.2, R-12).
+- [x] 2.3 Create `catalog/domain/model/Category.java`, `CategorySummary.java`, `CategoryRef.java` — records per design §3.3; `withName` and `withActive` each advance `updatedAt` (R-03).
+- [x] 2.4 Create `catalog/domain/exception/`: `CategoryNotFoundException`, `DuplicateCategoryNameException`, `CategoryInUseException`, `CategoryInactiveException` (design §3.4).
+- [x] 2.5 Create `catalog/application/port/out/CategoryRepositoryPort.java` — the eight methods and four nested records of design §5.3, incl. `existsByNameIgnoringCase(key, excludingExternalId)` and `hasActiveProducts`.
+- [x] 2.6 Create `catalog/application/port/in/ManageCategoriesUseCase.java` — six methods per design §5.1; mutations take `AuthenticatedPrincipal actor`, **reads do not** (R-16, D-7); Javadoc names the exception each may throw, as `ManageBranchesUseCase` does.
+- [x] 2.7 Create `catalog/application/service/CategoryAdminService.java` — `@Transactional` on mutations, `@Transactional(readOnly = true)` on reads; each mutation ends with `auditWritePort.record(...)` carrying `branchId = null`, `entityName = "categories"` (R-15); disable checks `hasActiveProducts` first (R-04); enable is idempotent (R-03).
+- [x] 2.8 Verify no `catalog` class imports `org.springframework..` or `jakarta.persistence..` under `domain/` — `rg` over `catalog/domain`.
+- [x] 2.9 Test: `CategoryNameTest` — trimming, blank rejection, 100/101 boundary, case-insensitive `comparisonKey` (R-02).
+- [x] 2.10 Test: `ActiveFilterTest` — `true`/`false`/`all` parse; `maybe`, `""` and `null` throw (R-12).
+- [x] 2.11 Test: `CategoryAdminServiceTest` — stubbed ports: duplicate name `409` path, disable blocked by an active product, disable allowed with only inactive products, idempotent double-disable, audit written on every mutation (R-02, R-03, R-04, R-15).
+- [x] 2.12 Run `cd backend && ./mvnw test` (surefire only; this slice needs no Docker).
 
 ## Phase 3 — S3: Category infrastructure and the authorization decision (PR3)
 
