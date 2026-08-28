@@ -178,3 +178,95 @@ None. `design.md` and `tasks.md` were complete and correct for S2.
 - Current work unit: S2 — Category domain + application.
 - Boundary: starts from the S1 branch; ends with the category domain model, exceptions, both ports and `CategoryAdminService`, unit-tested. Nothing is wired to Spring context or HTTP yet (that is S3).
 - Estimated review budget impact: ~620 lines authored across 12 production classes + 3 test classes (design forecast: ~380). Above the 400-line soft budget but this is the planned S2 slice of an approved 8-PR feature-branch chain, so it proceeds as a bounded slice per the tasks `Review Workload Forecast`.
+
+---
+
+## Phase 3 — S3: Category infrastructure and the authorization decision (PR3)
+
+**Mode**: Standard (openspec, `strict_tdd: false`).
+**Branch**: `feat/ep-02-catalog-04-s3-categorias-infra` (chained on S2).
+**Status**: 11/11 tasks complete. Ready for verify.
+
+### Completed tasks
+
+- [x] 3.1 `catalog/infrastructure/adapter/out/persistence/CategoryJpaEntity.java` — `@Entity @Table(name = "categories")`, Lombok `@Getter/@Setter/@NoArgsConstructor` exactly as `BranchJpaEntity`. Maps `id` (`@GeneratedValue(IDENTITY)`), `external_id` (field-initialised to `UUID.randomUUID()`), `name`, `description`, `is_active` → `boolean active` (S-1), `created_at`, `updated_at` → `Instant updatedAt` (S-2). `ddl-auto=validate` passes against the real schema.
+- [x] 3.2 `CategorySpringDataRepository.java` (`extends JpaRepository<CategoryJpaEntity, Long>`) — `findByExternalId`; `existsByNameIgnoringCase(key, excludingExternalId)` as JPQL `SELECT COUNT(c) > 0 ... WHERE LOWER(c.name) = :key AND (:excludingExternalId IS NULL OR c.externalId <> :excludingExternalId)` (null-safe on the create path); `search(namePattern, active, Pageable)` as JPQL with a fixed `ORDER BY c.name ASC`; and the two product-side reads `hasActiveProducts(categoryExternalId)` and `countActiveProductsByCategoryIds(ids)` (see deviation note).
+- [x] 3.3 `CategoryMapper.java` — MapStruct `@Mapper(componentModel = "spring")`, `toDomain(entity)` + `toRef(entity)` with `String ↔ CategoryName` default helpers (same style as `BranchMapper`). `CategoryPersistenceAdapter.java` — `@Component implements CategoryRepositoryPort`; resolves the numeric `id` only to drive the active-product counts and never returns it (every method traffics in UUIDs / domain records).
+- [x] 3.4 Verified structurally: `CategoryPersistenceAdapter.list()` runs exactly **two** statements irrespective of page size — `search(...)` for the page, then one grouped `countActiveProductsByCategoryIds(pageIds)`; the per-row `.map(...)` only calls `categoryMapper.toDomain` and an in-memory `Map.getOrDefault`. No per-row query. (An empty page skips the count → 1 statement, still not N+1.)
+- [x] 3.5 `catalog/infrastructure/adapter/in/web/CatalogExceptionHandler.java` — `@RestControllerAdvice(basePackages = "com.optiplant.inventory.catalog.infrastructure.adapter.in.web")`, package-private, local `record ErrorResponse(String code, String message)`. Mappings wired for what exists after S2/S3: `IllegalArgumentException`/`MethodArgumentNotValidException`/`MethodArgumentTypeMismatchException` → `400 invalid_request`; `CategoryNotFoundException` → `404 category_not_found`; `DuplicateCategoryNameException` → `409 duplicate_category_name`; `CategoryInUseException` → `409 category_in_use`; `CategoryInactiveException` → `409 category_inactive`; `DataIntegrityViolationException` → `409 duplicate_category_name` **only** when the cause message names `uq_categories_name_ci`, otherwise **rethrown** → `500` (D-14). No `BaseUnitChangeRejectedException` mapping (design §3.4). Product/unit exception mappings deferred to S4–S6 as instructed.
+- [x] 3.6 `catalog/infrastructure/adapter/in/web/CategoryController.java` — `@RestController @RequestMapping("/api/catalog/categories")`. Six endpoints of contract §6.1: `GET /` (list), `GET /{externalId}`, `POST /` → `201` + `Location: /api/catalog/categories/{externalId}`, `PUT /{externalId}` → `200`, `PATCH /{externalId}/disable` → `200`, `PATCH /{externalId}/enable` → `200`. No `DELETE`. `active` bound as `String` (default `"true"`) and parsed via `ActiveFilter.parse` → `active=maybe` becomes `400 invalid_request`; `page` floored at 0; `size` **clamped** to `[1, 100]` (`Math.min(Math.max(size,1),100)`), never rejected; default size 20. Mutations resolve the actor via `principalAccessor.require()`.
+- [x] 3.7 `iam/infrastructure/config/SecurityConfig.java` — added `import org.springframework.http.HttpMethod;` and, immediately before `.anyRequest().authenticated()`: `.requestMatchers(HttpMethod.GET, "/api/catalog/**").authenticated()` then `.requestMatchers("/api/catalog/**").hasAuthority("ADMIN")`. GET matcher first (top-down evaluation, design §7/D-1). `hasAuthority`, not `hasRole`. Spanish comment matches the file's existing style. `HttpMethod` confirmed present in `spring-web-7.0.9.jar` by successful compile.
+- [x] 3.8 `git diff --stat` shows exactly one `iam` file touched — `backend/src/main/java/com/optiplant/inventory/iam/infrastructure/config/SecurityConfig.java`, `1 file changed, 8 insertions(+)`. No other `iam` file appears in the diff.
+- [x] 3.9 `CategoryCatalogIT` (`@Import(TestcontainersConfiguration.class)` + `@SpringBootTest(RANDOM_PORT)`, `RestClient` + `JdbcTemplate`, seed `admin.corp`) — 8 tests: full create/edit/list/disable/enable cycle; `409 duplicate_category_name` on a name differing only in case; `409 category_in_use` with a directly-seeded active product then success after the product is set inactive; `404` on an unknown `externalId` for `GET`/`PUT`/`PATCH disable`; listing defaults to active-only and honours `active=false` / `active=all`; `active=maybe` → `400 invalid_request`; `size=5000` returns `200` with envelope `size == 100`. All green.
+- [x] 3.10 `CategoryCatalogIT.noNumericIdLeaksInAnyResponseBodyOrInTheLocationHeader` — the create body (`Map`) has no `id` key; the `Location` header equals `/api/catalog/categories/{externalId}` and, with the UUID removed, contains no digit; every entry of the `active=all` listing page has no `id` key.
+- [x] 3.11 `cd backend && ./mvnw verify` — BUILD SUCCESS (see gate output).
+
+### Files changed
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/CategoryJpaEntity.java` | Created | JPA entity for `categories` incl. `is_active` (S-1) + `updated_at` (S-2), Lombok as `BranchJpaEntity` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/CategorySpringDataRepository.java` | Created | `findByExternalId`, JPQL `existsByNameIgnoringCase` + `search`, native `hasActiveProducts` + `countActiveProductsByCategoryIds` |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/CategoryMapper.java` | Created | MapStruct entity ↔ domain, Spring component model |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/out/persistence/CategoryPersistenceAdapter.java` | Created | `CategoryRepositoryPort` impl; only class that sees the numeric `id`; two-query listing |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/in/web/CatalogExceptionHandler.java` | Created | Package-scoped `@RestControllerAdvice`, local `ErrorResponse`, category mappings + D-14 rethrow |
+| `backend/src/main/java/com/optiplant/inventory/catalog/infrastructure/adapter/in/web/CategoryController.java` | Created | Six `/api/catalog/categories` endpoints; `201 + Location`; `size` clamped; no `DELETE` |
+| `backend/src/main/java/com/optiplant/inventory/iam/infrastructure/config/SecurityConfig.java` | Modified | `+ import HttpMethod`; two `/api/catalog/**` matchers (GET first, then ADMIN) before `.anyRequest()` |
+| `backend/src/test/java/com/optiplant/inventory/CategoryCatalogIT.java` | Created | 8 Testcontainers integration tests (3.9 + 3.10) |
+| `openspec/changes/add-catalog-module/tasks.md` | Modified | Phase 3 tasks 3.1–3.11 marked `[x]` |
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | `cd backend && ./mvnw test -Dtest=CategoryAdminServiceTest` → green (13/13), plus `ModuleBoundariesTest` 5/5 stays green with the new `catalog/infrastructure` package. |
+| Runtime harness command/scenario and exact result | `cd backend && ./mvnw verify` (full) — real PostgreSQL 17 via Testcontainers. `CategoryCatalogIT` 8/8; failsafe total `Tests run: 61, Failures: 0, Errors: 0, Skipped: 0`; surefire total `Tests run: 97, Failures: 0, Errors: 0, Skipped: 0`. `BUILD SUCCESS`. |
+| Rollback boundary | `git revert` of this commit removes the entire `catalog/infrastructure/**` tree and `CategoryCatalogIT`, and reverts the 8-line `SecurityConfig` addition. `/api/catalog/categories` disappears and the `/api/catalog/**` matchers go with it; no other module is affected. |
+
+### Gate output (run, not asserted from memory)
+
+**`cd backend && ./mvnw verify`** — `BUILD SUCCESS`:
+
+```
+[INFO] --- surefire ---
+[INFO] Tests run: 97, Failures: 0, Errors: 0, Skipped: 0
+[INFO]   ModuleBoundariesTest                 Tests run: 5,  Failures: 0, Errors: 0
+[INFO]   SharedIsFrameworkFreeTest            Tests run: 1,  Failures: 0, Errors: 0
+[INFO]   catalog...CategoryAdminServiceTest   Tests run: 13, Failures: 0, Errors: 0
+[INFO]   catalog...ActiveFilterTest           Tests run: 7,  Failures: 0, Errors: 0
+[INFO]   catalog...CategoryNameTest           Tests run: 10, Failures: 0, Errors: 0
+
+[INFO] --- failsafe (*IT, Testcontainers / real PostgreSQL 17) ---
+[INFO] Tests run: 61, Failures: 0, Errors: 0, Skipped: 0
+[INFO]   CategoryCatalogIT                    Tests run: 8,  Failures: 0, Errors: 0, Time elapsed: 1.969 s
+
+[INFO] BUILD SUCCESS
+```
+
+**3.4 (two-query listing)** — verified by inspection: `CategoryPersistenceAdapter.list()` → `categoryRepository.search(...)` (1) + `activeProductCounts(pageIds)` → `countActiveProductsByCategoryIds(...)` (1). Nothing in the mapping loop hits the repository.
+
+**3.8 (single `iam` edit)** — `git diff --stat`:
+
+```
+ .../inventory/iam/infrastructure/config/SecurityConfig.java | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+```
+
+### Deviations from design
+
+1. **Product-side reads in `CategorySpringDataRepository` are native SQL against `products`, not JPQL against `ProductJpaEntity`.** Design §6.2 writes `existsByCategoryIdAndActiveIsTrue` and `countActiveProductsByCategoryIds` as JPQL over `ProductJpaEntity`, but that entity is created in **S5** (task 5.1) and S3's task list does not include it. Creating a minimal `ProductJpaEntity` now would collide with task 5.1 and add merge friction to the feature-branch chain. Both queries are plain existence / grouped-count with **no dynamic `Sort`**, so D-10 ("JPQL, never native, for the *product search*") is not in play, and the codebase already uses native reads in a repository (`BranchSpringDataRepository.findIdByExternalId`). Implemented as `SELECT EXISTS(... JOIN categories ... WHERE c.external_id = ? AND p.is_active = TRUE)` and `SELECT p.category_id, COUNT(*) ... WHERE p.category_id IN (:ids) AND p.is_active = TRUE GROUP BY p.category_id` (returned as `List<Object[]>` to avoid native-projection column-alias fragility). **S5 may migrate these to JPQL once `ProductJpaEntity` exists**; the port contract (`hasActiveProducts(UUID)`, `CategorySummary.activeProductCount`) is unchanged so the migration is internal to the repository.
+2. **`search` passes a pre-lowercased `%contains%` pattern instead of `LOWER(CONCAT('%', :name, '%'))`.** The design snippet's shape (`LOWER(CONCAT(...))` around the bind parameter) makes PostgreSQL infer `lower(bytea)` when `:name` is `null` and the `GET /api/catalog/categories` list 500s (`function lower(bytea) does not exist`) — caught by running `CategoryCatalogIT`, not by reading. Fix keeps `LOWER()` on the `c.name` column only: the adapter builds `null` or `"%" + name.toLowerCase(ROOT) + "%"` and the query is `(:namePattern IS NULL OR LOWER(c.name) LIKE :namePattern)`. Same case-insensitive contains semantics, no behavioural change.
+3. **`existsByNameIgnoringCase` JPQL is null-guarded** (`:excludingExternalId IS NULL OR c.externalId <> :excludingExternalId`) rather than the design's bare `c.externalId <> :excluding`, because on the create path `excludingExternalId` is `null` and `<> null` yields UNKNOWN — the check would silently never detect a duplicate at the service layer. Behaviour now matches R-02 on both create and edit.
+
+None of these change the contract, the ports, the API surface or any error code — they are local implementation corrections, each caught or justified by execution.
+
+### Issues found
+
+`design.md` / `tasks.md` are usable for S3 with the three local corrections above. The only genuine slicing wrinkle is deviation 1: the design assumes `ProductJpaEntity` exists when S3's repository needs to read `products`, but S3's task list (3.1) creates only `CategoryJpaEntity`. Resolved with native SQL rather than by pulling S5 work forward or halting the slice; flagged here for the S5 executor.
+
+### Workload / PR boundary
+
+- Mode: chained PR slice — PR3 of 8 (feature-branch-chain; PR3 targets PR2's branch).
+- Current work unit: S3 — Category infrastructure + the `/api/catalog/**` authorization decision.
+- Boundary: starts from the S2 branch; ends with the category JPA entity, Spring Data repository, MapStruct mapper, persistence adapter, `CatalogExceptionHandler`, `CategoryController`, the 8-line `SecurityConfig` matcher addition, and `CategoryCatalogIT`. `/api/catalog/categories` is now live and Testcontainers-verified; products/units remain unwired (S4+).
+- Estimated review budget impact: ~470 lines production + ~270 lines IT (design forecast: ~460). Planned S3 slice of the approved 8-PR chain, proceeds as a bounded slice per the tasks `Review Workload Forecast`.

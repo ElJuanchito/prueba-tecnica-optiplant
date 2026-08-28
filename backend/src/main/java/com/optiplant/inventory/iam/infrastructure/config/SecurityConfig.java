@@ -2,6 +2,7 @@ package com.optiplant.inventory.iam.infrastructure.config;
 
 import java.util.List;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -69,6 +70,13 @@ class SecurityConfig {
 						.requestMatchers("/api/admin/users/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						.requestMatchers("/api/admin/branches/**").hasAuthority("ADMIN")
 						.requestMatchers("/api/audit/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
+						// Catálogo: la superficie de lectura es abierta a cualquier rol
+						// autenticado, la de mutación es solo ADMIN (contract §5). El corte
+						// es por método HTTP, no por ruta. El matcher GET va primero: se
+						// evalúan de arriba abajo y el segundo capturaría también las
+						// lecturas (design §7, D-1). hasAuthority, nunca hasRole.
+						.requestMatchers(HttpMethod.GET, "/api/catalog/**").authenticated()
+						.requestMatchers("/api/catalog/**").hasAuthority("ADMIN")
 						.anyRequest().authenticated())
 				.build();
 	}
