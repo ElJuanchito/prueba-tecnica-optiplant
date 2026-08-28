@@ -1,6 +1,8 @@
 package com.optiplant.inventory.iam.infrastructure.adapter.in.web;
 
+import com.optiplant.inventory.iam.domain.exception.BranchNotFoundException;
 import com.optiplant.inventory.iam.domain.exception.CrossBranchMutationException;
+import com.optiplant.inventory.iam.domain.exception.DuplicateBranchCodeException;
 import com.optiplant.inventory.iam.domain.exception.DuplicateUsernameException;
 import com.optiplant.inventory.iam.domain.exception.InvalidCredentialsException;
 import com.optiplant.inventory.iam.domain.exception.RefreshTokenRejectedException;
@@ -64,6 +66,13 @@ class IamExceptionHandler {
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("duplicate_user_field", ex.getMessage()));
 	}
 
+	// branch-administration "Branch creation enforces a unique code": duplicate
+	// branch code returns 409 Conflict.
+	@ExceptionHandler(DuplicateBranchCodeException.class)
+	ResponseEntity<ErrorResponse> onDuplicateBranchCode(DuplicateBranchCodeException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("duplicate_branch_code", ex.getMessage()));
+	}
+
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ResponseEntity<ErrorResponse> onDataIntegrityViolation(DataIntegrityViolationException ex) {
 		return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -73,6 +82,11 @@ class IamExceptionHandler {
 	@ExceptionHandler(UserNotFoundException.class)
 	ResponseEntity<ErrorResponse> onUserNotFound() {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("user_not_found", "User not found"));
+	}
+
+	@ExceptionHandler(BranchNotFoundException.class)
+	ResponseEntity<ErrorResponse> onBranchNotFound() {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("branch_not_found", "Branch not found"));
 	}
 
 	// Role/branch validation (user-administration "Non-ADMIN role without a

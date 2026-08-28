@@ -118,14 +118,14 @@ Chain strategy: feature-branch-chain (user-selected): PR1 targets the tracker br
 
 ## Phase 5b — Slice 5b: Branch Admin (PR7)
 
-- [ ] 5b.1 Create `iam/domain/model/BranchProfile.java`, `iam/domain/exception/DuplicateBranchCodeException.java`.
-- [ ] 5b.2 Create `application/port/out/BranchRepositoryPort`, `application/port/in/ManageBranchesUseCase`, `application/service/BranchAdminService` — create (unique `code`), edit (name/address/city/phone, `external_id` immutable), disable (`is_active=false`, no delete; disabled branch's users can no longer log in per authentication capability), query (no numeric `id` exposed).
-- [ ] 5b.3 Wire `BranchAdminService` mutations through `AuditWritePort` (slice 4).
-- [ ] 5b.4 Create `BranchJpaEntity`, `BranchSpringDataRepository`, `BranchPersistenceAdapter`, MapStruct mapper.
-- [ ] 5b.5 Create `adapter/in/web/BranchAdminController` — `POST/PUT/PATCH /api/admin/branches/**`, `ADMIN`-gated; duplicate code → `409`.
-- [ ] 5b.6 Test: `BranchAdminServiceTest` (duplicate code, `external_id` immutability).
-- [ ] 5b.7 Test IT: `BranchAdminIT` — duplicate `code` `409`; disabling a branch blocks its users' login.
-- [ ] 5b.8 Run `cd backend && ./mvnw verify`; grep check: no numeric `id` in any response DTO across the module.
+- [x] 5b.1 Create `iam/domain/model/BranchProfile.java`, `iam/domain/exception/DuplicateBranchCodeException.java`.
+- [x] 5b.2 Create `application/port/out/BranchRepositoryPort`, `application/port/in/ManageBranchesUseCase`, `application/service/BranchAdminService` — create (unique `code`), edit (name/address/city/phone, `external_id` immutable), disable (`is_active=false`, no delete; disabled branch's users can no longer log in per authentication capability), query (no numeric `id` exposed).
+- [x] 5b.3 Wire `BranchAdminService` mutations through `AuditWritePort` (slice 4).
+- [x] 5b.4 Create `BranchJpaEntity`, `BranchSpringDataRepository`, `BranchPersistenceAdapter`, MapStruct mapper.
+- [x] 5b.5 Create `adapter/in/web/BranchAdminController` — `POST/PUT/PATCH /api/admin/branches/**`, `ADMIN`-gated; duplicate code → `409`.
+- [x] 5b.6 Test: `BranchAdminServiceTest` (duplicate code, `external_id` immutability).
+- [x] 5b.7 Test IT: `BranchAdminIT` — duplicate `code` `409`; disabling a branch blocks its users' login.
+- [x] 5b.8 Run `cd backend && ./mvnw verify`; grep check: no numeric `id` in any response DTO across the module.
 
 ## Phase 6 — Cross-Cutting Verification (all slices)
 
