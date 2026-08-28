@@ -29,4 +29,13 @@ public interface RefreshTokenSpringDataRepository extends JpaRepository<RefreshT
 			+ "WHERE r.familyId = :familyId AND r.revokedAt IS NULL")
 	int revokeByFamilyId(@Param("familyId") UUID familyId, @Param("revokedAt") Instant revokedAt,
 			@Param("reason") String reason);
+
+	/** Revokes every still-live session of one user, across every {@code
+	 * family_id} — user-administration's disable flow (P2/P4), unlike {@link
+	 * #revokeByFamilyId}'s single-family scope for reuse detection. */
+	@Modifying
+	@Query("UPDATE RefreshTokenJpaEntity r SET r.revokedAt = :revokedAt, r.revokedReason = :reason "
+			+ "WHERE r.userId = :userId AND r.revokedAt IS NULL")
+	int revokeByUserId(@Param("userId") Long userId, @Param("revokedAt") Instant revokedAt,
+			@Param("reason") String reason);
 }

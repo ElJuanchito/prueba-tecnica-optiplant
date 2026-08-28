@@ -855,3 +855,193 @@ instruction to implement Slice 4 only.
 
 10/10 Slice 4 tasks complete. `cd backend && ./mvnw clean verify` → `BUILD SUCCESS` (35 surefire +
 29 failsafe tests, all green). Ready for `sdd-verify`, then Slice 5a (User Admin) apply.
+
+## Slice 5a — User Admin (PR6) — COMPLETE (8/8 tasks)
+
+Branch: `feat/ep-01-iam-05a-administracion-usuarios` (branches from tracker `feat/ep-01-iam`).
+Mode: Standard (`strict_tdd: false` per `openspec/config.yaml`).
+
+**Artifact store note**: same situation slice 3 recorded — the orchestrator's launch prompt named
+`engram` as the active artifact store, but `mem_search`/`mem_get_observation`/`mcp__engram__mem_search`
+were not present in this sub-agent's available tool set at all (confirmed by invoking them directly;
+both returned `No such tool available`), while `openspec/config.yaml` (`schema: spec-driven`) and the
+on-disk `openspec/changes/add-iam-module/` tree — including this file, already carrying slices 1
+through 4 — are unambiguously the real source of truth for this change. Followed the `openspec`
+convention: `tasks.md` `[x]` marks and this file are the persisted record; no `mem_save` was issued.
+
+### Completed Tasks
+
+- [x] 5a.1 Created `iam/domain/exception/DuplicateUsernameException.java`. **Reused for both
+      duplicate-username and duplicate-email conflicts** (message carries the specifics) rather
+      than a second `DuplicateEmailException` — the design's own package layout (`:71`) names only
+      this one exception for slice 5a, mirroring how `CrossBranchMutationException` and
+      `RefreshTokenRejectedException` already collapse multiple root causes into one generic type.
+      Also created `iam/domain/exception/UserNotFoundException.java` — not in the design's literal
+      enumeration (see Deviations).
+- [x] 5a.2 Created `application/port/in/ManageUsersUseCase` (`create`/`edit`/`disable`/`list`,
+      `AuthenticatedPrincipal actor` passed explicitly — mirrors `QueryAuditLogUseCase`'s shape) and
+      `application/service/UserAdminService`. `create`/`edit` validate role/branch (`BRANCH_MANAGER`/
+      `OPERATOR` require a `branchExternalId`; only `ADMIN` may be branchless) via a plain
+      `IllegalArgumentException`, check duplicate username/email via `DuplicateUsernameException`,
+      and `disable` sets `is_active=false` **and** calls a new `RefreshTokenRepositoryPort
+      .revokeAllForUser` (see Deviations) in the same `@Transactional` method — CLAUDE.md's
+      synchronous-effects invariant. `external_id` is never reassigned on edit (no setter call
+      exists for it in `UserPersistenceAdapter.update`); `username`/password are absent from
+      `EditUserCommand` — edit's own spec requirement lists only role, branch, full name, and email.
+      Extended `UserAccount` (domain record) with `email`/`fullName` — the design names no separate
+      "profile" model, so the existing record grows instead of a near-duplicate one; the only
+      constructor call site is `UserMapper` (MapStruct-generated), confirmed by grep before editing.
+      Extended `PasswordHasherPort` with `hash(String)` (only `matches` existed, needed to persist a
+      BCrypt hash for a brand-new user) and `BCryptPasswordHasher` to implement it.
+- [x] 5a.3 `UserAdminService.create`/`edit`/`disable` each call `AuditWritePort.record` with
+      `actor.userId()`/`actor.branchId()` (the **acting** admin's own principal, not the target
+      user's) — confirmed against the exact precedent `AuditAtomicityFixtureService` (slice 4)
+      already established for this exact question. `AuditAction.CREATE`/`UPDATE`/`DISABLE` (already
+      existed from slice 4), `entityName = "users"`, `entityId` = the affected user's `external_id`.
+- [x] 5a.4 Extended `UserSpringDataRepository` with `findByEmail` and a paginated `search` JPQL
+      query (`active`/`role`/`branchId` optional filters via `(:x IS NULL OR ...)`) — JPQL, not
+      native, since every filter here is `Boolean`/`String`/`Long` (already typed for the driver),
+      unlike slice 4's `Instant`-filter deviation that forced a native query; `Pageable`'s dynamic
+      sort still works here for that same reason. Extended `UserPersistenceAdapter` with
+      `findByEmail`, `create`, `update`, `disable`, `list` — `create`/`update`/`list` resolve a
+      `branchExternalId` to its BIGINT FK via the existing `findBranchIdByExternalId` (slice 4), but
+      unlike that adapter's read-path `-1` sentinel for an unmatched filter, an unresolvable
+      `branchExternalId` on **create/update** throws `IllegalArgumentException` (a genuine client
+      input error, not an unfiltered query) — mapped to `400` by the new `IamExceptionHandler` rule
+      (5a.5). No `UserJpaEntity`/mapper change was needed: every field slice 5a touches
+      (`email`, `fullName`, `role`, `branchId`, `active`) already existed on the entity from slice
+      2a; `UserMapper` auto-maps the two newly domain-exposed fields by matching property names.
+- [x] 5a.5 Created `adapter/in/web/UserAdminController` — `POST /api/admin/users`,
+      `PUT /api/admin/users/{externalId}`, `PATCH /api/admin/users/{externalId}/disable`, plus
+      `GET /api/admin/users` (paginated/filtered query — see Deviations for why a verb the task's
+      literal `POST/PUT/PATCH` list omits was still added). Every response DTO
+      (`UserResponse`/`UserPageResponse`) exposes `externalId` (UUID) only — never the numeric `id`
+      or `passwordHash`. Extended `IamExceptionHandler`: `DuplicateUsernameException` → `409`,
+      `UserNotFoundException` → `404`, and a package-scoped generic `IllegalArgumentException` →
+      `400` (covers both the service's role/branch validation and the persistence adapter's
+      unresolvable-branch case with one rule).
+- [x] 5a.6 Created `UserAdminServiceTest` — 13 cases (ADMIN branchless create; `BRANCH_MANAGER`/
+      `OPERATOR` without a branch rejected; duplicate username/email rejected on create; audit entry
+      written on create; edit updates role/branch; edit on an unknown `external_id` →
+      `UserNotFoundException`; edit with the user's **own** unchanged email is not flagged
+      duplicate; edit with **another** user's email is; disable revokes tokens + writes audit
+      + is idempotently checked for a missing user). **No Mockito on this classpath** — confirmed by
+      running `./mvnw dependency:tree` and finding zero `org.mockito` resolution — so this uses
+      hand-written in-memory fakes for `UserRepositoryPort`/`RefreshTokenRepositoryPort`/
+      `AuditWritePort`/`PasswordHasherPort`, the same style `LoginRateLimitTest`/
+      `RefreshTokenPolicyTest` already use for their own dependencies (see Deviations).
+- [x] 5a.7 Created `UserAdminIT` — 8 cases against real Postgres 17 (Testcontainers): disabling a
+      user with **two independent login sessions** (two refresh-token families) revokes both
+      (`revoked_reason = 'USER_DISABLED'` for both rows, zero live tokens remain), the `users` row
+      still exists with `is_active = false` (no physical delete), a disabled user can no longer log
+      in, disabling an unknown `external_id` → `404`, duplicate username/email → `409`, a
+      `BRANCH_MANAGER`/`OPERATOR` created with no branch → `400`, edit persists a role/branch change
+      while `external_id` stays the same, a non-`ADMIN` (`gerente.bogota`) is rejected `403` by
+      `SecurityConfig`'s existing matcher, and the list response's raw JSON contains no `id` or
+      `passwordHash` key. **"Historical movements remain intact" is not independently testable
+      yet** — see Deviations.
+- [x] 5a.8 Ran `cd backend && ./mvnw clean verify` — see Work Unit Evidence below.
+
+### Deviations from Design / Tasks
+
+1. **`UserNotFoundException` added**, not in the design's literal exception enumeration (`:71`
+   names only `DuplicateUsernameException` for this slice). `edit`/`disable` on an unknown
+   `external_id` need a genuine client-facing `404` — the same kind of justified,
+   beyond-the-literal-list addition earlier slices already made (`TooManyLoginAttemptsException` in
+   2a, `RefreshTokenPolicyConfigPort` in 2b). No existence-leak concern applies here: the caller is
+   an already-authenticated `ADMIN` operating on an `external_id` it supplied itself, unlike the
+   login/refresh paths' no-existence-leak posture.
+2. **`RefreshTokenRepositoryPort.revokeAllForUser` added**, beyond the port's slice-2b shape
+   (`revoke` for one token, `revokeFamily` for one login-session chain). Neither existing method can
+   express "every live token of this user, across every device/family" — exactly what
+   user-administration's disable scenario requires (P2/P4: multi-device sessions are valid, but
+   disable must close *all* of them at once, unlike reuse detection's single-family scope). Extended
+   `RefreshTokenSpringDataRepository`/`RefreshTokenPersistenceAdapter` to match, mirroring the exact
+   shape of the existing `revoke`/`revokeFamily` pair.
+3. **`GET /api/admin/users` added**, beyond task 5a.5's literal `POST/PUT/PATCH` verb list. Task
+   5a.2 itself requires a "query (no numeric `id` exposed)" operation on `ManageUsersUseCase`, and
+   user-administration's own "User query lists users without exposing internal identifiers"
+   requirement needs an HTTP entry point to be reachable/testable at all — `AuditLogController`
+   already established the same "GET for the query side" pattern in this module. `SecurityConfig`'s
+   `/api/admin/users/**` matcher is verb-agnostic, so no security wiring change was needed.
+4. **No Mockito on the classpath** (verified: `./mvnw dependency:tree` resolves zero `org.mockito`
+   artifacts — `spring-boot-starter-webmvc-test`/`-data-jpa-test`/etc. do not transitively pull it
+   in this Boot 4 per-feature-starter layout). `UserAdminServiceTest` uses hand-written in-memory
+   fakes instead, consistent with every existing unit test in this module (none of which use
+   Mockito either) rather than introducing a new test dependency mid-slice.
+5. **"Historical movements remain intact" (user-administration's disable scenario) is asserted only
+   indirectly**, via "no physical delete of the `users` row" — no movement/Kardex-producing module
+   exists yet in this codebase (that capability arrives in a later epic per the project's roadmap).
+   `UserAdminIT`'s class javadoc states this explicitly rather than silently narrowing the scenario.
+6. **Audit entry's `branchId` is the acting `ADMIN`'s own `branchId`, not the target user's
+   branch.** Design's `AuditEntryCommand`/data flow does not spell this out for slice 5, but
+   `AuditAtomicityFixtureService` (slice 4) already established this exact precedent —
+   `principal.userId()`/`principal.branchId()`, i.e. the actor's, not the resource's — for the only
+   other call site that exists. Followed it rather than inventing a second convention.
+
+### Issues Found
+
+None — `./mvnw dependency:tree` (Mockito check) and the full `clean verify` run were both executed,
+not assumed, before writing this section (CLAUDE.md: "no se afirma nada sin ejecutarlo").
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and result | `cd backend && ./mvnw test -Dtest=UserAdminServiceTest` → `Tests run: 13, Failures: 0, Errors: 0, Skipped: 0` — `BUILD SUCCESS` |
+| Full surefire | `cd backend && ./mvnw test` → `Tests run: 48, Failures: 0, Errors: 0, Skipped: 0` — `BUILD SUCCESS` (includes `ModuleBoundariesTest` 5/5 still green) |
+| Runtime harness command and result | `cd backend && ./mvnw clean verify -Dit.test=UserAdminIT` (real Testcontainers Postgres 17) → `Tests run: 8, Failures: 0, Errors: 0` — `BUILD SUCCESS`; full failsafe phase → `Tests run: 37` (`ApplicationContextIT` 1 + `AuditAtomicityIT` 2 + `AuditLogQueryIT` 8 + `AuthenticationFlowIT` 12 + `BranchIsolationIT` 6 + `UserAdminIT` 8), all green |
+| Cross-cutting grep — `ROLE_` / `hasRole(` | Only pre-existing doc-comment mentions in `SecurityConfig`/`Role.java`; no executable use |
+| Numeric-id-in-response check | `UserAdminController.UserResponse`/`UserPageResponse` expose `externalId` (`UUID`) only; `UserAdminIT.consultarUsuariosNoExponeElIdNumerico` asserts the raw JSON has no `id`/`passwordHash` key |
+| `python3 scripts/validar_trazabilidad.py` | `RESULTADO: trazabilidad íntegra` — `42 RF · 34 RNF · 17 RN · 37 CU · 6 DT` (no `docs/` touched this slice) |
+| Rollback boundary | Revert this commit; `/api/admin/users/**` disappears along with `UserAdminService`, `ManageUsersUseCase`, `UserNotFoundException`, `DuplicateUsernameException`, and the `RefreshTokenRepositoryPort.revokeAllForUser`/`PasswordHasherPort.hash` extensions (both unused by any other slice). `UserAccount`'s `email`/`fullName` fields also revert, but no other call site depended on them. No prior slice (1/2a/2b/3/4) is touched or removed with it |
+
+### Files Changed
+
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `backend/src/main/java/.../iam/domain/exception/{DuplicateUsernameException,UserNotFoundException}.java` | Created | 409/404 domain exceptions |
+| `backend/src/main/java/.../iam/domain/model/UserAccount.java` | Modified | Added `email`/`fullName` fields |
+| `backend/src/main/java/.../iam/application/port/in/ManageUsersUseCase.java` | Created | `create`/`edit`/`disable`/`list` + command/query records |
+| `backend/src/main/java/.../iam/application/port/out/UserRepositoryPort.java` | Modified | Added `findByEmail`, `create`, `update`, `disable`, `list` + `NewUser`/`UserUpdate`/`UserFilter`/`UserPage` records |
+| `backend/src/main/java/.../iam/application/port/out/RefreshTokenRepositoryPort.java` | Modified | Added `revokeAllForUser` |
+| `backend/src/main/java/.../iam/application/port/out/PasswordHasherPort.java` | Modified | Added `hash(String)` |
+| `backend/src/main/java/.../iam/application/service/UserAdminService.java` | Created | Create/edit/disable/list orchestration, audited, transactional |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/UserSpringDataRepository.java` | Modified | Added `findByEmail`, paginated `search` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/UserPersistenceAdapter.java` | Modified | Implements the 4 new port methods |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/RefreshTokenSpringDataRepository.java` | Modified | Added `revokeByUserId` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/persistence/RefreshTokenPersistenceAdapter.java` | Modified | Implements `revokeAllForUser` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/out/security/BCryptPasswordHasher.java` | Modified | Implements `hash` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/in/web/UserAdminController.java` | Created | `POST`/`PUT`/`PATCH .../disable`/`GET /api/admin/users` |
+| `backend/src/main/java/.../iam/infrastructure/adapter/in/web/IamExceptionHandler.java` | Modified | 3 new mappings: `409`/`404`/`400` |
+| `backend/src/test/java/.../iam/application/service/UserAdminServiceTest.java` | Created | 13 cases, hand-written fakes (no Mockito) |
+| `backend/src/test/java/.../UserAdminIT.java` | Created | 8 cases, real Postgres 17 |
+| `openspec/changes/add-iam-module/tasks.md` | Modified | Checked off 5a.1–5a.8 |
+
+### Remaining Tasks
+
+Slice 5b (Branch Admin, PR7) and Phase 6 (cross-cutting verification) — not started, per explicit
+instruction to implement Slice 5a only.
+
+### Workload / PR Boundary
+
+- Mode: chained PR slice (`feature-branch-chain`, `auto-chain` delivery strategy)
+- Current work unit: 5a. User admin (PR6)
+- Boundary: starts from Slice 4's state (`SecurityConfig`'s `/api/admin/users/**` matcher already
+  wired but unused — slice 3 pre-declared it; no `UserAdminService`/controller existed) and ends
+  with full user CRUD (create/edit/disable/query) working end to end against real Postgres, with
+  disable provably revoking every live session across every device, and no prior slice's behavior
+  changed.
+- Estimated review budget impact: verified by executing `git diff --numstat` on the 10 modified
+  tracked files (+200/-3) plus `wc -l` on the 7 new files (914 lines) — approximately **1,114
+  authored added lines / 3 deleted lines** across 17 files (7 created, 10 modified), well above the
+  ~210-line forecast and this change's largest single-slice overrun so far — consistent with every
+  prior slice's pattern, driven mainly by `UserAdminIT` (8 real end-to-end cases against Postgres
+  for a brand-new CRUD surface) and the fakes-based `UserAdminServiceTest` (13 cases; no Mockito
+  available to shrink the test doubles). Flagged for the orchestrator/reviewer rather than split
+  after the fact.
+
+### Status
+
+8/8 Slice 5a tasks complete. `cd backend && ./mvnw clean verify` → `BUILD SUCCESS` (48 surefire +
+37 failsafe tests, all green). Ready for `sdd-verify`, then Slice 5b (Branch Admin) apply.

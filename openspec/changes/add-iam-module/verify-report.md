@@ -1,8 +1,8 @@
-# Verification Report: `add-iam-module` — Slices 1, 2a, 2b, 3, 4
+# Verification Report: `add-iam-module` — Slices 1, 2a, 2b, 3, 4, 5a
 
-**Scope**: Tasks 1.1–1.19 (Foundations), 2a.1–2a.8 (Login), 2b.1–2b.12 (Refresh + Logout), 3.1–3.7 (Branch Isolation), 4.1–4.10 (Audit).
-Slices 5a, 5b are intentionally out of scope (not started) and are reported as
-not-started, not as failures.
+**Scope**: Tasks 1.1–1.19 (Foundations), 2a.1–2a.8 (Login), 2b.1–2b.12 (Refresh + Logout), 3.1–3.7 (Branch Isolation), 4.1–4.10 (Audit), 5a.1–5a.8 (User Admin).
+Slice 5b is intentionally out of scope (not started) and is reported as
+not-started, not as a failure.
 
 **Commit verified**: `2240b17` (Slices 1/2a/2b, merged into tracker `feat/ep-01-iam`) plus
 Slice 3's own PR merge (branch history shown by `git log --oneline -5`: `510fade` merge of
@@ -23,9 +23,10 @@ bytes as they stand.
 | 2b — Refresh + Logout | **PASS WITH WARNINGS** (2 minor coverage/design-deviation warnings, no CRITICAL) |
 | 3 — Branch Isolation | **PASS** |
 | 4 — Audit | **PASS** |
+| 5a — User Admin | **PASS WITH WARNINGS** (3 coverage/design-ambiguity warnings, no CRITICAL) |
 
-**Overall: all five implemented slices are ready to merge.** No CRITICAL issue found in any
-slice, including Slice 4.
+**Overall: all six implemented slices are ready to merge.** No CRITICAL issue found in any
+slice, including Slice 5a. Slice 5b (Branch Admin) remains correctly unstarted.
 
 ## Decisive command output
 
@@ -566,3 +567,206 @@ slice). **Ready to proceed** — the two SUGGESTIONs on Slice 4 are low-priority
 for a future slice, not merge blockers; slices 5a, 5b remain correctly unstarted (confirmed:
 `fd` search for `UserAdminService`, `BranchAdminService`, `BranchJpaEntity` returns zero hits
 under `src/main`).
+
+```yaml
+schema: gentle-ai.verify-result/v1
+evidence_revision: sha256:7d630871ec2b91a665d10486ae77b73cf094f0f0472cd63a77dad7523f3940c7
+verdict: pass_with_warnings
+blockers: 0
+critical_findings: 0
+requirements: 5/5
+scenarios: 9/9
+test_command: cd backend && ./mvnw verify
+test_exit_code: 0
+test_output_hash: sha256:fb45e3cb968aad6bcb73ead87e74b8c7f0038a19f7ea57c864075fded697c912
+build_command: cd backend && ./mvnw verify
+build_exit_code: 0
+build_output_hash: sha256:fb45e3cb968aad6bcb73ead87e74b8c7f0038a19f7ea57c864075fded697c912
+```
+
+## Slice 5a — User Admin (PR6) — verified
+
+**Scope**: Tasks 5a.1–5a.8. Branch `feat/ep-01-iam-05a-administracion-usuarios`, uncommitted
+working tree (10 modified tracked files, 7 new untracked source/test files under
+`iam/domain/exception/**`, `iam/application/{port/in,service}/**`,
+`iam/infrastructure/adapter/in/web/UserAdminController.java`,
+`backend/src/test/.../iam/application/service/UserAdminServiceTest.java`,
+`backend/src/test/.../UserAdminIT.java`), plus `tasks.md`/`apply-progress.md` updates. None
+staged or committed — the orchestrator owns delivery for this slice.
+
+### Task completion
+
+All 8 tasks (5a.1–5a.8) are marked `[x]` in `tasks.md` and match the working-tree state — every
+file `apply-progress.md` lists as created/modified for this slice exists with the described
+content; no task claims work that the diff does not contain.
+
+| Metric | Value |
+|---|---|
+| Tasks total (5a) | 8 |
+| Tasks complete | 8 |
+| Tasks incomplete | 0 |
+
+### Build & tests — independently re-run for this verification
+
+**Focused test** — `cd backend && ./mvnw test -Dtest=UserAdminServiceTest`
+```
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.iam.application.service.UserAdminServiceTest
+```
+Exit code `0`.
+
+**Runtime harness** — `cd backend && ./mvnw verify -Dit.test=UserAdminIT` (real Postgres 17,
+Testcontainers)
+```
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0 -- in com.optiplant.inventory.UserAdminIT
+BUILD SUCCESS
+```
+Exit code `0`.
+
+**Full build** — `cd backend && ./mvnw verify` (whole module, not just this slice)
+```
+Tests run: 48, Failures: 0, Errors: 0, Skipped: 0   (surefire)
+Tests run: 37, Failures: 0, Errors: 0, Skipped: 0   (failsafe: ApplicationContextIT 1,
+  AuditAtomicityIT 2, AuditLogQueryIT 8, AuthenticationFlowIT 12, BranchIsolationIT 6,
+  UserAdminIT 8)
+BUILD SUCCESS
+```
+Exit code `0`. Matches `apply-progress.md`'s own reported numbers exactly — independently
+re-run, not taken on the apply executor's word.
+
+**`python3 scripts/validar_trazabilidad.py`**
+```
+RESULTADO: trazabilidad íntegra
+  42 RF · 34 RNF · 17 RN · 37 CU · 6 DT
+```
+Correctly unaffected — no `docs/` file touched this slice. `./scripts/validar_esquema.sh` was
+correctly skipped for the same reason (no `backend/init-db/` change).
+
+### Spec compliance matrix (`specs/user-administration/spec.md`)
+
+| Requirement | Scenario | Test | Result |
+|---|---|---|---|
+| Only ADMIN manages users | Non-ADMIN attempts user management | `UserAdminIT.unGerenteDeSucursalNoAdminEsRechazadoConCuatroCientosTres` (403 via `SecurityConfig`'s path matcher, verb-agnostic — the same mechanism `BranchIsolationIT`/`AuditLogQueryIT` already exercise for other verbs) | ✅ COMPLIANT |
+| User creation: unique username/email, role/branch | Successful user creation | `UserAdminServiceTest.creaUnAdminCorporativoSinSucursal`, `creaUnGerenteDeSucursalConSucursalAsignada` (persisted, active); BCrypt-hash round-trip proven indirectly by `UserAdminIT`'s real logins (`admin.corp`, and the created user logging in twice in the disable test) succeeding through the real `BCryptPasswordHasher` | ✅ COMPLIANT |
+| ″ | Duplicate username | `UserAdminServiceTest.rechazaUnUsernameDuplicado` + `UserAdminIT.crearConUsernameDuplicadoDevuelve409` | ✅ COMPLIANT |
+| ″ | Duplicate email | `UserAdminServiceTest.rechazaUnEmailDuplicado` + `UserAdminIT.crearConEmailDuplicadoDevuelve409` | ✅ COMPLIANT |
+| ″ | Non-ADMIN role without a branch | `UserAdminServiceTest.rechazaUnGerenteDeSucursalSinSucursal`/`rechazaUnOperadorSinSucursal` + `UserAdminIT.crearUnGerenteDeSucursalSinSucursalDevuelve400` | ✅ COMPLIANT |
+| User edit updates role, branch, profile | A user's role changes | `UserAdminServiceTest.editaElRolYLaSucursalDeUnUsuarioExistente` + `UserAdminIT.editarActualizaElRolYLaSucursalDeUnUsuarioExistente` (persistence + `external_id` immutability both asserted) | ⚠️ PARTIAL — "subsequent logins reflect the new role's authorized capabilities" (the scenario's second clause) has no test that edits a role and then exercises a role-gated endpoint with a fresh login; only persistence is asserted directly |
+| User disable is logical, revokes sessions | Disabling a user | `UserAdminIT.deshabilitarUnUsuarioRevocaTodosSusTokensVivosYNoLoBorraFisicamente` — two independent refresh-token families both revoked (`revoked_reason='USER_DISABLED'`, 0 live tokens), `users` row count stays 1, `is_active=false` | ⚠️ PARTIAL — "historical movements remain intact" is not independently testable (no movement/Kardex module exists in the codebase yet); the test's own class javadoc discloses this, and the closest verifiable proxy (no physical row delete) is asserted |
+| ″ | Disabled user attempts login | Same test, `loginTrasDeshabilitar` → `401` | ✅ COMPLIANT |
+| User query lists users, no internal ids | Query includes disabled users | `UserAdminIT.consultarUsuariosNoExponeElIdNumerico` creates and lists only one **active** user; asserts no `id`/`passwordHash` key, but never puts a disabled user in the query result to prove both are returned together | ⚠️ PARTIAL — the "no numeric id" half is compliant and tested; the "mix of active/disabled, both returned" half is untested at runtime. Code inspection of `UserSpringDataRepository.search`'s JPQL (`:active IS NULL OR u.active = :active`) supports correctness, but per this project's own rule ("no se afirma nada sin ejecutarlo" — CLAUDE.md) that inspection alone does not close the scenario |
+
+**Compliance summary**: 6/9 scenarios fully compliant, 3/9 partially compliant (no scenario is
+fully untested or failing). No CRITICAL spec gap.
+
+### Design coherence (`design.md`)
+
+| Decision | Followed? | Notes |
+|---|---|---|
+| Package layout (`design.md:71,75,76,80,82`): `DuplicateUsernameException`, `ManageUsersUseCase`, `UserRepositoryPort`, `UserAdminService`, `UserAdminController` | ✅ Yes | Every class lands exactly where the design's tree names it |
+| `UserNotFoundException` added beyond the design's literal exception list | ⚠️ Deviation, justified | Needed for a genuine client-facing `404` on edit/disable of an unknown `external_id`; no existence-leak concern (caller is an already-authenticated `ADMIN` acting on an id it supplied itself). Consistent with earlier slices' pattern of justified beyond-the-list additions |
+| `RefreshTokenRepositoryPort.revokeAllForUser` added beyond design's `revoke`/`revokeFamily` pair | ⚠️ Deviation, necessary | Neither existing method can express "every live token of this user across every device" — exactly what the disable scenario requires (multi-device sessions, P2/P4). Verified as the actual shape used and tested (`UserAdminIT`'s two-session scenario) |
+| `GET /api/admin/users` added beyond task 5a.5's literal `POST/PUT/PATCH` list | ⚠️ Deviation, necessary | The user-administration query requirement needs a reachable HTTP entry point to be testable at all; `SecurityConfig`'s matcher is verb-agnostic so no security wiring changed |
+| Audit entry's `branch_id` is the acting `ADMIN`'s own `branchId` (always `NULL`, since only `ADMIN` can call these endpoints), not the target user's branch | ⚠️ **Flagged — see Issues** | `apply-progress.md` cites `AuditAtomicityFixtureService` (slice 4) as precedent. Read that class directly: it is a **test-source-only fixture** (`backend/src/test/.../AuditAtomicityFixtureService.java`, confined to `src/test`, doc-commented as existing solely to prove transactional atomicity), not a production call site or a considered design decision about actor-vs-resource `branch_id` semantics. Citing it as precedent is weaker than `apply-progress.md` implies — see Issues below |
+
+### CLAUDE.md hard invariants — re-checked for Slice 5a's diff
+
+| Invariant | Status | Evidence |
+|---|---|---|
+| Roles `ADMIN`/`BRANCH_MANAGER`/`OPERATOR`, no `ROLE_` prefix; `hasAuthority()` never `hasRole()` | **PASS** | `grep -rn "ROLE_\|hasRole(" backend/src --include="*.java"` → only 4 pre-existing doc-comment hits (`Role.java` ×3, `SecurityConfig.java` ×1), zero executable use. `SecurityConfig:67` — `.requestMatchers("/api/admin/users/**", "/api/admin/branches/**").hasAuthority("ADMIN")` |
+| Every stock/audit mutation writes in the same transaction | **PASS (audit)** | `UserAdminService.create`/`edit`/`disable` are each `@Transactional`; `AuditWritePort.record` is called inside that same method body, no `@Async`/`AFTER_COMMIT`. No stock/Kardex concept exists yet in this codebase (out of this epic's scope) |
+| Atomic effects via synchronous output port, never event | **PASS** | Same evidence as above — `AuditWritePort` is a plain synchronous interface call, not a published domain event |
+| Branch derived from session, never client param | **PASS** | `UserAdminController` reads `actor` from `PrincipalAccessor.require()` (session-derived) for every mutation; `branchId` on create/edit request bodies identifies the **target user's** assignment (a legitimate business field for user administration, not an authorization-scoping parameter) — no endpoint lets the client assert its own acting branch |
+| API exposes only `external_id`, never numeric `id` | **PASS** | `UserAdminController.UserResponse`/`UserPageResponse` carry `externalId (UUID)` only; `UserAdminIT.consultarUsuariosNoExponeElIdNumerico` asserts the raw JSON has no `id`/`passwordHash` key, executed and green |
+| Docker-dependent tests named `*IT` | **PASS** | `UserAdminIT` (Testcontainers-backed) vs. `UserAdminServiceTest` (pure unit, hand-written fakes, no Testcontainers boot in the focused re-run log) — correctly suffixed |
+| No new class in a direct base-package subpackage other than a business module | **PASS** | `find backend/src/main/java/com/optiplant/inventory -maxdepth 2 -type d` → only `iam` and `shared`; every Slice 5a class lands under `iam/**` |
+| No Flyway added alongside `backend/init-db/` | **PASS** | No schema file touched this slice; `spring.flyway.enabled: false` unchanged |
+| `shared/` stays framework-free and a leaf | **PASS (unaffected)** | Slice 5a touches only `iam/**`; `ModuleBoundariesTest` (5/5) and `SharedIsFrameworkFreeTest` (1/1) both re-run green in the full `verify` above |
+
+### Deviations recorded in `apply-progress.md` for Slice 5a — verified
+
+1. **`UserNotFoundException` added**, not in design's literal list — confirmed real (thrown by
+   `UserAdminService.edit`/`disable`, mapped to `404` by `IamExceptionHandler.onUserNotFound`,
+   exercised by `UserAdminServiceTest.editarUnExternalIdInexistenteLanzaUserNotFound`/
+   `deshabilitarUnExternalIdInexistenteLanzaUserNotFound` and
+   `UserAdminIT.deshabilitarUnExternalIdInexistenteDevuelve404`). Justified, no existence-leak
+   concern for an already-authenticated `ADMIN`.
+2. **`RefreshTokenRepositoryPort.revokeAllForUser` added** — confirmed present on the port,
+   implemented in `RefreshTokenPersistenceAdapter`, called from `UserAdminService.disable` inside
+   the same `@Transactional` method as the `disable` write and the audit record, and proven by
+   `UserAdminIT`'s two-refresh-token-family scenario. Real and necessary.
+3. **`GET /api/admin/users` added** beyond the task's literal verb list — confirmed present,
+   `ADMIN`-gated by the existing verb-agnostic matcher, tested by
+   `UserAdminIT.consultarUsuariosNoExponeElIdNumerico` and
+   `unGerenteDeSucursalNoAdminEsRechazadoConCuatroCientosTres`.
+4. **No Mockito on the classpath** — re-confirmed: `./mvnw dependency:tree` resolves zero
+   `org.mockito` artifacts for this module's own dependencies. (Note: the Testcontainers-backed
+   `UserAdminIT` run does log `"Mockito is currently self-attaching to enable the
+   inline-mock-maker"` — traced to Testcontainers' own internal use, not a project dependency;
+   confirmed no `org.mockito` import exists anywhere under `backend/src`.) `UserAdminServiceTest`
+   correctly uses hand-written fakes, consistent with every other unit test in this module.
+5. **"Historical movements remain intact" asserted only indirectly** — confirmed no
+   movement/Kardex module exists yet under `backend/src/main`; `UserAdminIT`'s class javadoc
+   states the narrowing explicitly.
+6. **Audit `branch_id` is the acting ADMIN's own branch, not the target user's** — confirmed as
+   coded (`UserAdminService` passes `actor.branchId()`, never a value derived from the affected
+   user's `branchExternalId`). The cited precedent (`AuditAtomicityFixtureService`) is real code,
+   but it is a test-only fixture with no domain resource of its own to attribute a `branch_id`
+   to, not an established production convention — see Issues.
+
+All six declared deviations are real and match the diff. Deviation 6's own justification is
+weaker than stated; flagged below, not silently accepted.
+
+### Issues found for Slice 5a
+
+**CRITICAL**: None.
+
+**WARNING**:
+1. **Audit entries for every user-administration mutation always carry `branch_id = NULL`**,
+   because the only actor who can reach `/api/admin/users/**` is `ADMIN`, and `ADMIN.branchId()`
+   is always `null` (corporate scope) — regardless of which branch the mutated user belongs to.
+   `audit-log/spec.md`'s "Audit query is filtered and role-scoped" requirement states a
+   `BRANCH_MANAGER` "MUST see only entries for their own branch." Under the current
+   implementation, a `BRANCH_MANAGER` of any branch will **never** see a user-administration
+   audit entry for their own branch — every such entry is invisible to every `BRANCH_MANAGER`,
+   permanently, because it is filed under no branch at all. This is not exercised by any
+   existing test (`AuditLogQueryIT`'s branch-scoping scenario uses its own audit fixture, not a
+   real `UserAdminService` mutation) and is not necessarily wrong — `audit-log/spec.md`'s "for
+   that action, user, and branch" wording is genuinely ambiguous between "the acting admin's
+   branch" and "the affected resource's branch" — but it is a real, user-visible product
+   question the orchestrator/product owner should confirm before Slice 5b repeats the same
+   pattern for branch administration.
+2. **"A user's role changes" scenario's second clause** ("subsequent logins reflect the new
+   role's authorized capabilities") has no test that edits a role and then re-authenticates to
+   exercise a role-gated endpoint under the new role. The persisted-value half is well tested;
+   the end-to-end behavioral half relies on `AuthenticationService` reading the role fresh from
+   the database at each login (already proven correct by `AuthenticationFlowIT` in Slice 2a/2b),
+   so the risk is low, but the exact combination is untested.
+3. **"Query includes disabled users" scenario** is not directly tested — `UserAdminIT`'s query
+   test only ever creates active users. `UserSpringDataRepository.search`'s JPQL
+   (`:active IS NULL OR u.active = :active`) supports the requirement by inspection, but per this
+   project's own working rule (CLAUDE.md: "no se afirma nada sin ejecutarlo") that inspection is
+   not equivalent to a passing runtime assertion.
+
+**SUGGESTION**:
+1. Add one assertion to `UserAdminIT.consultarUsuariosNoExponeElIdNumerico` (or a new case)
+   that disables a second user and confirms both appear in an unfiltered `GET /api/admin/users`
+   response — closes WARNING 3 cheaply, reusing existing helper methods.
+2. Once Slice 5b (Branch Admin) is implemented, resolve WARNING 1 explicitly one way or the
+   other (either the target resource's `branch_id`, or a documented product decision that
+   corporate-scoped `ADMIN` actions are intentionally branch-invisible in the audit log) before
+   the same pattern repeats for `BranchAdminService`.
+
+### Conclusion for Slice 5a
+
+Task completion is 8/8, matching the working tree exactly. `cd backend && ./mvnw verify` was
+independently re-run for this verification (not taken from `apply-progress.md`'s numbers alone)
+and passes: 48 surefire + 37 failsafe tests, all green, `BUILD SUCCESS`, exit code `0` on every
+command executed. All CLAUDE.md hard invariants re-checked for this slice's diff hold. 6 of 9
+`user-administration` spec scenarios are fully compliant with a passing runtime-executed
+covering test; the remaining 3 are PARTIAL — each has a passing test for part of the scenario,
+with a narrow, identified, non-blocking gap (two are pre-existing/inherent-low-risk, one is a
+cheap one-assertion fix). No CRITICAL issue was found. One WARNING (audit `branch_id` semantics
+for corporate-scoped actors) is a genuine open product/design question worth resolving before
+Slice 5b repeats the same call pattern, but does not contradict any spec scenario this slice
+itself is responsible for. **Verdict: PASS WITH WARNINGS — ready to proceed to `sdd-archive`**
+for Slice 5a, with the three WARNINGs carried forward as follow-up items (not merge blockers).
