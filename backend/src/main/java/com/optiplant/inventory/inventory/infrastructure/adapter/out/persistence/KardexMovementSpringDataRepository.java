@@ -1,6 +1,7 @@
 package com.optiplant.inventory.inventory.infrastructure.adapter.out.persistence;
 
 import java.time.Instant;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -49,4 +50,25 @@ public interface KardexMovementSpringDataRepository extends JpaRepository<Kardex
 
 	/** The second clause of {@code ProductStockPresencePort}'s predicate — any branch, ever. */
 	boolean existsByProductId(Long productId);
+
+	/**
+	 * D-2, {@code OutboundValuationPort} — the unit cost stamped on every {@code TRANSFER_OUT}
+	 * (or other outbound movement) carrying this exact Kardex reference, keyed by product. Access
+	 * path is {@code idx_kardex_reference (reference_type, reference_id)}; {@code branch_id} narrows
+	 * to the origin branch the caller already knows, so two transfers cannot collide on the same
+	 * reference id across branches.
+	 */
+	@Query(value = """
+			SELECT product_id AS productId, unit_cost AS unitCost FROM kardex_movements
+			WHERE branch_id = :branchId AND reference_type = :referenceType AND reference_id = :referenceId
+			""", nativeQuery = true)
+	List<ProductUnitCostRow> findOutboundUnitCosts(@Param("branchId") Long branchId,
+			@Param("referenceType") String referenceType, @Param("referenceId") String referenceId);
+
+	interface ProductUnitCostRow {
+
+		Long getProductId();
+
+		java.math.BigDecimal getUnitCost();
+	}
 }
