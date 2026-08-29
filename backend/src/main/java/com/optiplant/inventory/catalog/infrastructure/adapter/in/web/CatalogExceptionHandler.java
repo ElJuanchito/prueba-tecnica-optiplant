@@ -7,6 +7,7 @@ import com.optiplant.inventory.catalog.domain.exception.DuplicateCategoryNameExc
 import com.optiplant.inventory.catalog.domain.exception.DuplicateProductUnitException;
 import com.optiplant.inventory.catalog.domain.exception.DuplicateSkuException;
 import com.optiplant.inventory.catalog.domain.exception.InvalidConversionFactorException;
+import com.optiplant.inventory.catalog.domain.exception.MultipleDefaultSaleUnitsException;
 import com.optiplant.inventory.catalog.domain.exception.ProductNotFoundException;
 import com.optiplant.inventory.catalog.domain.exception.ProductUnitNotFoundException;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -35,10 +36,11 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * {@code POST /products} with inline units. Slice S6 adds
  * {@code ProductUnitNotFoundException} (the units subresource), the
  * {@code uq_product_units_single_default} branch of
- * {@code DataIntegrityViolationException}, and the {@code IllegalStateException}
- * that {@code Product}'s compact constructor raises when a {@code POST /products}
- * payload carries more than one inline unit marked as the default sale unit
- * (R-14) — a malformed client payload that must not surface as {@code 500}.
+ * {@code DataIntegrityViolationException}, and
+ * {@code MultipleDefaultSaleUnitsException} — raised by {@code Product}'s compact
+ * constructor when a {@code POST /products} payload carries more than one inline
+ * unit marked as the default sale unit (R-14), a malformed client payload that
+ * must not surface as {@code 500}.
  *
  * <p>{@code ErrorResponse} is a local record, deliberately duplicated from
  * {@code iam}'s package-private one: it cannot be imported across the module
@@ -108,23 +110,20 @@ class CatalogExceptionHandler {
 	}
 
 	/**
-	 * Reached from {@code Product}'s compact constructor when a {@code POST
-	 * /products} payload carries more than one inline unit with
-	 * {@code defaultSaleUnit = true} (R-14). The aggregate is rejected before any
-	 * SQL is issued, so this is a malformed client payload — {@code 400}, never
-	 * the {@code 500} an unmapped {@code IllegalStateException} would produce. The
-	 * message match scopes this to that one guard: any other
-	 * {@code IllegalStateException} (e.g. a genuine serialization fault) is
-	 * rethrown and stays a {@code 500}.
+	 * Raised by {@code Product}'s compact constructor when a {@code POST /products}
+	 * payload carries more than one inline unit with {@code defaultSaleUnit = true}
+	 * (R-14). The aggregate is rejected before any SQL is issued, so this is a
+	 * malformed client payload — {@code 400}, never the {@code 500} an unmapped
+	 * exception would produce. A dedicated type (not a message match on
+	 * {@code IllegalStateException}) so a genuine server-side
+	 * {@code IllegalStateException} still surfaces as {@code 500}.
 	 */
-	@ExceptionHandler(IllegalStateException.class)
-	ResponseEntity<ErrorResponse> onIllegalState(IllegalStateException ex) {
-		String message = ex.getMessage();
-		if (message != null && message.contains("default sale unit")) {
-			return build(HttpStatus.BAD_REQUEST, "invalid_request",
-					"a product may have at most one default sale unit");
-		}
-		throw ex;
+	@ExceptionHandler(MultipleDefaultSaleUnitsException.class)
+	@ApiResponse(responseCode = "400", description = "Uniform { code, message } error envelope (contract §7)",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
+	ResponseEntity<ErrorResponse> onMultipleDefaultSaleUnits(MultipleDefaultSaleUnitsException ex) {
+		return build(HttpStatus.BAD_REQUEST, "invalid_request", "a product may have at most one default sale unit");
 	}
 
 	@ExceptionHandler(DuplicateSkuException.class)
