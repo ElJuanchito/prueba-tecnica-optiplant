@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -24,9 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
  * §6.1), so {@link #listOwnBranchStock} enriches each balance row with a batch
  * {@link ProductLookupPort} lookup rather than one query per row (RNF-PER-01, no N+1).
  *
- * <p>Deliberately <strong>not</strong> {@code @Service} yet — see {@code StockMovementService}'s
- * class Javadoc. {@code @Service} is added in S2, alongside the adapters that satisfy these ports.
+ * <p>{@code @Service} restored in S2 (task 2.14) — see {@code StockMovementService}'s class
+ * Javadoc for why S1 shipped this unannotated.
  */
+@Service
 public class StockQueryService implements QueryStockUseCase {
 
 	private final BranchInventoryRepositoryPort branchInventoryRepository;

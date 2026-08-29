@@ -16,6 +16,7 @@ import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -23,9 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
  * Kardex row (R-14); the resulting breach is evaluated on the committed threshold exactly as a
  * movement would (R-15), with no triggering movement to reference.
  *
- * <p>Deliberately <strong>not</strong> {@code @Service} yet — see {@code StockMovementService}'s
- * class Javadoc. {@code @Service} is added in S2, alongside the adapters that satisfy these ports.
+ * <p>{@code @Service} restored in S2 (task 2.14) — see {@code StockMovementService}'s class
+ * Javadoc for why S1 shipped this unannotated.
  */
+@Service
 public class StockThresholdService implements ManageStockThresholdUseCase {
 
 	private final BranchInventoryRepositoryPort branchInventoryRepository;

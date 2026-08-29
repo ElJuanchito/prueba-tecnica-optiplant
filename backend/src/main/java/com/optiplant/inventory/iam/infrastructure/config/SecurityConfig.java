@@ -77,6 +77,19 @@ class SecurityConfig {
 						// lecturas (design §7, D-1). hasAuthority, nunca hasRole.
 						.requestMatchers(HttpMethod.GET, "/api/catalog/**").authenticated()
 						.requestMatchers("/api/catalog/**").hasAuthority("ADMIN")
+						// Inventario y notificaciones (add-inventory-module design §6.2). Los
+						// write-offs (mermas/daños) son la única mutación abierta a OPERATOR
+						// (R-13); la lectura de stock propio es de cualquier rol autenticado; el
+						// resto de mutaciones y el Kardex/centro de alertas quedan en
+						// ADMIN/BRANCH_MANAGER (§5). String literals únicamente: importar un
+						// tipo de inventory aquí crearía la arista iam -> inventory y rompería
+						// ModuleBoundariesTest.
+						.requestMatchers("/api/inventory/write-offs")
+						.hasAnyAuthority("ADMIN", "BRANCH_MANAGER", "OPERATOR")
+						.requestMatchers(HttpMethod.GET, "/api/inventory/stock/**").authenticated()
+						.requestMatchers("/api/inventory/kardex").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
+						.requestMatchers("/api/notifications/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
+						.requestMatchers("/api/inventory/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						.anyRequest().authenticated())
 				.build();
 	}

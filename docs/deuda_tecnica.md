@@ -5,6 +5,7 @@
 | :--- | :--- | :--- |
 | 1.0 | 2026-08-26 | Registro inicial con seis ítems identificados durante el diseño. |
 | 1.1 | 2026-08-28 | Se agregan dos ítems surgidos del diseño del módulo `catalog`: la exposición HTTP diferida del cambio de unidad base y la estrategia de escalada de la búsqueda de productos por texto libre. |
+| 1.2 | 2026-08-29 | Se agrega un ítem surgido del diseño del módulo `inventory`: la deduplicación de alertas operativas sin restricción de unicidad en el esquema. |
 
 ---
 
@@ -42,6 +43,7 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-06** | Tipografía inconsistente en el diagrama E-R | Baja | Aceptada | Si se rehace el diagrama E-R |
 | **DT-07** | Exposición HTTP del cambio de unidad base, diferida | Baja | Aceptada | Al construir el módulo `inventory` |
 | **DT-08** | Búsqueda de productos por texto libre resuelta con recorrido secuencial | Baja | Aceptada | Si el catálogo supera ~50 000 productos o si la prueba de latencia falla |
+| **DT-09** | Deduplicación de alertas operativas sin restricción de unicidad en el esquema | Media | Aceptada | Cuando llegue el próximo cambio de esquema |
 
 ---
 
@@ -285,6 +287,32 @@ Antes de aplicarlo hay que medir, no suponer: `EXPLAIN (ANALYZE, BUFFERS)` sobre
 
 #### Referencias
 RNF-PER-01 · RNF-PER-04 · RNF-INT-03 · `openspec/changes/add-catalog-module/contract.md` §9.
+
+---
+
+### DT-09 — Deduplicación de alertas operativas sin restricción de unicidad en el esquema
+
+**Severidad:** Media · **Estado:** Aceptada · **Esfuerzo estimado:** pequeño · **Origen:** diseño del módulo `inventory`/`notifications`
+
+#### Situación actual
+`system_alerts` no tiene ninguna restricción de unicidad sobre `(branch_id, alert_type)`, ni columna `product_id` que permitiera declarar una (F-1, `01-init-schema.sql:415-433`). La regla de negocio HU-ALE-01 exige que una condición persistente (por ejemplo, stock bajo mínimo en repetidos movimientos) no duplique la alerta no resuelta. `OperationalAlertListener` resuelve esto sin tocar el esquema: antes de comprobar si ya existe una alerta no resuelta con la misma clave de deduplicación (`branch_id, alert_type, title`, donde `title` codifica el `external_id` del producto — F-1), toma un bloqueo consultivo de transacción de PostgreSQL (`pg_advisory_xact_lock(hashtext(branch:tipo:sujeto))`) como primera sentencia de su propia transacción `REQUIRES_NEW`. Eso serializa únicamente a los productores concurrentes del mismo sujeto y se libera al hacer `commit`.
+
+#### Por qué se aceptó
+El bloqueo consultivo es correcto bajo concurrencia sin requerir una migración de esquema tres días antes de la entrega (PA-04, `contract.md` §11) — la única alternativa correcta era un índice único parcial, que sí exige tocar `01-init-schema.sql`, algo que este cambio se niega deliberadamente a hacer (§2.5). El único productor de alertas hoy (`inventory`, vía `STOCK_MINIMUM`) pasa siempre por este listener, así que la garantía se sostiene en la práctica.
+
+#### Por qué es deuda
+La corrección depende enteramente de que **todo** productor futuro de `OperationalAlertRaised` (por ejemplo, `transfers` con `TRANSFER_DISCREPANCY` o `logistics` con `LOGISTIC_DELAY`, ya contempladas por el transporte compartido de P-09) pase por este mismo listener y respete el orden bloqueo-antes-que-lectura. Un productor que inserte directamente en `system_alerts`, o que reordene esas dos operaciones, duplicaría una alerta no resuelta sin que el esquema lo impida — no hay una restricción `CHECK` ni un índice que actúe como última línea de defensa, a diferencia de `current_stock >= 0` (T-07).
+
+#### Plan de pago
+Cuando llegue el próximo cambio de esquema:
+
+1. Agregar `system_alerts.product_id BIGINT REFERENCES products(id)`.
+2. `CREATE UNIQUE INDEX uq_alerts_open_dedup ON system_alerts(branch_id, alert_type, product_id) WHERE NOT is_resolved;`
+3. Retirar `pg_advisory_xact_lock` de `OperationalAlertListener` — el índice único vuelve el `INSERT` concurrente seguro por sí mismo (conflicto de restricción en vez de bloqueo consultivo).
+4. Mover el token de deduplicación de `title` (F-1) a la nueva columna `product_id`; `title` vuelve a ser un texto puramente legible para humanos.
+
+#### Referencias
+RF-VAL-01 · HU-ALE-01 · HU-ALE-02 · RN-07 · `openspec/changes/add-inventory-module/design.md` §6.3, §9, D-2.
 
 ---
 
