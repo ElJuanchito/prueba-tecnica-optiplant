@@ -5,17 +5,15 @@ package com.optiplant.inventory.catalog.domain.exception;
  * product has balances or movement history, or the stock-presence port has no
  * implementation available and the precondition cannot be verified (design §3.4).
  *
- * <p>It carries a {@link Reason} so the future slice that finally exposes the
- * HTTP endpoint (DT-07, when {@code inventory} ships) can emit <strong>two</strong>
- * distinct error codes — one for "the product has history", one for "the port
- * cannot answer" — without reopening the domain (contract §7). Collapsing them
- * later would make an infrastructure gap look like a business rejection in the
- * logs.
+ * <p>It carries a {@link Reason} so {@code CatalogExceptionHandler} can emit
+ * <strong>two</strong> distinct error codes — {@code base_unit_has_history} and
+ * {@code base_unit_precondition_unverifiable} — without reopening the domain
+ * (contract §7, DT-07). Collapsing them would make an infrastructure gap look like
+ * a business rejection in the logs.
  *
- * <p><strong>This exception deliberately has no {@code CatalogExceptionHandler}
- * mapping.</strong> PA-08 defers the endpoint, so no reachable path raises it
- * outside {@code BaseUnitChangePolicyTest} and {@code ProductAdminServiceTest}. A
- * code with no reachable path is dead contract (design §3.4, contract §7).
+ * <p>Reachable through {@code PATCH /api/catalog/products/{externalId}/base-unit}
+ * (DT-07, paid once {@code inventory} implemented
+ * {@code shared/stock/ProductStockPresencePort}).
  */
 public class BaseUnitChangeRejectedException extends RuntimeException {
 

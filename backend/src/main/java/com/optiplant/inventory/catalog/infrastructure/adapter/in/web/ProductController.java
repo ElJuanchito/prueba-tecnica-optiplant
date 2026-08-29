@@ -35,11 +35,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * {@code /api/catalog/products/**} — the six product endpoints of contract §6.2.
- * Reads are open to every authenticated role and mutations are {@code ADMIN}-only;
- * both are enforced by {@code SecurityConfig}'s method-scoped
- * {@code /api/catalog/**} matchers, not here (design §7, D-1), mirroring
- * {@code CategoryController}.
+ * {@code /api/catalog/products/**} — the six product endpoints of contract §6.2
+ * plus the base-unit change (DT-07, paid once {@code inventory} shipped
+ * {@code ProductStockPresencePort}). Reads are open to every authenticated role and
+ * mutations are {@code ADMIN}-only; both are enforced by {@code SecurityConfig}'s
+ * method-scoped {@code /api/catalog/**} matchers, not here (design §7, D-1),
+ * mirroring {@code CategoryController}.
  *
  * <p>The detail response embeds {@code category} and {@code units}; the list item
  * omits {@code units} and {@code description} so a 100-row page cannot trigger a
@@ -47,10 +48,10 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code Location} header carrying the {@code external_id} only (§7.1 point 1).
  *
  * <p>{@code PUT} <strong>rejects</strong> a {@code baseUnit} field rather than
- * silently dropping it: the base unit is fixed at creation in this change (PA-08),
- * and a client that sends it must learn the change did not happen (design §6.1,
- * D-8, contract §12.3 point 3). {@code "baseUnit": null} is indistinguishable from
- * absent and is treated as absent.
+ * silently dropping it: {@link #changeBaseUnit} is the only path that may change it,
+ * and a client that sends it here must learn the change did not happen through this
+ * endpoint (design §6.1, D-8, contract §12.3 point 3). {@code "baseUnit": null} is
+ * indistinguishable from absent and is treated as absent.
  *
  * <p>{@code active}, {@code sort} and {@code direction} are bound as {@code String}
  * and parsed here, never straight to an enum/{@code Boolean}: direct binding would
@@ -130,6 +131,20 @@ public class ProductController {
 		return toDetail(manageProductsUseCase.enable(actor, externalId));
 	}
 
+	/**
+	 * R-08 (DT-07, paid). {@code ADMIN}-only, like every other catalog mutation
+	 * (contract §5, {@code SecurityConfig}'s {@code /api/catalog/**} matcher). The
+	 * precondition check and the write share one transaction in
+	 * {@link com.optiplant.inventory.catalog.application.service.ProductAdminService#changeBaseUnit}
+	 * — nothing about that boundary is decided here.
+	 */
+	@PatchMapping("/{externalId}/base-unit")
+	public ProductDetailResponse changeBaseUnit(@PathVariable UUID externalId,
+			@Valid @RequestBody ChangeBaseUnitRequest request) {
+		AuthenticatedPrincipal actor = principalAccessor.require();
+		return toDetail(manageProductsUseCase.changeBaseUnit(actor, externalId, request.baseUnit()));
+	}
+
 	private static boolean parseAscending(String direction) {
 		return switch (direction == null ? "asc" : direction) {
 			case "asc" -> true;
@@ -180,9 +195,17 @@ public class ProductController {
 			@NotNull BigDecimal conversionFactor, boolean defaultSaleUnit) {
 	}
 
-	/** {@code baseUnit} is declared only to be rejected — the base unit is fixed at creation (PA-08, §6.2). */
+	/**
+	 * {@code baseUnit} is declared only to be rejected — a base-unit change goes
+	 * through the dedicated {@code PATCH .../base-unit} endpoint, never through this
+	 * one (PA-08, §6.2, DT-07).
+	 */
 	public record EditProductRequest(@NotBlank @Size(max = 50) String sku, @NotBlank @Size(max = 150) String name,
 			String description, @NotNull UUID categoryExternalId, String baseUnit) {
+	}
+
+	/** {@code baseUnit} is R-07-normalized inside {@code ProductAdminService}, so no format check here. */
+	public record ChangeBaseUnitRequest(@NotBlank @Size(max = 20) String baseUnit) {
 	}
 
 	public record CategoryRefResponse(UUID externalId, String name, boolean active) {

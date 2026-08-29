@@ -77,10 +77,22 @@ public interface ManageProductsUseCase {
 	Product enable(AuthenticatedPrincipal actor, UUID externalId);
 
 	/**
-	 * R-08. No controller calls this in this change (PA-08); it is declared here so
-	 * the rule, the port and the transaction boundary are settled before
-	 * {@code inventory} implements them. Wired in slice S7 — until then the
-	 * implementation throws {@link UnsupportedOperationException}.
+	 * R-08. Exposed by {@code PATCH /api/catalog/products/{externalId}/base-unit}
+	 * (DT-07, paid once {@code inventory} implemented
+	 * {@code shared/stock/ProductStockPresencePort}). The precondition check and the
+	 * write share this method's single {@code @Transactional} boundary, so a
+	 * concurrent goods receipt cannot create the first Kardex movement between the
+	 * check and the commit.
+	 *
+	 * @throws com.optiplant.inventory.catalog.domain.exception.ProductNotFoundException
+	 *     when {@code externalId} names no product
+	 * @throws com.optiplant.inventory.catalog.domain.exception.BaseUnitChangeRejectedException
+	 *     with {@link com.optiplant.inventory.catalog.domain.exception.BaseUnitChangeRejectedException.Reason#HAS_HISTORY}
+	 *     when the product has balances or Kardex history in the old base unit
+	 *     (RN-13), or with
+	 *     {@link com.optiplant.inventory.catalog.domain.exception.BaseUnitChangeRejectedException.Reason#PRECONDITION_UNVERIFIABLE}
+	 *     when the stock-presence port cannot answer — the policy fails closed, never
+	 *     open (contract §2.2)
 	 */
 	Product changeBaseUnit(AuthenticatedPrincipal actor, UUID externalId, String newBaseUnit);
 

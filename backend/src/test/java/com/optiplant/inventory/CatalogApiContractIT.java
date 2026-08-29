@@ -27,10 +27,12 @@ import org.springframework.web.client.RestClient;
  *
  * <ul>
  *   <li><b>8.6</b> no internal numeric {@code id} appears in any response body or
- *       {@code Location} header across all sixteen §6 endpoints (§7.1 point 1);</li>
- *   <li><b>8.7</b> {@code /v3/api-docs} publishes the sixteen §6 operations, the
- *       {@code { code, message }} error envelope is documented, and no route
- *       mutates a base unit (§6.2, PA-08).</li>
+ *       {@code Location} header across all seventeen endpoints — the sixteen of §6
+ *       plus the base-unit change of DT-07 (§7.1 point 1);</li>
+ *   <li><b>8.7</b> {@code /v3/api-docs} publishes all seventeen operations, the
+ *       {@code { code, message }} error envelope is documented, and the base-unit
+ *       route is exactly {@code PATCH .../base-unit} — no other catalog route
+ *       mutates it (§6.2, DT-07, paid).</li>
  * </ul>
  */
 @Import(TestcontainersConfiguration.class)
@@ -56,7 +58,7 @@ class CatalogApiContractIT {
 	// --- 8.6 -----------------------------------------------------------
 
 	@Test
-	void noNumericIdLeaksInAnyBodyOrLocationHeaderAcrossAllSixteenEndpoints() throws Exception {
+	void noNumericIdLeaksInAnyBodyOrLocationHeaderAcrossAllSeventeenEndpoints() throws Exception {
 		String sfx = suffix();
 
 		// categories: POST, GET list, GET one, PUT, PATCH disable, PATCH enable
@@ -88,6 +90,10 @@ class CatalogApiContractIT {
 		assertNoNumericId(patchRaw("/api/catalog/products/" + product + "/disable"), null);
 		assertNoNumericId(patchRaw("/api/catalog/products/" + product + "/enable"), null);
 
+		// base-unit change (DT-07): the product above has no stock and no Kardex history
+		assertNoNumericId(patchBodyRaw("/api/catalog/products/" + product + "/base-unit",
+				Map.of("baseUnit", "LITRO")), null);
+
 		// units: GET list, POST, PUT, DELETE
 		assertNoNumericId(getRaw("/api/catalog/products/" + product + "/units"), null);
 		ResponseEntity<String> unitCreated = postRaw("/api/catalog/products/" + product + "/units",
@@ -108,7 +114,7 @@ class CatalogApiContractIT {
 	// --- 8.7 -----------------------------------------------------------
 
 	@Test
-	void openApiPublishesTheSixteenEndpointsTheErrorEnvelopeAndNoBaseUnitRoute() throws Exception {
+	void openApiPublishesTheSeventeenEndpointsAndTheErrorEnvelope() throws Exception {
 		String doc = restClient.get().uri("/v3/api-docs").retrieve().body(String.class);
 		JsonNode root = MAPPER.readTree(doc);
 		JsonNode paths = root.get("paths");
@@ -127,6 +133,7 @@ class CatalogApiContractIT {
 				"PUT /api/catalog/products/{externalId}",
 				"PATCH /api/catalog/products/{externalId}/disable",
 				"PATCH /api/catalog/products/{externalId}/enable",
+				"PATCH /api/catalog/products/{externalId}/base-unit",
 				"GET /api/catalog/products/{productExternalId}/units",
 				"POST /api/catalog/products/{productExternalId}/units",
 				"PUT /api/catalog/products/{productExternalId}/units/{unitExternalId}",
@@ -140,13 +147,16 @@ class CatalogApiContractIT {
 			}
 		}
 
-		assertThat(published).as("every §6 catalog operation must be in the OpenAPI document")
-				.containsAll(expected);
+		assertThat(published).as("every §6 catalog operation plus the DT-07 base-unit route "
+				+ "must be in the OpenAPI document").containsAll(expected);
 
-		assertThat(published.stream().filter(op -> op.contains("/api/catalog/")).toList())
-				.as("no catalog route may mutate a base unit (PA-08)")
-				.noneMatch(op -> op.toLowerCase(java.util.Locale.ROOT).contains("base-unit")
-						|| op.toLowerCase(java.util.Locale.ROOT).contains("baseunit"));
+		// DT-07, paid: exactly one catalog route may mutate a base unit, and it must be
+		// the dedicated PATCH — never PUT/POST, which would let it slip in unannounced.
+		assertThat(published.stream().filter(op -> op.contains("/api/catalog/"))
+				.filter(op -> op.toLowerCase(java.util.Locale.ROOT).contains("base-unit")
+						|| op.toLowerCase(java.util.Locale.ROOT).contains("baseunit"))
+				.toList()).as("exactly one base-unit route, and it must be the dedicated PATCH endpoint")
+				.containsExactly("PATCH /api/catalog/products/{externalId}/base-unit");
 
 		// the { code, message } error envelope must be documented — either as a schema
 		// (springdoc scans @RestControllerAdvice by default) or as a non-2xx response
@@ -260,6 +270,12 @@ class CatalogApiContractIT {
 	private ResponseEntity<String> patchRaw(String path) {
 		return restClient.method(HttpMethod.PATCH).uri(path).header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
 				.retrieve().onStatus(s -> true, (req, res) -> {
+				}).toEntity(String.class);
+	}
+
+	private ResponseEntity<String> patchBodyRaw(String path, Object body) {
+		return restClient.method(HttpMethod.PATCH).uri(path).header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON).body(body).retrieve().onStatus(s -> true, (req, res) -> {
 				}).toEntity(String.class);
 	}
 
