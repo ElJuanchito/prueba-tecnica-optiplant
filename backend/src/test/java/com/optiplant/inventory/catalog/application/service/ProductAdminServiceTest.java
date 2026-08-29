@@ -7,6 +7,8 @@ import com.optiplant.inventory.catalog.application.port.in.ManageProductsUseCase
 import com.optiplant.inventory.catalog.application.port.in.ManageProductsUseCase.EditProductCommand;
 import com.optiplant.inventory.catalog.application.port.out.CategoryRepositoryPort;
 import com.optiplant.inventory.catalog.application.port.out.ProductRepositoryPort;
+import com.optiplant.inventory.catalog.domain.exception.BaseUnitChangeRejectedException;
+import com.optiplant.inventory.catalog.domain.exception.BaseUnitChangeRejectedException.Reason;
 import com.optiplant.inventory.catalog.domain.exception.CategoryInactiveException;
 import com.optiplant.inventory.catalog.domain.exception.CategoryNotFoundException;
 import com.optiplant.inventory.catalog.domain.exception.DuplicateSkuException;
@@ -21,6 +23,7 @@ import com.optiplant.inventory.shared.audit.AuditEntryCommand;
 import com.optiplant.inventory.shared.audit.AuditWritePort;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import com.optiplant.inventory.shared.security.Role;
+import com.optiplant.inventory.shared.stock.ProductStockPresencePort;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,7 +39,11 @@ import org.junit.jupiter.api.Test;
  * (no Mockito on classpath, mirroring {@code CategoryAdminServiceTest}). Covers
  * R-05 (category resolution: missing 404, inactive 409 on create/edit/enable),
  * R-06/R-09 (SKU uniqueness with {@code excludingExternalId} so editing to the
- * own SKU is not a conflict) and R-15 (audit on every mutation).
+ * own SKU is not a conflict), R-15 (audit on every mutation) and R-08 /
+ * {@code changeBaseUnit} wiring against a stubbed
+ * {@link ProductStockPresencePort} — port {@code true} applies, port
+ * {@code false} refuses, and {@code Optional.empty()} (the state of this change)
+ * fails closed (contract §11, PA-08).
  */
 class ProductAdminServiceTest {
 
@@ -51,8 +58,14 @@ class ProductAdminServiceTest {
 		productRepository = new FakeProductRepositoryPort();
 		categoryRepository = new FakeCategoryRepositoryPort();
 		auditWritePort = new FakeAuditWritePort();
-		service = new ProductAdminService(productRepository, categoryRepository, auditWritePort);
+		// Default: no stock-presence bean available — the state of this change.
+		service = new ProductAdminService(productRepository, categoryRepository, auditWritePort, Optional.empty());
 		admin = new AuthenticatedPrincipal(UUID.randomUUID(), "admin.corp", Role.ADMIN, null);
+	}
+
+	/** Rebuilds {@link #service} with a stubbed stock-presence port for the R-08 tests. */
+	private void withStockPresencePort(ProductStockPresencePort port) {
+		service = new ProductAdminService(productRepository, categoryRepository, auditWritePort, Optional.of(port));
 	}
 
 	// --- create -------------------------------------------------------------
@@ -212,6 +225,65 @@ class ProductAdminServiceTest {
 		assertThatThrownBy(() -> service.get(UUID.randomUUID())).isInstanceOf(ProductNotFoundException.class);
 	}
 
+	// --- changeBaseUnit (R-08) -----------------------------------------
+
+	@Test
+	void changeBaseUnitAppliesWhenThePortReportsTheProductUntouched() {
+		CategoryRef category = categoryRepository.seed(activeCategory());
+		Product existing = productRepository.seed(productWithOldTimestamp("FERT-1", category));
+		withStockPresencePort(externalId -> true);
+
+		Product updated = service.changeBaseUnit(admin, existing.externalId(), "litro");
+
+		assertThat(updated.baseUnit().value()).isEqualTo("LITRO");
+		assertThat(updated.updatedAt()).isAfter(existing.updatedAt());
+		assertThat(auditWritePort.recorded).extracting(AuditEntryCommand::action).containsExactly("UPDATE");
+		assertThat(auditWritePort.recorded.get(0).entityName()).isEqualTo("products");
+		assertThat(auditWritePort.recorded.get(0).branchId()).isNull();
+		assertThat(auditWritePort.recorded.get(0).entityId()).isEqualTo(existing.externalId().toString());
+	}
+
+	@Test
+	void changeBaseUnitIsRefusedWhenThePortReportsHistoryAndChangesNothing() {
+		CategoryRef category = categoryRepository.seed(activeCategory());
+		Product existing = productRepository.seed(productWithOldTimestamp("FERT-1", category));
+		withStockPresencePort(externalId -> false);
+
+		assertThatThrownBy(() -> service.changeBaseUnit(admin, existing.externalId(), "LITRO"))
+				.isInstanceOfSatisfying(BaseUnitChangeRejectedException.class,
+						ex -> assertThat(ex.reason()).isEqualTo(Reason.HAS_HISTORY));
+
+		Product unchanged = service.get(existing.externalId());
+		assertThat(unchanged.baseUnit().value()).isEqualTo("KG");
+		assertThat(unchanged.updatedAt()).isEqualTo(existing.updatedAt());
+		assertThat(auditWritePort.recorded).isEmpty();
+	}
+
+	@Test
+	void changeBaseUnitFailsClosedWhenNoStockPresencePortImplementationIsAvailable() {
+		CategoryRef category = categoryRepository.seed(activeCategory());
+		Product existing = productRepository.seed(productWithOldTimestamp("FERT-1", category));
+		// service was built in setUp with Optional.empty() — the state of this change.
+
+		assertThatThrownBy(() -> service.changeBaseUnit(admin, existing.externalId(), "LITRO"))
+				.isInstanceOfSatisfying(BaseUnitChangeRejectedException.class,
+						ex -> assertThat(ex.reason()).isEqualTo(Reason.PRECONDITION_UNVERIFIABLE));
+
+		Product unchanged = service.get(existing.externalId());
+		assertThat(unchanged.baseUnit().value()).isEqualTo("KG");
+		assertThat(unchanged.updatedAt()).isEqualTo(existing.updatedAt());
+		assertThat(auditWritePort.recorded).isEmpty();
+	}
+
+	@Test
+	void changeBaseUnitRejectsAnUnknownProduct() {
+		withStockPresencePort(externalId -> true);
+
+		assertThatThrownBy(() -> service.changeBaseUnit(admin, UUID.randomUUID(), "LITRO"))
+				.isInstanceOf(ProductNotFoundException.class);
+		assertThat(auditWritePort.recorded).isEmpty();
+	}
+
 	// --- fixtures --------------------------------------------------------
 
 	private static CreateProductCommand createCommand(UUID categoryExternalId, String sku) {
@@ -234,6 +306,13 @@ class ProductAdminServiceTest {
 		Instant now = Instant.now();
 		return new Product(UUID.randomUUID(), new Sku(sku), "Fertilizante Triple 15", null, UnitCode.baseUnit("KG"),
 				active, category, List.of(), now, now);
+	}
+
+	/** Seeded with a fixed past {@code updatedAt} so "the change advances it" is unambiguous. */
+	private static Product productWithOldTimestamp(String sku, CategoryRef category) {
+		Instant past = Instant.parse("2020-01-01T00:00:00Z");
+		return new Product(UUID.randomUUID(), new Sku(sku), "Fertilizante Triple 15", null, UnitCode.baseUnit("KG"),
+				true, category, List.of(), past, past);
 	}
 
 	private static final class FakeProductRepositoryPort implements ProductRepositoryPort {
@@ -289,7 +368,9 @@ class ProductAdminServiceTest {
 
 		@Override
 		public Product setBaseUnit(UUID externalId, String baseUnit, Instant updatedAt) {
-			throw new UnsupportedOperationException("wired in S7");
+			Product updated = byExternalId.get(externalId).withBaseUnit(UnitCode.baseUnit(baseUnit), updatedAt);
+			byExternalId.put(externalId, updated);
+			return updated;
 		}
 
 		@Override

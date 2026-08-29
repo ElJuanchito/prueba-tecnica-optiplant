@@ -8,6 +8,7 @@ import com.optiplant.inventory.catalog.domain.exception.DuplicateProductUnitExce
 import com.optiplant.inventory.catalog.domain.exception.DuplicateSkuException;
 import com.optiplant.inventory.catalog.domain.exception.InvalidConversionFactorException;
 import com.optiplant.inventory.catalog.domain.exception.ProductNotFoundException;
+import com.optiplant.inventory.catalog.domain.exception.ProductUnitNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,8 +29,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * reachable path is dead contract (design §3.4). Category and product mappings are
  * wired here (S3, S5), including {@code DuplicateProductUnitException} and
  * {@code InvalidConversionFactorException}, both reachable through
- * {@code POST /products} with inline units; {@code ProductUnitNotFoundException}
- * and the units subresource arrive with slice S6.
+ * {@code POST /products} with inline units. Slice S6 adds
+ * {@code ProductUnitNotFoundException} (the units subresource), the
+ * {@code uq_product_units_single_default} branch of
+ * {@code DataIntegrityViolationException}, and the {@code IllegalStateException}
+ * that {@code Product}'s compact constructor raises when a {@code POST /products}
+ * payload carries more than one inline unit marked as the default sale unit
+ * (R-14) — a malformed client payload that must not surface as {@code 500}.
  *
  * <p>{@code ErrorResponse} is a local record, deliberately duplicated from
  * {@code iam}'s package-private one: it cannot be imported across the module
@@ -81,6 +87,31 @@ class CatalogExceptionHandler {
 		return build(HttpStatus.NOT_FOUND, "product_not_found", "Product not found");
 	}
 
+	@ExceptionHandler(ProductUnitNotFoundException.class)
+	ResponseEntity<ErrorResponse> onProductUnitNotFound() {
+		return build(HttpStatus.NOT_FOUND, "product_unit_not_found", "Product unit not found");
+	}
+
+	/**
+	 * Reached from {@code Product}'s compact constructor when a {@code POST
+	 * /products} payload carries more than one inline unit with
+	 * {@code defaultSaleUnit = true} (R-14). The aggregate is rejected before any
+	 * SQL is issued, so this is a malformed client payload — {@code 400}, never
+	 * the {@code 500} an unmapped {@code IllegalStateException} would produce. The
+	 * message match scopes this to that one guard: any other
+	 * {@code IllegalStateException} (e.g. a genuine serialization fault) is
+	 * rethrown and stays a {@code 500}.
+	 */
+	@ExceptionHandler(IllegalStateException.class)
+	ResponseEntity<ErrorResponse> onIllegalState(IllegalStateException ex) {
+		String message = ex.getMessage();
+		if (message != null && message.contains("default sale unit")) {
+			return build(HttpStatus.BAD_REQUEST, "invalid_request",
+					"a product may have at most one default sale unit");
+		}
+		throw ex;
+	}
+
 	@ExceptionHandler(DuplicateSkuException.class)
 	ResponseEntity<ErrorResponse> onDuplicateSku(DuplicateSkuException ex) {
 		return build(HttpStatus.CONFLICT, "duplicate_sku", ex.getMessage());
@@ -115,6 +146,19 @@ class CatalogExceptionHandler {
 		}
 		if (message != null && (message.contains("products_sku_key") || message.contains("products_sku"))) {
 			return build(HttpStatus.CONFLICT, "duplicate_sku", "SKU is already in use");
+		}
+		// A partial unique index PostgreSQL checks per statement (S-3). The adapter
+		// clears the previous default in a flushed statement before setting the new
+		// one (design §8.2), so this is the last line of defence — a concurrent
+		// second default. design §6.3 maps it to `duplicate_product_unit`; the
+		// message is hand-written and names no constraint (§7.1 point 2).
+		if (message != null && message.contains("uq_product_units_single_default")) {
+			return build(HttpStatus.CONFLICT, "duplicate_product_unit",
+					"a product may have only one default sale unit");
+		}
+		if (message != null && message.contains("uq_product_unit")) {
+			return build(HttpStatus.CONFLICT, "duplicate_product_unit",
+					"this unit is already defined for the product");
 		}
 		throw ex;
 	}
