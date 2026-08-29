@@ -8,42 +8,42 @@ SpringDataRepository → PersistenceAdapter → Controller → ExceptionHandler`
 
 ## Phase 1 — S1: `transfers` and `logistics` domain and application (PR1)
 
-- [ ] 1.1 Create the three `shared` additions of design §2 — `route/RouteLeadTimePort` (P-11),
+- [x] 1.1 Create the three `shared` additions of design §2 — `route/RouteLeadTimePort` (P-11),
       `stock/OutboundValuationPort` (D-2), `stock/StockMutationRejectedException` with its `Reason`
       enum (D-4) — with Javadoc naming the last one the port's contractual failure mode, translated by
       the implementing adapter so other modules can map it.
-- [ ] 1.2 Create `transfers/domain/model/` value objects (§3.1) plus `TransferStatus`,
+- [x] 1.2 Create `transfers/domain/model/` value objects (§3.1) plus `TransferStatus`,
       `TransferTransition`, `TransferPriority` and `TransferNotes` (§3.5), whose `parse` MUST default
       to `STANDARD` on notes with no `PRIORITY:` line — `02-seed-data.sql:192` seeds exactly that.
-- [ ] 1.3 Create `Transfer` and `TransferItem` (§3.2) — no setters, every mutator returns a new
+- [x] 1.3 Create `Transfer` and `TransferItem` (§3.2) — no setters, every mutator returns a new
       instance after consulting `TransferStateMachine`, `items` copied defensively — plus the thirteen
       read records §3.2 lists and the eleven `domain/exception/` types of §3.4.
-- [ ] 1.4 Create `transfers/domain/service/` (§3.3): `TransferStateMachine` (R-01 as a `Map` constant,
+- [x] 1.4 Create `transfers/domain/service/` (§3.3): `TransferStateMachine` (R-01 as a `Map` constant,
       not a chain of `if`s), `TransferApprovalPolicy` (R-07), `TransferDispatchPolicy` (R-13, lines
       returned **already in the §7.1 lock order**), `TransferReceiptPolicy` (R-16…R-19, `discrepancy =
       dispatched − received` by construction), `TransferAccessPolicy` (visibility before side).
-- [ ] 1.5 Create the three `transfers/application/port/out/` interfaces and six `port/in/` use cases
+- [x] 1.5 Create the three `transfers/application/port/out/` interfaces and six `port/in/` use cases
       (§5). **Every method takes `AuthenticatedPrincipal`, reads included** — the branch is
       session-derived (RN-14), never a parameter.
-- [ ] 1.6 Create the five `transfers/application/service/` classes. Dispatch and receipt run lock →
+- [x] 1.6 Create the five `transfers/application/service/` classes. Dispatch and receipt run lock →
       access → state machine → policy → port calls in lock order → save → audit → publish, publish
       **last and inside** the transaction. Audit `branchId` per T-03 (§7).
-- [ ] 1.7 Create `logistics/domain/` — `LogisticsRoute` with its three value objects, the §4 read
+- [x] 1.7 Create `logistics/domain/` — `LogisticsRoute` with its three value objects, the §4 read
       records and four exceptions, `DelayDetectionPolicy` and `DeliveryComplianceCalculator` (§4:
       unmeasured excluded, `onTimePercentage` **`null`** when `measured == 0`, D-6) — then
       `logistics/application/`: three out-ports, four use cases, four services (§5).
-- [ ] 1.8 Verify no `domain/` imports a framework: `rg "org\.springframework|jakarta\.persistence"
+- [x] 1.8 Verify no `domain/` imports a framework: `rg "org\.springframework|jakarta\.persistence"
       transfers/domain logistics/domain` returns nothing.
-- [ ] 1.9 Unit `*Test` (no Docker): `TransferStateMachineTest` enumerating **every** state × transition
+- [x] 1.9 Unit `*Test` (no Docker): `TransferStateMachineTest` enumerating **every** state × transition
       pair, legal and illegal (R-01, R-14, R-22, RNF-MAN-01); `TransferNotesTest` (F-1 round trip,
       missing-token default, token absent from `observations()`); value-object boundaries (§3.1).
-- [ ] 1.10 Unit `TransferApprovalPolicyTest` (R-07: 100→60 allowed, 120 and 0 refused),
+- [x] 1.10 Unit `TransferApprovalPolicyTest` (R-07: 100→60 allowed, 120 and 0 refused),
       `TransferDispatchPolicyTest` (R-13 plus the §7.1 order), `TransferReceiptPolicyTest` (R-17, R-18,
       R-19 incl. all-zero received being valid), `TransferAccessPolicyTest` (R-03/R-05/R-06/R-21:
       third branch ⇒ *not found*, wrong side ⇒ *cross branch*), `DeliveryComplianceCalculatorTest`.
-- [ ] 1.11 Unit service tests with stubbed ports: audit on every mutation; the discrepancy event
+- [x] 1.11 Unit service tests with stubbed ports: audit on every mutation; the discrepancy event
       published **twice**, once per branch, and only on a shortfall (R-18).
-- [ ] 1.12 Run `cd backend && ./mvnw test`, then `./mvnw verify` for `ModuleBoundariesTest` and
+- [x] 1.12 Run `cd backend && ./mvnw test`, then `./mvnw verify` for `ModuleBoundariesTest` and
       `SharedIsFrameworkFreeTest`. **Ship the application services unannotated** while their out-ports
       have no adapter — 2.7 restores `@Service`; registering them now breaks `ApplicationContextIT`,
       exactly as in `add-inventory-module` S1.
