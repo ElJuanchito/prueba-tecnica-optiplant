@@ -24,4 +24,25 @@ export const queryKeys = {
     list: (filters: Record<string, unknown>) =>
       [...queryKeys.audit.lists(), filters] as const,
   },
+  categories: {
+    all: ['categories'] as const,
+    lists: () => [...queryKeys.categories.all, 'list'] as const,
+    list: (filters: Record<string, unknown>) =>
+      [...queryKeys.categories.lists(), filters] as const,
+    detail: (externalId: string) =>
+      [...queryKeys.categories.all, 'detail', externalId] as const,
+  },
+  products: {
+    all: ['products'] as const,
+    lists: () => [...queryKeys.products.all, 'list'] as const,
+    list: (filters: Record<string, unknown>) =>
+      [...queryKeys.products.lists(), filters] as const,
+    detail: (externalId: string) =>
+      [...queryKeys.products.all, 'detail', externalId] as const,
+  },
+  productUnits: {
+    all: ['productUnits'] as const,
+    byProduct: (productExternalId: string) =>
+      [...queryKeys.productUnits.all, productExternalId] as const,
+  },
 } as const

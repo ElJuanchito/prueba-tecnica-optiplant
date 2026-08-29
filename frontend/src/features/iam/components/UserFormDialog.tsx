@@ -24,10 +24,7 @@ import {
 import { useBranches } from '../hooks/use-branches.ts'
 import { useCreateUser, useEditUser } from '../hooks/use-users.ts'
 import { roleSchema, uuidSchema } from '../schemas/common.schema.ts'
-import {
-  createUserSchema,
-  editUserSchema,
-} from '../schemas/user.schema.ts'
+import { createUserSchema, editUserSchema } from '../schemas/user.schema.ts'
 import type {
   CreateUserInput,
   EditUserInput,
@@ -204,7 +201,10 @@ export function UserFormDialog({
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
           {serverError && (
-            <Alert variant="destructive" className="animate-in fade-in-50 duration-200">
+            <Alert
+              variant="destructive"
+              className="animate-in fade-in-50 duration-200"
+            >
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{serverError}</AlertDescription>
             </Alert>
@@ -219,7 +219,10 @@ export function UserFormDialog({
 
             {!isEdit && (
               <div className="space-y-1">
-                <Label htmlFor="create-username" className="text-xs font-semibold text-slate-700">
+                <Label
+                  htmlFor="create-username"
+                  className="text-xs font-semibold text-slate-700"
+                >
                   Username
                 </Label>
                 <Input
@@ -238,7 +241,10 @@ export function UserFormDialog({
             )}
 
             <div className="space-y-1">
-              <Label htmlFor="user-fullname" className="text-xs font-semibold text-slate-700">
+              <Label
+                htmlFor="user-fullname"
+                className="text-xs font-semibold text-slate-700"
+              >
                 Full Name
               </Label>
               <Input
@@ -256,7 +262,10 @@ export function UserFormDialog({
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="user-email" className="text-xs font-semibold text-slate-700">
+              <Label
+                htmlFor="user-email"
+                className="text-xs font-semibold text-slate-700"
+              >
                 Email
               </Label>
               <div className="relative">
@@ -279,7 +288,10 @@ export function UserFormDialog({
 
             {!isEdit && (
               <div className="space-y-1">
-                <Label htmlFor="create-password" className="text-xs font-semibold text-slate-700">
+                <Label
+                  htmlFor="create-password"
+                  className="text-xs font-semibold text-slate-700"
+                >
                   Password
                 </Label>
                 <div className="relative">
@@ -311,7 +323,10 @@ export function UserFormDialog({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="user-role" className="text-xs font-semibold text-slate-700">
+                <Label
+                  htmlFor="user-role"
+                  className="text-xs font-semibold text-slate-700"
+                >
                   Role
                 </Label>
                 <Controller
@@ -323,13 +338,18 @@ export function UserFormDialog({
                       onValueChange={(val) => field.onChange(val as Role)}
                       disabled={isPending || isBranchManager}
                     >
-                      <SelectTrigger id="user-role" className="bg-white h-9 text-xs">
+                      <SelectTrigger
+                        id="user-role"
+                        className="bg-white h-9 text-xs"
+                      >
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
                         {!isBranchManager && (
                           <>
-                            <SelectItem value="ADMIN">ADMIN (Global)</SelectItem>
+                            <SelectItem value="ADMIN">
+                              ADMIN (Global)
+                            </SelectItem>
                             <SelectItem value="BRANCH_MANAGER">
                               BRANCH_MANAGER
                             </SelectItem>
@@ -348,7 +368,10 @@ export function UserFormDialog({
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="user-branch" className="text-xs font-semibold text-slate-700">
+                <Label
+                  htmlFor="user-branch"
+                  className="text-xs font-semibold text-slate-700"
+                >
                   Branch
                 </Label>
                 <Controller
@@ -361,12 +384,13 @@ export function UserFormDialog({
                         field.onChange(val === 'none' ? null : val)
                       }
                       disabled={
-                        isPending ||
-                        isBranchManager ||
-                        selectedRole === 'ADMIN'
+                        isPending || isBranchManager || selectedRole === 'ADMIN'
                       }
                     >
-                      <SelectTrigger id="user-branch" className="bg-white h-9 text-xs">
+                      <SelectTrigger
+                        id="user-branch"
+                        className="bg-white h-9 text-xs"
+                      >
                         <SelectValue
                           placeholder={
                             selectedRole === 'ADMIN'
@@ -411,7 +435,11 @@ export function UserFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending} className="bg-orange-600 hover:bg-orange-700 text-white cursor-pointer">
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="bg-orange-600 hover:bg-orange-700 text-white cursor-pointer"
+            >
               {isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
@@ -429,4 +457,3 @@ export function UserFormDialog({
     </Dialog>
   )
 }
-

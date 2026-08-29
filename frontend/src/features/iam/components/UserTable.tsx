@@ -136,14 +136,18 @@ export function UserTable({
         accessorKey: 'fullName',
         header: 'Full Name',
         cell: ({ row }) => (
-          <span className="text-slate-700 text-sm">{row.original.fullName}</span>
+          <span className="text-slate-700 text-sm">
+            {row.original.fullName}
+          </span>
         ),
       },
       {
         accessorKey: 'email',
         header: 'Email',
         cell: ({ row }) => (
-          <span className="text-slate-600 text-xs font-mono">{row.original.email}</span>
+          <span className="text-slate-600 text-xs font-mono">
+            {row.original.email}
+          </span>
         ),
       },
       {
@@ -161,14 +165,20 @@ export function UserTable({
           }
           if (role === 'BRANCH_MANAGER') {
             return (
-              <Badge variant="secondary" className="bg-slate-100 text-slate-800 border-slate-200 flex items-center gap-1 w-fit text-[11px]">
+              <Badge
+                variant="secondary"
+                className="bg-slate-100 text-slate-800 border-slate-200 flex items-center gap-1 w-fit text-[11px]"
+              >
                 <Building2 className="h-3 w-3" />
                 <span>BRANCH_MANAGER</span>
               </Badge>
             )
           }
           return (
-            <Badge variant="outline" className="bg-white text-slate-600 border-slate-200 flex items-center gap-1 w-fit text-[11px]">
+            <Badge
+              variant="outline"
+              className="bg-white text-slate-600 border-slate-200 flex items-center gap-1 w-fit text-[11px]"
+            >
               <User className="h-3 w-3" />
               <span>OPERATOR</span>
             </Badge>
@@ -192,7 +202,7 @@ export function UserTable({
             ? user.branchCode
               ? `${user.branchName} (${user.branchCode})`
               : user.branchName
-            : branchesMap.get(branchId) ?? 'Assigned Branch'
+            : (branchesMap.get(branchId) ?? 'Assigned Branch')
 
           return (
             <span className="inline-flex items-center text-xs text-slate-700">
@@ -214,7 +224,9 @@ export function UserTable({
                   active ? 'bg-emerald-600' : 'bg-slate-300'
                 }`}
               />
-              <span className={`text-xs font-medium ${active ? 'text-emerald-700' : 'text-slate-500'}`}>
+              <span
+                className={`text-xs font-medium ${active ? 'text-emerald-700' : 'text-slate-500'}`}
+              >
                 {active ? 'Active' : 'Disabled'}
               </span>
             </div>
@@ -291,7 +303,9 @@ export function UserTable({
         </div>
         <h3 className="text-sm font-bold text-slate-900">Access Restricted</h3>
         <p className="text-xs text-slate-500 max-w-sm mx-auto">
-          User account management is restricted to Branch Managers and Administrators. Operators do not have permission to view or manage user accounts.
+          User account management is restricted to Branch Managers and
+          Administrators. Operators do not have permission to view or manage
+          user accounts.
         </p>
       </div>
     )
@@ -311,7 +325,10 @@ export function UserTable({
           </p>
         </div>
 
-        <Button onClick={handleCreate} className="self-start sm:self-auto bg-orange-600 hover:bg-orange-700 text-white shadow-2xs cursor-pointer">
+        <Button
+          onClick={handleCreate}
+          className="self-start sm:self-auto bg-orange-600 hover:bg-orange-700 text-white shadow-2xs cursor-pointer"
+        >
           <Plus className="h-4 w-4 mr-1.5" />
           Create User
         </Button>
@@ -406,7 +423,10 @@ export function UserTable({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="text-xs font-semibold text-slate-600 uppercase tracking-wider py-3">
+                  <TableHead
+                    key={header.id}
+                    className="text-xs font-semibold text-slate-600 uppercase tracking-wider py-3"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -447,7 +467,10 @@ export function UserTable({
               ))
             ) : table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                <TableRow
+                  key={row.id}
+                  className="hover:bg-slate-50/60 transition-colors"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="py-3">
                       {flexRender(
@@ -468,7 +491,9 @@ export function UserTable({
                     <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
                       <Users className="h-6 w-6" />
                     </div>
-                    <p className="font-semibold text-slate-700">No users found</p>
+                    <p className="font-semibold text-slate-700">
+                      No users found
+                    </p>
                     <p className="text-xs text-slate-500 max-w-sm">
                       {searchTerm
                         ? `No users match "${searchTerm}". Try resetting your search or filter criteria.`
@@ -541,4 +566,3 @@ export function UserTable({
     </div>
   )
 }
-

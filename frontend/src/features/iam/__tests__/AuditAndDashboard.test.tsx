@@ -11,6 +11,29 @@ import { userService } from '../services/user.service.ts'
 import { branchService } from '../services/branch.service.ts'
 import { queryKeys } from '@/lib/query-keys.ts'
 
+vi.mock('@tanstack/react-router', async () => {
+  const actual = (await vi.importActual('@tanstack/react-router')) as Record<
+    string,
+    unknown
+  >
+  return {
+    ...actual,
+    Link: ({
+      children,
+      to,
+      className,
+    }: {
+      children: React.ReactNode
+      to?: string
+      className?: string
+    }) => (
+      <a href={to ?? '#'} className={className}>
+        {children}
+      </a>
+    ),
+  }
+})
+
 const VALID_UUID_1 = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
 const VALID_UUID_2 = 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22'
 const VALID_UUID_3 = 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33'
@@ -121,10 +144,18 @@ describe('Audit and Dashboard Components', () => {
     renderWithProviders(<IamDashboard />, { queryClient })
 
     expect(screen.getByText('Plant Operator Session')).toBeInTheDocument()
-    expect(screen.getAllByText('Sede Medellín (MED-01)').length).toBeGreaterThan(0)
-    expect(screen.queryByRole('tab', { name: /users/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: /branches/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: /audit log/i })).not.toBeInTheDocument()
+    expect(
+      screen.getAllByText('Sede Medellín (MED-01)').length,
+    ).toBeGreaterThan(0)
+    expect(
+      screen.queryByRole('tab', { name: /users/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('tab', { name: /branches/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('tab', { name: /audit log/i }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('Total Users')).not.toBeInTheDocument()
   })
 })
