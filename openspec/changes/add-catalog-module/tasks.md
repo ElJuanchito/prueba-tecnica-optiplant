@@ -1,0 +1,161 @@
+# Tasks: `add-catalog-module`
+
+Ordered domain → application → infrastructure → tests → verification, in eight independently
+reviewable slices. Each task names the files it creates or edits and how it is verified. One line
+per task, no prose.
+
+Read `design.md` first. Section references below (`§n`) are to `design.md`; `R-nn` / `S-n` / `PA-nn`
+are the contract's.
+
+## Review Workload Forecast
+
+| Field | Value |
+|-------|-------|
+| Estimated changed lines | ~2 660 total (see per-unit table) |
+| 400-line budget risk | High — no single slice delivers the module |
+| Chained PRs recommended | Yes |
+| Suggested split | PR1 (S1) → PR2 (S2) → PR3 (S3) → PR4 (S4) → PR5 (S5) → PR6 (S6) → PR7 (S7) → PR8 (S8) |
+| Chain strategy | feature-branch-chain, as `add-iam-module` used: PR1 targets the tracker branch, each child targets the previous one, only the tracker merges to `main` |
+
+Decision needed before apply: **No.** `design.md` §12 leaves no open question.
+
+### Suggested Work Units
+
+| Unit | Goal | ~Lines | Focused test command | Runtime harness | Rollback boundary |
+|---|---|---|---|---|---|
+| S1. Schema + `shared` | S-1…S-4, validator section G, ER diagram, `shared/stock`, `AuditAction` | 150 | `cd backend && ./mvnw test -Dtest=SharedIsFrameworkFreeTest,ModuleBoundariesTest` | `./scripts/validar_esquema.sh` (real PG 17, Docker) | revert commit + `docker compose down -v`; no consumer yet |
+| S2. Category domain+app | VOs, model, exceptions, ports, service, unit tests | 380 | `cd backend && ./mvnw test -Dtest=CategoryNameTest,ActiveFilterTest,CategoryAdminServiceTest` | none (no Docker) | revert commit; nothing wired |
+| S3. Category infra | JPA, adapter, controller, exception handler, `SecurityConfig` | 460 | `cd backend && ./mvnw test -Dtest=CategoryAdminServiceTest` | `./mvnw verify -Dit.test=CategoryCatalogIT` | revert commit; `/api/catalog/categories` disappears |
+| S4. Product domain+app | VOs, model, projections, exceptions, ports, service, unit tests | 420 | `cd backend && ./mvnw test -Dtest=SkuTest,UnitCodeTest,ProductAdminServiceTest` | none | revert commit; nothing wired |
+| S5. Product infra | JPA, adapter, controller, `PUT` baseUnit rejection | 430 | `cd backend && ./mvnw test -Dtest=ProductAdminServiceTest` | `./mvnw verify -Dit.test=ProductCatalogIT` | revert commit; `/api/catalog/products` disappears |
+| S6. Product units | `ProductUnitPolicy` → web, incl. the **specified** default-swap write order (§8.2) | 430 | `cd backend && ./mvnw test -Dtest=ProductUnitPolicyTest` | `./mvnw verify -Dit.test=ProductUnitCatalogIT` — **6.9 blocks this slice** | revert commit; units subresource disappears |
+| S7. Base-unit rule | `BaseUnitChangePolicy`, `StockPresence`, port wiring, unit tests. **No endpoint** | 170 | `cd backend && ./mvnw test -Dtest=BaseUnitChangePolicyTest` | none | revert commit; R-08 unshipped |
+| S8. Cross-cutting | RBAC/401 IT, no-numeric-id assertion, audit atomicity, search-latency IT, counters | 320 | — | `./mvnw verify -Dit.test=CatalogRbacIT,CatalogAuditIT,ProductSearchPerformanceIT` + both scripts | revert commit; guarantees unproven |
+
+---
+
+## Phase 1 — S1: Schema, validator and the `shared` port (PR1)
+
+- [ ] 1.1 Edit `backend/init-db/01-init-schema.sql` `:78-85`: add `is_active BOOLEAN NOT NULL DEFAULT TRUE` and `updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP` to `categories` (S-1, S-2; design §10.1 edit 1). Verify: the block matches §10.1 verbatim.
+- [ ] 1.2 Edit `01-init-schema.sql` after `:87`: add `CREATE UNIQUE INDEX uq_categories_name_ci ON categories (LOWER(name));` with its Spanish comment (S-4; design §10.1 edit 2, D-2). **Keep** the column's existing `UNIQUE` — dropping it would make the change non-additive.
+- [ ] 1.3 Edit `01-init-schema.sql` after `:117`: add `CREATE UNIQUE INDEX uq_product_units_single_default ON product_units(product_id) WHERE is_default_sale_unit;` with its comment (S-3; design §10.1 edit 3).
+- [ ] 1.4 Do **not** edit `backend/init-db/02-seed-data.sql`. Verify instead: `:45` uses an explicit column list; `:58-65` has exactly one `TRUE` per product; the four names at `:46-49` have no case-insensitive collision (design §10.2).
+- [ ] 1.5 **[BLOCKING for 1.7]** Append section `G. Catálogo maestro` to `scripts/validar_esquema.sh` after section F (before the summary block at `:140`), with the five checks verbatim from design §10.3. Verify: `./scripts/validar_esquema.sh` reports 30 correct checks and no failure.
+- [ ] 1.6 Edit `CLAUDE.md:15` ("25 invariantes" → "30 invariantes") and `openspec/config.yaml:46` ("Checks 25 invariants" → "Checks 30 invariants") to match 1.5's real count.
+- [ ] 1.7 Run `./scripts/validar_esquema.sh` against a clean volume; confirm `igual "20 tablas creadas"` still passes (indexes are not tables) and both `02-seed-data.sql` and the new G checks are green.
+- [ ] 1.8 Edit `docs/diagrama_er.md`: add `boolean is_active` to the Mermaid `CATEGORIES` block (`:105-110`), and `* is_active : BOOLEAN` + `updated_at : TIMESTAMPTZ` to the PlantUML `categories` entity (`:347-355`) (design §10.4, D-12). Spanish; no `RF`/`RNF`/`RN` identifier introduced.
+- [ ] 1.9 Create `backend/src/main/java/com/optiplant/inventory/shared/stock/ProductStockPresencePort.java` — one method `boolean isProductUntouched(UUID productExternalId)`, Javadoc pinning the exact two-clause predicate of contract §2.2, `java.util.UUID` the only import (design §5.3, D-4).
+- [ ] 1.10 Edit `shared/audit/AuditAction.java`: add `ENABLE` and `DELETE` to the enum; extend its Javadoc to say the enum holds generic CRUD verbs while `AuditEntryCommand.action` stays a `String` for module-specific names (design D-9).
+- [ ] 1.11 Test: run `cd backend && ./mvnw test -Dtest=SharedIsFrameworkFreeTest,ModuleBoundariesTest` — confirm `sharedEsUnaHoja` and `SharedIsFrameworkFreeTest` stay green with the new `shared/stock` package.
+- [ ] 1.12 Run `python3 scripts/validar_trazabilidad.py` — green (1.8 adds no identifier; `validar_trazabilidad.py:44-99` only tracks identifiers and relative links).
+- [ ] 1.13 Run `cd backend && ./mvnw verify`.
+
+## Phase 2 — S2: Category domain and application (PR2)
+
+- [ ] 2.1 Create `catalog/domain/model/CategoryName.java` — record, compact constructor trims, rejects blank and `> 100`; `comparisonKey()` returns `toLowerCase(Locale.ROOT)`; case preserved in `value` (design §3.1, R-02).
+- [ ] 2.2 Create `catalog/domain/model/ActiveFilter.java` — enum `ACTIVE/INACTIVE/ALL` + `static parse(String)` accepting only `true`/`false`/`all`, else `IllegalArgumentException` (design §3.2, R-12).
+- [ ] 2.3 Create `catalog/domain/model/Category.java`, `CategorySummary.java`, `CategoryRef.java` — records per design §3.3; `withName` and `withActive` each advance `updatedAt` (R-03).
+- [ ] 2.4 Create `catalog/domain/exception/`: `CategoryNotFoundException`, `DuplicateCategoryNameException`, `CategoryInUseException`, `CategoryInactiveException` (design §3.4).
+- [ ] 2.5 Create `catalog/application/port/out/CategoryRepositoryPort.java` — the eight methods and four nested records of design §5.3, incl. `existsByNameIgnoringCase(key, excludingExternalId)` and `hasActiveProducts`.
+- [ ] 2.6 Create `catalog/application/port/in/ManageCategoriesUseCase.java` — six methods per design §5.1; mutations take `AuthenticatedPrincipal actor`, **reads do not** (R-16, D-7); Javadoc names the exception each may throw, as `ManageBranchesUseCase` does.
+- [ ] 2.7 Create `catalog/application/service/CategoryAdminService.java` — `@Transactional` on mutations, `@Transactional(readOnly = true)` on reads; each mutation ends with `auditWritePort.record(...)` carrying `branchId = null`, `entityName = "categories"` (R-15); disable checks `hasActiveProducts` first (R-04); enable is idempotent (R-03).
+- [ ] 2.8 Verify no `catalog` class imports `org.springframework..` or `jakarta.persistence..` under `domain/` — `rg` over `catalog/domain`.
+- [ ] 2.9 Test: `CategoryNameTest` — trimming, blank rejection, 100/101 boundary, case-insensitive `comparisonKey` (R-02).
+- [ ] 2.10 Test: `ActiveFilterTest` — `true`/`false`/`all` parse; `maybe`, `""` and `null` throw (R-12).
+- [ ] 2.11 Test: `CategoryAdminServiceTest` — stubbed ports: duplicate name `409` path, disable blocked by an active product, disable allowed with only inactive products, idempotent double-disable, audit written on every mutation (R-02, R-03, R-04, R-15).
+- [ ] 2.12 Run `cd backend && ./mvnw test` (surefire only; this slice needs no Docker).
+
+## Phase 3 — S3: Category infrastructure and the authorization decision (PR3)
+
+- [ ] 3.1 Create `catalog/infrastructure/adapter/out/persistence/CategoryJpaEntity.java` — maps `categories` incl. `is_active` and `updated_at` (design §6.2); Lombok `@Getter/@Setter/@NoArgsConstructor` as `BranchJpaEntity`.
+- [ ] 3.2 Create `CategorySpringDataRepository.java` — `findByExternalId`, `existsByNameIgnoringCase` (JPQL, `LOWER(c.name)`), `existsByCategoryIdAndActiveIsTrue` on the product side, `countActiveProductsByCategoryIds` (grouped, one query per page — design §6.2), and a paginated `search` filtering by name-contains and `ActiveFilter`.
+- [ ] 3.3 Create `CategoryMapper.java` (MapStruct, `componentModel = "spring"`) and `CategoryPersistenceAdapter.java` implementing `CategoryRepositoryPort`; the adapter is the only class that sees a numeric `id` and never returns one.
+- [ ] 3.4 Verify the category listing costs **two** queries regardless of page size (page + grouped count), not one per row (design §6.2).
+- [ ] 3.5 Create `catalog/infrastructure/adapter/in/web/CatalogExceptionHandler.java` — `@RestControllerAdvice(basePackages = "com.optiplant.inventory.catalog.infrastructure.adapter.in.web")`, local `ErrorResponse` record, the twelve mappings of design §6.3 that exist so far. **Do not** add a mapping for `BaseUnitChangeRejectedException` (design §3.4). An unidentifiable `DataIntegrityViolationException` rethrows rather than becoming a tidy wrong `409` (D-14).
+- [ ] 3.6 Create `catalog/infrastructure/adapter/in/web/CategoryController.java` — the six endpoints of contract §6.1; `201 + Location` on `POST`; `active`/`page`/`size` parsed per design §6.1, `size` **clamped** to 100, never rejected; `PATCH /disable` and `/enable`, no `DELETE` anywhere.
+- [ ] 3.7 Edit `iam/infrastructure/config/SecurityConfig.java`: add `.requestMatchers(HttpMethod.GET, "/api/catalog/**").authenticated()` then `.requestMatchers("/api/catalog/**").hasAuthority("ADMIN")` before `.anyRequest()`; import `org.springframework.http.HttpMethod` (design §7, D-1). **GET matcher first** — order is load-bearing. `hasAuthority`, never `hasRole`.
+- [ ] 3.8 Verify this is the **only** edit to `iam` in the whole change (contract §2.1): `git diff --stat` shows one touched `iam` file.
+- [ ] 3.9 Test IT: `CategoryCatalogIT` (Testcontainers, `*IT` suffix mandatory — CLAUDE.md) — full cycle create/edit/list/disable/enable; `409 duplicate_category_name` on a case-differing name; `409 category_in_use` with an active product and success with only inactive ones; `404` on an unknown `externalId`; listing defaults to active-only and honours `active=false`/`all`; `active=maybe` → `400`; `size=5000` clamps.
+- [ ] 3.10 Test IT: assert the `CategoryCatalogIT` responses contain **no numeric `id`** anywhere in the JSON body, `Location` header included (§7.1 point 1).
+- [ ] 3.11 Run `cd backend && ./mvnw verify`.
+
+## Phase 4 — S4: Product domain and application (PR4)
+
+- [ ] 4.1 Create `catalog/domain/model/Sku.java` — trims **and uppercases**, `1..50`, rejects blank (design §3.1, R-06).
+- [ ] 4.2 Create `catalog/domain/model/UnitCode.java` — trims, uppercases, `^[A-Z0-9_]+$`, `1..50`; static `UnitCode.baseUnit(String)` applies the same rules bounded at `1..20` (design §3.1, R-07, R-13).
+- [ ] 4.3 Create `catalog/domain/model/ProductSort.java` — enum `SKU/NAME/CREATED_AT` + `parse(String)`; nothing outside it can reach a query (R-12).
+- [ ] 4.4 Create `catalog/domain/model/ProductUnit.java` — record; compact constructor rejects a null or non-positive `conversionFactor` with `InvalidConversionFactorException`; `BigDecimal`, never `double` (design §6.2).
+- [ ] 4.5 Create `catalog/domain/model/Product.java` — record per design §3.3; compact constructor does `List.copyOf(units)` then asserts the three invariants (no duplicate `unitName`, no base-unit homonym with factor ≠ 1, at most one default). Add `withDetails`, `withActive`, `withBaseUnit`, `withUnits`.
+- [ ] 4.6 Create `catalog/domain/model/ProductSummary.java` — list projection **without** `units` and `description` (design §3.3, contract §6.2).
+- [ ] 4.7 Create `catalog/domain/exception/`: `ProductNotFoundException`, `DuplicateSkuException`, `DuplicateProductUnitException`, `InvalidConversionFactorException`.
+- [ ] 4.8 Create `catalog/application/port/out/ProductRepositoryPort.java` — per design §5.3, incl. `existsBySku(normalizedSku, excludingExternalId)` and `setBaseUnit` (used only by S7).
+- [ ] 4.9 Create `catalog/application/port/in/ManageProductsUseCase.java` — per design §5.1. `EditProductCommand` has **no** `baseUnit` field. `changeBaseUnit` is declared here but wired in S7.
+- [ ] 4.10 Create `catalog/application/service/ProductAdminService.java` — create/edit/disable/enable; resolves the category ref first and rejects a missing (`404`) or inactive (`409`) one (R-05); SKU uniqueness with `excludingExternalId` on edit (R-09); enable re-checks the category is active (R-11); audit on every mutation with `entityName = "products"`, `branchId = null`. Leave `changeBaseUnit` throwing `UnsupportedOperationException` until S7 — do **not** guess its body.
+- [ ] 4.11 Test: `SkuTest` — `abc-1` and `ABC-1` produce the same value; trimming; 50/51 boundary (R-06).
+- [ ] 4.12 Test: `UnitCodeTest` — `kg` → `KG`; `"Saco de 50"` rejected (whitespace not in the charset); `baseUnit` bounded at 20 while the general factory allows 50 (R-07, R-13).
+- [ ] 4.13 Test: `ProductInvariantsTest` — a `Product` cannot be constructed with two units of the same name, with a base-unit homonym carrying factor ≠ 1, or with two defaults (R-13, R-14).
+- [ ] 4.14 Test: `ProductAdminServiceTest` — stubbed ports: `category_not_found`, `category_inactive` on create/edit/enable, `duplicate_sku` on create and edit, edit-to-own-SKU is not a conflict, audit written on every mutation.
+- [ ] 4.15 Run `cd backend && ./mvnw test`.
+
+## Phase 5 — S5: Product infrastructure (PR5)
+
+- [ ] 5.1 Create `ProductJpaEntity.java` — `@ManyToOne(fetch = LAZY, optional = false)` to `CategoryJpaEntity`, `@OneToMany(mappedBy = "product", cascade = ALL, orphanRemoval = true)` to units (design §6.2, D-5); `conversionFactor` side is `BigDecimal`.
+- [ ] 5.2 Create `ProductUnitJpaEntity.java` — maps `product_units`; **no** `updated_at` (the table has none).
+- [ ] 5.3 Create `ProductSpringDataRepository.java` — the JPQL `search` of design §6.2 with `JOIN FETCH p.category`, `:q` contains-match against `LOWER(sku)`/`LOWER(name)`, `:categoryId`, `:active`. **JPQL, never native** — a native query rejects a dynamic `Sort` (D-10). Add `findByExternalId` with the units fetched, and `existsBySku`.
+- [ ] 5.4 **[BLOCKING]** Verify by running that `Pageable` with a `Sort` built from `ProductSort` actually sorts, on all three fields and both directions — this is the exact class of fact the repo learned by executing (`AuditWriteAdapter.java:56-58`).
+- [ ] 5.5 Create `ProductMapper.java` and `ProductPersistenceAdapter.java` implementing `ProductRepositoryPort`; `create` persists product and inline units in one save via cascade (R-06); no numeric `id` leaves the adapter.
+- [ ] 5.6 Create `catalog/infrastructure/adapter/in/web/ProductController.java` — the six endpoints of contract §6.2; detail response embeds `category` and `units`, list item omits `units` and `description`; `201 + Location`; `q`/`categoryId`/`active`/`sort`/`direction`/`page`/`size` parsed per design §6.1.
+- [ ] 5.7 Add the `baseUnit` rejection to `EditProductRequest` — the field is declared solely to be refused with `IllegalArgumentException` → `400 invalid_request` (design §6.1, D-8, contract §12.3 point 3). `"baseUnit": null` counts as absent.
+- [ ] 5.8 Extend `CatalogExceptionHandler` with the product mappings and with `MethodArgumentNotValidException` / `MethodArgumentTypeMismatchException` → `400 invalid_request` (design §6.3). Class names verified in `spring-web-7.0.9.jar` (design §0) — do not substitute a remembered Boot 3 package.
+- [ ] 5.9 Test IT: `ProductCatalogIT` — full cycle create (with and without inline units) / edit / disable / enable / read by `externalId`; `409 duplicate_sku` on create **and** edit; `409 category_inactive` on create under an inactive category and on re-enabling under one; `404 category_not_found`; an inactive product still returns `200` with `active: false` (R-10), never `404`.
+- [ ] 5.10 Test IT: `PUT /api/catalog/products/{id}` carrying `"baseUnit": "LITRO"` returns `400 invalid_request` and changes nothing. **Actually send the field** — the Jackson behaviour here is the kind that reads as correct and fails when run (design §6.1).
+- [ ] 5.11 Test IT: listing — active-only default, `active=false`, `active=all`, `active=maybe` → `400`; `size=5000` clamps to 100; `sort=(select 1)` → `400` and is never interpolated; searching `npk` finds `FERT-NPK-151515` (R-12).
+- [ ] 5.12 Test IT: disabling a product with stock in two branches leaves both `branch_inventories` rows untouched (R-10).
+- [ ] 5.13 Run `cd backend && ./mvnw verify`.
+
+## Phase 6 — S6: Units of measure per product (PR6)
+
+- [ ] 6.1 Create `catalog/domain/service/ProductUnitPolicy.java` — `addUnit`, `replaceUnit`, `removeUnit`; each clears the flag on every sibling before applying a new default (R-14); a base-unit homonym is accepted only with factor 1 (R-13); removing the current default leaves the product with none.
+- [ ] 6.2 Create `catalog/application/port/out/ProductUnitRepositoryPort.java` — per design §5.3, incl. `find(productExternalId, unitExternalId)` **scoped by product** and `clearDefaultSaleUnit(productExternalId)`.
+- [ ] 6.3 Create `catalog/application/port/in/ManageProductUnitsUseCase.java` and `catalog/application/service/ProductUnitAdminService.java` — one `@Transactional` per mutation, audit with `entityName = "product_units"`, `branchId = null`.
+- [ ] 6.4 Create `ProductUnitSpringDataRepository.java` with `clearDefaultSaleUnit` as a `@Modifying(flushAutomatically = true, clearAutomatically = true)` bulk JPQL update: `UPDATE ProductUnitJpaEntity u SET u.defaultSaleUnit = FALSE WHERE u.product.externalId = :p AND u.defaultSaleUnit = TRUE`. Both flags are required — `flushAutomatically` makes the statement land first, `clearAutomatically` stops a stale managed entity writing the old `TRUE` back (design §6.2, §8.2, D-11).
+- [ ] 6.5 Create `ProductUnitPersistenceAdapter.java` implementing the **specified write sequence** of design §8.2, in `add` and `replace`: **(1)** call `clearDefaultSaleUnit(productExternalId)`; **(2)** only then insert/update the row that ends `is_default_sale_unit = TRUE`. Never (2) before (1). Skip both steps when the incoming unit carries `defaultSaleUnit = false` — there is nothing to clear and clearing would unset an unrelated sibling. Anchors: R-13/R-14 (invariant), RNF-INT-03 (S-3 is its schema half), RNF-INT-01 (one atomic unit).
+- [ ] 6.6 Verify the inline-units path of `ProductPersistenceAdapter.create` needs no clearing step and say why in its Javadoc: the product is new, so no sibling can hold the flag, and `Product`'s compact constructor already rejected a payload with two defaults before any SQL is issued (design §8.2).
+- [ ] 6.7 Create `catalog/infrastructure/adapter/in/web/ProductUnitController.java` — the four endpoints of contract §6.3; collection **not** paginated (justified exception to RNF-PER-04); a unit belonging to another product returns `404`, never `200`; `DELETE` returns `204`.
+- [ ] 6.8 Extend `CatalogExceptionHandler` with `ProductUnitNotFoundException` → `404 product_unit_not_found`, `DuplicateProductUnitException` → `409`, and the `uq_product_units_single_default` branch of `DataIntegrityViolationException` → `409` with a hand-written message that names no constraint (§7.1 point 2).
+- [ ] 6.9 **[BLOCKING for S6 — this slice is not done until it is green]** Test IT: `ProductUnitCatalogIT.replacingTheDefaultSaleUnitCommits` against real PostgreSQL (Testcontainers). Product 1 seeds `SACO_50KG` as default and `BULTITO_10KG` as non-default (`02-seed-data.sql:59-60`). `PUT` `BULTITO_10KG` with `defaultSaleUnit: true`, then assert **all three**: (a) the response is `200`, not a `409`/`500` — the transaction **committed** and did not abort on `uq_product_units_single_default`; (b) `SELECT count(*) FROM product_units WHERE product_id = 1 AND is_default_sale_unit` returns exactly `1`; (c) the surviving `TRUE` row is `BULTITO_10KG`. This is the proof obligation of design §8.2 for the write sequence of 6.5: the ordering only has consequences when a real database checks a real partial unique index per statement, so no unit test substitutes for it.
+- [ ] 6.10 Test IT: run the same swap a second time in the other direction (`SACO_50KG` back to default) and assert it commits too — proves 6.5's sequence is not accidentally passing because of a one-time row order.
+- [ ] 6.11 Test: `ProductUnitPolicyTest` — factor `0` and `-1` rejected; base-unit homonym with factor ≠ 1 rejected and with factor 1 accepted; marking a new default leaves exactly one marked; removing the default leaves none; duplicate `unitName` rejected (R-13, R-14).
+- [ ] 6.12 Test IT: two different products each mark their own default and both succeed (the index is scoped by `product_id`, so one product's default must not block another's); a product with no default reads back fine; a direct repository write of a second default for one product surfaces as a `409`, not a `500` (R-14, S-3).
+- [ ] 6.13 Test IT: deleting a unit affects no balance or movement; deleting the current default leaves the product with none and succeeds; a unit id belonging to another product returns `404`.
+- [ ] 6.14 Run `cd backend && ./mvnw verify`.
+
+## Phase 7 — S7: The base-unit rule, without its endpoint (PR7)
+
+- [ ] 7.1 Create `catalog/domain/model/StockPresence.java` — enum `UNTOUCHED/HAS_HISTORY/UNKNOWN` (design §3.2, D-3).
+- [ ] 7.2 Create `catalog/domain/exception/BaseUnitChangeRejectedException.java` with a nested `Reason { HAS_HISTORY, PRECONDITION_UNVERIFIABLE }` (design §3.4). The two reasons exist now so the future slice can emit two distinct codes without reopening the domain (contract §7).
+- [ ] 7.3 Create `catalog/domain/service/BaseUnitChangePolicy.java` — `apply(product, newBaseUnit, presence, now)`; `UNTOUCHED` applies, `HAS_HISTORY` and `UNKNOWN` each throw with their reason. Framework-free; takes the enum, never the port (design §4.2, D-3).
+- [ ] 7.4 Wire `ProductAdminService.changeBaseUnit` — constructor-inject `Optional<ProductStockPresencePort>`; map it to `StockPresence` with `orElse(StockPresence.UNKNOWN)` (design §5.2). The port call, the policy and the `setBaseUnit` write share **one** transaction (contract §8).
+- [ ] 7.5 **Do not** add an endpoint, a route matcher, an error code, or a `CatalogExceptionHandler` mapping for this (PA-08, contract §7, design §3.4). Verify: `rg 'base-unit' backend/src/main` returns nothing.
+- [ ] 7.6 Test: `BaseUnitChangePolicyTest` — the three `StockPresence` values produce apply / `HAS_HISTORY` / `PRECONDITION_UNVERIFIABLE`; on refusal **no field** of the product changes (R-08).
+- [ ] 7.7 Test: `ProductAdminServiceTest` extension with a stubbed `ProductStockPresencePort` — port returns `true` (applies, `updatedAt` advances), port returns `false` (refused), `Optional.empty()` i.e. **the state of this change** (refused, fails closed). These four cases are what keep the deferred rule from shipping as untested dead code (contract §11, PA-08).
+- [ ] 7.8 Run `cd backend && ./mvnw verify`.
+
+## Phase 8 — S8: Cross-cutting verification and documentation (PR8)
+
+- [ ] 8.1 Test IT: `CatalogRbacIT` — `OPERATOR` and `BRANCH_MANAGER` receive `403` on **every** §6 mutation endpoint and `200` on **every** read endpoint; an `ADMIN` sees exactly what an `OPERATOR` sees on reads (R-01, R-16).
+- [ ] 8.2 Test IT: no token and an expired token each return `401` on every endpoint of the module (R-01).
+- [ ] 8.3 Test IT: a corporate `ADMIN` with `branch_id = NULL` can perform every mutation — no authorization rule in this module may require a branch on the principal (contract §5 note 2).
+- [ ] 8.4 Test IT: two users from different branches read the same product and receive byte-identical representations (R-16).
+- [ ] 8.5 Test IT: `CatalogAuditIT` — every mutation across the three resources writes an `audit_logs` row with actor, entity, affected `external_id`, before/after payloads and `branch_id = NULL`; a failing audit write rolls the catalog mutation back (R-15, and CLAUDE.md's atomic-effects invariant — model it on `AuditAtomicityIT`).
+- [ ] 8.6 Test IT: assert **no numeric `id`** appears in any response body or `Location` header across all sixteen endpoints (§7.1 point 1).
+- [ ] 8.7 Test IT: fetch `/v3/api-docs` and assert the sixteen §6 endpoints are published, the error envelope is documented, and **no route mutates a base unit** (§6.2, PA-08).
+- [ ] 8.8 **Already written during design — verify, do not re-create.** `docs/deuda_tecnica.md` carries `DT-07` (deferred base-unit endpoint) and `DT-08` (free-text search escalation), each with a registry row **and** a `### DT-nn` ficha, plus a `1.1` row in the version-history table. Confirm both fichas still describe what was actually built; if implementation diverged, update the ficha rather than leaving it stale (design §11).
+- [ ] 8.9 Manual review checklist: no new class in a direct subpackage of `com.optiplant.inventory` other than `catalog/`; `catalog/domain/**` imports neither `org.springframework..` nor `jakarta.persistence..`; `catalog` imports no class of another business module; `shared/stock` declares one boolean method and no stock-shaped return type; `catalog/infrastructure/config/` does not exist.
+- [ ] 8.10 **[Cannot be caught by ArchUnit]** Run `rg -i 'branch_inventories|kardex_movements' backend/src/main/java/com/optiplant/inventory/catalog` — must return nothing. SQL strings import no types, so every boundary rule would pass while `catalog` became a silent co-owner of `inventory`'s tables (contract §2.2 rejected alternative 2, design §13).
+- [ ] 8.11 Run `rg -n 'ROLE_|hasRole\(' backend/src/main/java/com/optiplant/inventory/catalog backend/src/main/java/com/optiplant/inventory/iam/infrastructure/config` — no occurrence outside a doc comment.
+- [ ] 8.12 Run all three gates together: `cd backend && ./mvnw verify`, `./scripts/validar_esquema.sh` (30 checks, mandatory — `backend/init-db/` changed), `python3 scripts/validar_trazabilidad.py`.
+- [ ] 8.13 Confirm the corrected DoD item (design §10.4, D-12; already applied to `contract.md` §11): no `RF`/`RNF`/`RN` identifier was created and `docs/casos_de_uso.md`'s traceability matrix is untouched. `git diff --stat docs/` is **not** empty by design — it shows `diagrama_er.md` (1.8) and `deuda_tecnica.md` (`DT-07`, `DT-08`), both deliberate.
+- [ ] 8.14 Walk contract §11's remaining checklist end to end and record any item this implementation did not satisfy, rather than silently dropping it.
+- [ ] 8.15 **Test IT: `ProductSearchPerformanceIT`** — seed ~10 000 products across the four categories (bulk `INSERT … SELECT generate_series`, not 10 000 API calls), then assert **both**: (a) a *contains* search (`q=npk`, page size 20) completes under a generous wall-clock threshold — measure a warmed-up median or p95 over ≥ 20 runs, and set the threshold with headroom (e.g. 200 ms) so the test fails on a real regression, not on CI jitter; (b) `EXPLAIN` for that query reports a **sequential scan** on `products`, which is what design §8.4 and the corrected contract §9 now declare. If p95 measurement proves impractical inside an IT, keep (b) and a single-run wall-clock ceiling — but do not delete the test: an unmeasured latency claim is exactly what §9 was corrected for.
+- [ ] 8.16 If 8.15 fails its threshold, **do not weaken the assertion and do not silently add an index**: that failure is `DT-08`'s documented trigger. Pay the debt per its ficha (`CREATE EXTENSION pg_trgm` + `gin (sku gin_trgm_ops)` + `gin (name gin_trgm_ops)`), measure with `EXPLAIN (ANALYZE, BUFFERS)` before and after, and update `DT-08` to **Resuelta** with the date and the change that settled it (`deuda_tecnica.md` §5 rule 3 — a paid debt is marked, never deleted).

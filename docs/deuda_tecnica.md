@@ -4,6 +4,7 @@
 | Versión | Fecha | Cambios |
 | :--- | :--- | :--- |
 | 1.0 | 2026-08-26 | Registro inicial con seis ítems identificados durante el diseño. |
+| 1.1 | 2026-08-28 | Se agregan dos ítems surgidos del diseño del módulo `catalog`: la exposición HTTP diferida del cambio de unidad base y la estrategia de escalada de la búsqueda de productos por texto libre. |
 
 ---
 
@@ -39,6 +40,8 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-04** | Cliente sin entidad propia en las ventas | Baja | Aceptada | Si se requiere historial o segmentación por cliente |
 | **DT-05** | La coherencia del precio congelado sólo se verifica en el dominio | Baja | Aceptada | Ninguno; se mitiga con pruebas |
 | **DT-06** | Tipografía inconsistente en el diagrama E-R | Baja | Aceptada | Si se rehace el diagrama E-R |
+| **DT-07** | Exposición HTTP del cambio de unidad base, diferida | Baja | Aceptada | Al construir el módulo `inventory` |
+| **DT-08** | Búsqueda de productos por texto libre resuelta con recorrido secuencial | Baja | Aceptada | Si el catálogo supera ~50 000 productos o si la prueba de latencia falla |
 
 ---
 
@@ -213,6 +216,75 @@ El caso de uso `CU-VEN-01` resuelve el precio y lo congela en la misma operació
 
 #### Por qué se aceptó
 Es puramente estético y no afecta legibilidad ni contenido. Unificar exigiría regenerar el diagrama E-R completo.
+
+---
+
+### DT-07 — Exposición HTTP del cambio de unidad base, diferida
+
+**Severidad:** Baja · **Estado:** Aceptada · **Esfuerzo estimado:** pequeño · **Origen:** diseño del módulo `catalog`
+
+#### Situación actual
+El módulo `catalog` entrega la regla de dominio que gobierna el cambio de `products.base_unit`, el puerto entrante `shared/stock/ProductStockPresencePort`, la política que la aplica y sus pruebas unitarias. **Ningún endpoint las alcanza.** Dentro del alcance de `catalog`, `base_unit` es de hecho inmutable: se fija al crear el producto y `PUT /api/catalog/products/{externalId}` rechaza el campo con `400 invalid_request`.
+
+#### Por qué se aceptó
+La regla sólo permite el cambio cuando el producto no tiene saldos ni movimientos de Kardex, y quien puede responder esa pregunta es `inventory`, que todavía no existe. Sin implementación del puerto la política falla cerrada —nunca abierta—, de modo que toda llamada respondería un conflicto para siempre. Publicar una operación que jamás ha tenido éxito es peor que no publicarla: los clientes programarían contra algo que nunca funcionó, y el documento OpenAPI mentiría.
+
+#### Por qué es deuda
+La regla, el puerto y la política son código de producción sin ruta de entrada. Están cubiertos por pruebas unitarias precisamente para que no se degraden a código muerto, pero nadie los ejercita de punta a punta hasta que llegue su implementador.
+
+#### Plan de pago
+El cambio que construya `inventory`:
+
+1. Implementa `ProductStockPresencePort` con un adaptador propio. El predicado es exacto: un producto está intacto cuando **(a)** no tiene fila de `branch_inventories` con existencia actual, reservada o en tránsito distinta de cero, **y (b)** no tiene ninguna fila de `kardex_movements`, en ninguna sucursal, nunca. La cláusula (b) no es redundante: un producto cuyo saldo volvió a cero conserva historial escrito en la unidad base **anterior**, y RN-13 existe justamente para impedir que ese historial se reinterprete en silencio.
+2. Publica `PATCH /api/catalog/products/{externalId}/base-unit`.
+3. Define **dos** códigos de error distintos: uno para «el producto tiene historial» y otro para «no puedo verificarlo». Unificarlos haría que una carencia de infraestructura pareciera un rechazo de negocio, tanto para quien llama como para quien lee los registros.
+4. Verifica que la comprobación de la precondición y la escritura de `base_unit` ocurran en **la misma transacción**: si se separan, una recepción de mercadería concurrente crea el primer movimiento entre la comprobación y el `commit`.
+
+#### Referencias
+RN-13 · RF-INV-01 · RF-INV-02 · `openspec/changes/add-catalog-module/contract.md` §2.2 y decisión PA-08.
+
+---
+
+### DT-08 — Búsqueda de productos por texto libre resuelta con recorrido secuencial
+
+**Severidad:** Baja · **Estado:** Aceptada · **Esfuerzo estimado:** pequeño · **Origen:** diseño del módulo `catalog`
+
+#### Situación actual
+El listado de productos admite un término libre que se compara **por contenido** contra el SKU y el nombre, sin distinguir mayúsculas. En SQL eso es un `LIKE '%término%'`, y un comodín a la izquierda inutiliza cualquier índice B-Tree: la consulta se resuelve con un recorrido secuencial de `products`.
+
+#### Precisión sobre `idx_products_sku`
+Este índice **no** atiende la búsqueda. Sirve para lo que sí es una búsqueda por igualdad: el control de unicidad del SKU al crear y editar un producto, que es lo que produce el conflicto `duplicate_sku`. Documentarlo al revés llevaría a alguien a concluir que la búsqueda ya está indexada y a no medirla nunca.
+
+#### Por qué se aceptó
+A la volumetría comprometida —10 000 productos— un recorrido secuencial sobre una tabla angosta cumple RNF-PER-01 con holgura, y el listado está paginado con tope duro, así que ninguna respuesta es de volumen no acotado (RNF-PER-04). Agregar la extensión `pg_trgm` y un índice GIN hoy sería un quinto cambio de esquema para una carga que nadie midió: se estaría pagando complejidad de esquema y de despliegue contra un problema que no existe.
+
+#### Por qué es deuda
+El coste de esta decisión crece con los datos y no avisa. Un recorrido secuencial degrada de forma lineal, así que el día que el catálogo crezca la búsqueda se vuelve lenta sin que nada falle: no hay error, sólo una latencia que sube.
+
+#### Disparador
+Cualquiera de los dos, lo que ocurra primero:
+
+* el catálogo supera aproximadamente **50 000 productos**, o
+* la prueba de integración de latencia de la búsqueda deja de cumplir su umbral.
+
+#### Plan de pago
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX idx_products_sku_trgm  ON products USING gin (sku gin_trgm_ops);
+CREATE INDEX idx_products_name_trgm ON products USING gin (name gin_trgm_ops);
+```
+
+Dos detalles que hacen que esto sirva, y sin los cuales no sirve:
+
+1. **La consulta debe seguir siendo insensible a mayúsculas de la misma forma que el índice.** Si el índice se crea sobre `sku` pero la consulta compara `LOWER(sku)`, el planificador no puede usarlo. O ambos lados aplican `LOWER(...)`, o se usa el operador `ILIKE`, que `pg_trgm` sí resuelve con el índice GIN.
+2. **`pg_trgm` necesita al menos tres caracteres para formar un trigrama.** Una búsqueda de uno o dos caracteres vuelve al recorrido secuencial aunque el índice exista. Si eso importa, el listado debe exigir un término mínimo de tres caracteres en vez de fingir que el índice lo cubre.
+
+Antes de aplicarlo hay que medir, no suponer: `EXPLAIN (ANALYZE, BUFFERS)` sobre la consulta real, con el volumen real, antes y después.
+
+#### Referencias
+RNF-PER-01 · RNF-PER-04 · RNF-INT-03 · `openspec/changes/add-catalog-module/contract.md` §9.
 
 ---
 
