@@ -81,37 +81,37 @@ Decision needed before apply: **No.** `design.md` §12 leaves no open question.
 
 ## Phase 4 — S4: Product domain and application (PR4)
 
-- [ ] 4.1 Create `catalog/domain/model/Sku.java` — trims **and uppercases**, `1..50`, rejects blank (design §3.1, R-06).
-- [ ] 4.2 Create `catalog/domain/model/UnitCode.java` — trims, uppercases, `^[A-Z0-9_]+$`, `1..50`; static `UnitCode.baseUnit(String)` applies the same rules bounded at `1..20` (design §3.1, R-07, R-13).
-- [ ] 4.3 Create `catalog/domain/model/ProductSort.java` — enum `SKU/NAME/CREATED_AT` + `parse(String)`; nothing outside it can reach a query (R-12).
-- [ ] 4.4 Create `catalog/domain/model/ProductUnit.java` — record; compact constructor rejects a null or non-positive `conversionFactor` with `InvalidConversionFactorException`; `BigDecimal`, never `double` (design §6.2).
-- [ ] 4.5 Create `catalog/domain/model/Product.java` — record per design §3.3; compact constructor does `List.copyOf(units)` then asserts the three invariants (no duplicate `unitName`, no base-unit homonym with factor ≠ 1, at most one default). Add `withDetails`, `withActive`, `withBaseUnit`, `withUnits`.
-- [ ] 4.6 Create `catalog/domain/model/ProductSummary.java` — list projection **without** `units` and `description` (design §3.3, contract §6.2).
-- [ ] 4.7 Create `catalog/domain/exception/`: `ProductNotFoundException`, `DuplicateSkuException`, `DuplicateProductUnitException`, `InvalidConversionFactorException`.
-- [ ] 4.8 Create `catalog/application/port/out/ProductRepositoryPort.java` — per design §5.3, incl. `existsBySku(normalizedSku, excludingExternalId)` and `setBaseUnit` (used only by S7).
-- [ ] 4.9 Create `catalog/application/port/in/ManageProductsUseCase.java` — per design §5.1. `EditProductCommand` has **no** `baseUnit` field. `changeBaseUnit` is declared here but wired in S7.
-- [ ] 4.10 Create `catalog/application/service/ProductAdminService.java` — create/edit/disable/enable; resolves the category ref first and rejects a missing (`404`) or inactive (`409`) one (R-05); SKU uniqueness with `excludingExternalId` on edit (R-09); enable re-checks the category is active (R-11); audit on every mutation with `entityName = "products"`, `branchId = null`. Leave `changeBaseUnit` throwing `UnsupportedOperationException` until S7 — do **not** guess its body.
-- [ ] 4.11 Test: `SkuTest` — `abc-1` and `ABC-1` produce the same value; trimming; 50/51 boundary (R-06).
-- [ ] 4.12 Test: `UnitCodeTest` — `kg` → `KG`; `"Saco de 50"` rejected (whitespace not in the charset); `baseUnit` bounded at 20 while the general factory allows 50 (R-07, R-13).
-- [ ] 4.13 Test: `ProductInvariantsTest` — a `Product` cannot be constructed with two units of the same name, with a base-unit homonym carrying factor ≠ 1, or with two defaults (R-13, R-14).
-- [ ] 4.14 Test: `ProductAdminServiceTest` — stubbed ports: `category_not_found`, `category_inactive` on create/edit/enable, `duplicate_sku` on create and edit, edit-to-own-SKU is not a conflict, audit written on every mutation.
-- [ ] 4.15 Run `cd backend && ./mvnw test`.
+- [x] 4.1 Create `catalog/domain/model/Sku.java` — trims **and uppercases**, `1..50`, rejects blank (design §3.1, R-06).
+- [x] 4.2 Create `catalog/domain/model/UnitCode.java` — trims, uppercases, `^[A-Z0-9_]+$`, `1..50`; static `UnitCode.baseUnit(String)` applies the same rules bounded at `1..20` (design §3.1, R-07, R-13).
+- [x] 4.3 Create `catalog/domain/model/ProductSort.java` — enum `SKU/NAME/CREATED_AT` + `parse(String)`; nothing outside it can reach a query (R-12).
+- [x] 4.4 Create `catalog/domain/model/ProductUnit.java` — record; compact constructor rejects a null or non-positive `conversionFactor` with `InvalidConversionFactorException`; `BigDecimal`, never `double` (design §6.2).
+- [x] 4.5 Create `catalog/domain/model/Product.java` — record per design §3.3; compact constructor does `List.copyOf(units)` then asserts the three invariants (no duplicate `unitName`, no base-unit homonym with factor ≠ 1, at most one default). Add `withDetails`, `withActive`, `withBaseUnit`, `withUnits`.
+- [x] 4.6 Create `catalog/domain/model/ProductSummary.java` — list projection **without** `units` and `description` (design §3.3, contract §6.2).
+- [x] 4.7 Create `catalog/domain/exception/`: `ProductNotFoundException`, `DuplicateSkuException`, `DuplicateProductUnitException`, `InvalidConversionFactorException`.
+- [x] 4.8 Create `catalog/application/port/out/ProductRepositoryPort.java` — per design §5.3, incl. `existsBySku(normalizedSku, excludingExternalId)` and `setBaseUnit` (used only by S7).
+- [x] 4.9 Create `catalog/application/port/in/ManageProductsUseCase.java` — per design §5.1. `EditProductCommand` has **no** `baseUnit` field. `changeBaseUnit` is declared here but wired in S7.
+- [x] 4.10 Create `catalog/application/service/ProductAdminService.java` — create/edit/disable/enable; resolves the category ref first and rejects a missing (`404`) or inactive (`409`) one (R-05); SKU uniqueness with `excludingExternalId` on edit (R-09); enable re-checks the category is active (R-11); audit on every mutation with `entityName = "products"`, `branchId = null`. Leave `changeBaseUnit` throwing `UnsupportedOperationException` until S7 — do **not** guess its body.
+- [x] 4.11 Test: `SkuTest` — `abc-1` and `ABC-1` produce the same value; trimming; 50/51 boundary (R-06).
+- [x] 4.12 Test: `UnitCodeTest` — `kg` → `KG`; `"Saco de 50"` rejected (whitespace not in the charset); `baseUnit` bounded at 20 while the general factory allows 50 (R-07, R-13).
+- [x] 4.13 Test: `ProductInvariantsTest` — a `Product` cannot be constructed with two units of the same name, with a base-unit homonym carrying factor ≠ 1, or with two defaults (R-13, R-14).
+- [x] 4.14 Test: `ProductAdminServiceTest` — stubbed ports: `category_not_found`, `category_inactive` on create/edit/enable, `duplicate_sku` on create and edit, edit-to-own-SKU is not a conflict, audit written on every mutation.
+- [x] 4.15 Run `cd backend && ./mvnw test`.
 
 ## Phase 5 — S5: Product infrastructure (PR5)
 
-- [ ] 5.1 Create `ProductJpaEntity.java` — `@ManyToOne(fetch = LAZY, optional = false)` to `CategoryJpaEntity`, `@OneToMany(mappedBy = "product", cascade = ALL, orphanRemoval = true)` to units (design §6.2, D-5); `conversionFactor` side is `BigDecimal`.
-- [ ] 5.2 Create `ProductUnitJpaEntity.java` — maps `product_units`; **no** `updated_at` (the table has none).
-- [ ] 5.3 Create `ProductSpringDataRepository.java` — the JPQL `search` of design §6.2 with `JOIN FETCH p.category`, `:q` contains-match against `LOWER(sku)`/`LOWER(name)`, `:categoryId`, `:active`. **JPQL, never native** — a native query rejects a dynamic `Sort` (D-10). Add `findByExternalId` with the units fetched, and `existsBySku`.
-- [ ] 5.4 **[BLOCKING]** Verify by running that `Pageable` with a `Sort` built from `ProductSort` actually sorts, on all three fields and both directions — this is the exact class of fact the repo learned by executing (`AuditWriteAdapter.java:56-58`).
-- [ ] 5.5 Create `ProductMapper.java` and `ProductPersistenceAdapter.java` implementing `ProductRepositoryPort`; `create` persists product and inline units in one save via cascade (R-06); no numeric `id` leaves the adapter.
-- [ ] 5.6 Create `catalog/infrastructure/adapter/in/web/ProductController.java` — the six endpoints of contract §6.2; detail response embeds `category` and `units`, list item omits `units` and `description`; `201 + Location`; `q`/`categoryId`/`active`/`sort`/`direction`/`page`/`size` parsed per design §6.1.
-- [ ] 5.7 Add the `baseUnit` rejection to `EditProductRequest` — the field is declared solely to be refused with `IllegalArgumentException` → `400 invalid_request` (design §6.1, D-8, contract §12.3 point 3). `"baseUnit": null` counts as absent.
-- [ ] 5.8 Extend `CatalogExceptionHandler` with the product mappings and with `MethodArgumentNotValidException` / `MethodArgumentTypeMismatchException` → `400 invalid_request` (design §6.3). Class names verified in `spring-web-7.0.9.jar` (design §0) — do not substitute a remembered Boot 3 package.
-- [ ] 5.9 Test IT: `ProductCatalogIT` — full cycle create (with and without inline units) / edit / disable / enable / read by `externalId`; `409 duplicate_sku` on create **and** edit; `409 category_inactive` on create under an inactive category and on re-enabling under one; `404 category_not_found`; an inactive product still returns `200` with `active: false` (R-10), never `404`.
-- [ ] 5.10 Test IT: `PUT /api/catalog/products/{id}` carrying `"baseUnit": "LITRO"` returns `400 invalid_request` and changes nothing. **Actually send the field** — the Jackson behaviour here is the kind that reads as correct and fails when run (design §6.1).
-- [ ] 5.11 Test IT: listing — active-only default, `active=false`, `active=all`, `active=maybe` → `400`; `size=5000` clamps to 100; `sort=(select 1)` → `400` and is never interpolated; searching `npk` finds `FERT-NPK-151515` (R-12).
-- [ ] 5.12 Test IT: disabling a product with stock in two branches leaves both `branch_inventories` rows untouched (R-10).
-- [ ] 5.13 Run `cd backend && ./mvnw verify`.
+- [x] 5.1 Create `ProductJpaEntity.java` — `@ManyToOne(fetch = LAZY, optional = false)` to `CategoryJpaEntity`, `@OneToMany(mappedBy = "product", cascade = ALL, orphanRemoval = true)` to units (design §6.2, D-5); `conversionFactor` side is `BigDecimal`.
+- [x] 5.2 Create `ProductUnitJpaEntity.java` — maps `product_units`; **no** `updated_at` (the table has none).
+- [x] 5.3 Create `ProductSpringDataRepository.java` — the JPQL `search` of design §6.2 with `JOIN FETCH p.category`, `:q` contains-match against `LOWER(sku)`/`LOWER(name)`, `:categoryId`, `:active`. **JPQL, never native** — a native query rejects a dynamic `Sort` (D-10). Add `findByExternalId` with the units fetched, and `existsBySku`.
+- [x] 5.4 **[BLOCKING]** Verify by running that `Pageable` with a `Sort` built from `ProductSort` actually sorts, on all three fields and both directions — this is the exact class of fact the repo learned by executing (`AuditWriteAdapter.java:56-58`).
+- [x] 5.5 Create `ProductMapper.java` and `ProductPersistenceAdapter.java` implementing `ProductRepositoryPort`; `create` persists product and inline units in one save via cascade (R-06); no numeric `id` leaves the adapter.
+- [x] 5.6 Create `catalog/infrastructure/adapter/in/web/ProductController.java` — the six endpoints of contract §6.2; detail response embeds `category` and `units`, list item omits `units` and `description`; `201 + Location`; `q`/`categoryId`/`active`/`sort`/`direction`/`page`/`size` parsed per design §6.1.
+- [x] 5.7 Add the `baseUnit` rejection to `EditProductRequest` — the field is declared solely to be refused with `IllegalArgumentException` → `400 invalid_request` (design §6.1, D-8, contract §12.3 point 3). `"baseUnit": null` counts as absent.
+- [x] 5.8 Extend `CatalogExceptionHandler` with the product mappings and with `MethodArgumentNotValidException` / `MethodArgumentTypeMismatchException` → `400 invalid_request` (design §6.3). Class names verified in `spring-web-7.0.9.jar` (design §0) — do not substitute a remembered Boot 3 package.
+- [x] 5.9 Test IT: `ProductCatalogIT` — full cycle create (with and without inline units) / edit / disable / enable / read by `externalId`; `409 duplicate_sku` on create **and** edit; `409 category_inactive` on create under an inactive category and on re-enabling under one; `404 category_not_found`; an inactive product still returns `200` with `active: false` (R-10), never `404`.
+- [x] 5.10 Test IT: `PUT /api/catalog/products/{id}` carrying `"baseUnit": "LITRO"` returns `400 invalid_request` and changes nothing. **Actually send the field** — the Jackson behaviour here is the kind that reads as correct and fails when run (design §6.1).
+- [x] 5.11 Test IT: listing — active-only default, `active=false`, `active=all`, `active=maybe` → `400`; `size=5000` clamps to 100; `sort=(select 1)` → `400` and is never interpolated; searching `npk` finds `FERT-NPK-151515` (R-12).
+- [x] 5.12 Test IT: disabling a product with stock in two branches leaves both `branch_inventories` rows untouched (R-10).
+- [x] 5.13 Run `cd backend && ./mvnw verify`.
 
 ## Phase 6 — S6: Units of measure per product (PR6)
 
