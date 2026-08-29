@@ -42,12 +42,13 @@ import org.springframework.transaction.annotation.Transactional;
  * the catalog is corporate, R-15, R-16). Reads take no actor and are
  * {@code readOnly}.
  *
- * <p>{@code changeBaseUnit} (R-08) is wired in slice S7 against an
- * {@code Optional<ProductStockPresencePort>}. No controller calls it in this
- * change (PA-08), so {@code base_unit} stays de-facto immutable; the wiring exists
- * so the rule, the fail-closed default and the transaction boundary are settled
- * before {@code inventory} implements the port. With no bean present the
- * {@code Optional} is empty, {@link #presenceOf} yields {@link StockPresence#UNKNOWN}
+ * <p>{@code changeBaseUnit} (R-08) depends on an {@code Optional<ProductStockPresencePort>}
+ * so the {@code Optional} stays empty — and the rule fails closed, never open — in
+ * any deployment where no adapter implements the port. {@code inventory}'s
+ * {@code InventoryStockPresenceAdapter} is now that implementation (DT-07 paid), and
+ * {@code ProductController} exposes the rule at
+ * {@code PATCH /products/{externalId}/base-unit}. With no bean present the
+ * {@code Optional} is still empty, {@link #presenceOf} yields {@link StockPresence#UNKNOWN}
  * and {@link BaseUnitChangePolicy} refuses — fail closed (contract §2.2).
  */
 @Service
@@ -186,7 +187,7 @@ public class ProductAdminService implements ManageProductsUseCase {
 		Product existing = productRepository.findByExternalId(externalId)
 				.orElseThrow(() -> new ProductNotFoundException(externalId));
 
-		// R-07 normalization applies identically to a future controller and to a test.
+		// R-07 normalization applies identically to the controller and to a test.
 		UnitCode baseUnit = UnitCode.baseUnit(newBaseUnit);
 		Instant now = Instant.now();
 

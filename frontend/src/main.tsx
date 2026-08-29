@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen.ts'
+import { I18nProvider } from './lib/i18n/i18n-context.tsx'
 import './index.css'
 
 export const queryClient = new QueryClient({
@@ -33,7 +34,9 @@ if (rootElement && !rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <I18nProvider initialLanguage="es">
+          <RouterProvider router={router} />
+        </I18nProvider>
       </QueryClientProvider>
     </StrictMode>,
   )

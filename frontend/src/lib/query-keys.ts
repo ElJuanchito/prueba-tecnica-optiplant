@@ -45,4 +45,32 @@ export const queryKeys = {
     byProduct: (productExternalId: string) =>
       [...queryKeys.productUnits.all, productExternalId] as const,
   },
+  inventory: {
+    all: ['inventory'] as const,
+    stock: {
+      all: ['inventory', 'stock'] as const,
+      lists: () => [...queryKeys.inventory.stock.all, 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.inventory.stock.lists(), filters] as const,
+      network: (productExternalId: string) =>
+        [...queryKeys.inventory.stock.all, 'network', productExternalId] as const,
+    },
+    kardex: {
+      all: ['inventory', 'kardex'] as const,
+      lists: () => [...queryKeys.inventory.kardex.all, 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.inventory.kardex.lists(), filters] as const,
+    },
+  },
+  notifications: {
+    all: ['notifications'] as const,
+    alerts: {
+      all: ['notifications', 'alerts'] as const,
+      lists: () => [...queryKeys.notifications.alerts.all, 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.notifications.alerts.lists(), filters] as const,
+      detail: (externalId: string) =>
+        [...queryKeys.notifications.alerts.all, 'detail', externalId] as const,
+    },
+  },
 } as const

@@ -6,6 +6,8 @@
 | 1.0 | 2026-08-26 | Registro inicial con seis ítems identificados durante el diseño. |
 | 1.1 | 2026-08-28 | Se agregan dos ítems surgidos del diseño del módulo `catalog`: la exposición HTTP diferida del cambio de unidad base y la estrategia de escalada de la búsqueda de productos por texto libre. |
 | 1.2 | 2026-08-29 | Se agrega un ítem surgido del diseño del módulo `inventory`: la deduplicación de alertas operativas sin restricción de unicidad en el esquema. |
+| 1.3 | 2026-08-29 | Se salda la exposición HTTP del cambio de unidad base: `inventory` ya implementa `ProductStockPresencePort`, así que se publicó `PATCH /api/catalog/products/{externalId}/base-unit` con sus dos códigos de error distintos y la transacción única ya verificada. |
+| 1.4 | 2026-08-29 | Se agrega un ítem surgido de la verificación del módulo `inventory`: el tope de tamaño de página se clampea en `catalog` y se rechaza en el resto de los módulos. |
 
 ---
 
@@ -41,9 +43,10 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-04** | Cliente sin entidad propia en las ventas | Baja | Aceptada | Si se requiere historial o segmentación por cliente |
 | **DT-05** | La coherencia del precio congelado sólo se verifica en el dominio | Baja | Aceptada | Ninguno; se mitiga con pruebas |
 | **DT-06** | Tipografía inconsistente en el diagrama E-R | Baja | Aceptada | Si se rehace el diagrama E-R |
-| **DT-07** | Exposición HTTP del cambio de unidad base, diferida | Baja | Aceptada | Al construir el módulo `inventory` |
+| **DT-07** | Exposición HTTP del cambio de unidad base, diferida | Baja | **Resuelta (2026-08-29)** | Ninguno — pagada al construir `inventory` |
 | **DT-08** | Búsqueda de productos por texto libre resuelta con recorrido secuencial | Baja | Aceptada | Si el catálogo supera ~50 000 productos o si la prueba de latencia falla |
 | **DT-09** | Deduplicación de alertas operativas sin restricción de unicidad en el esquema | Media | Aceptada | Cuando llegue el próximo cambio de esquema |
+| **DT-10** | El tope de tamaño de página se resuelve distinto en `catalog` que en el resto de los módulos | Baja | Aceptada | Cuando se pueda ajustar el frontend de `catalog` en el mismo cambio |
 
 ---
 
@@ -223,27 +226,31 @@ Es puramente estético y no afecta legibilidad ni contenido. Unificar exigiría 
 
 ### DT-07 — Exposición HTTP del cambio de unidad base, diferida
 
-**Severidad:** Baja · **Estado:** Aceptada · **Esfuerzo estimado:** pequeño · **Origen:** diseño del módulo `catalog`
+**Severidad:** Baja · **Estado:** Resuelta (2026-08-29) · **Esfuerzo estimado:** pequeño · **Origen:** diseño del módulo `catalog`
 
-#### Situación actual
-El módulo `catalog` entrega la regla de dominio que gobierna el cambio de `products.base_unit`, el puerto entrante `shared/stock/ProductStockPresencePort`, la política que la aplica y sus pruebas unitarias. **Ningún endpoint las alcanza.** Dentro del alcance de `catalog`, `base_unit` es de hecho inmutable: se fija al crear el producto y `PUT /api/catalog/products/{externalId}` rechaza el campo con `400 invalid_request`.
+#### Situación previa
+El módulo `catalog` entregó la regla de dominio que gobierna el cambio de `products.base_unit`, el puerto entrante `shared/stock/ProductStockPresencePort`, la política que la aplica y sus pruebas unitarias, pero **ningún endpoint las alcanzaba**. Dentro de ese alcance, `base_unit` era de hecho inmutable: se fijaba al crear el producto y `PUT /api/catalog/products/{externalId}` rechazaba el campo con `400 invalid_request`.
 
-#### Por qué se aceptó
-La regla sólo permite el cambio cuando el producto no tiene saldos ni movimientos de Kardex, y quien puede responder esa pregunta es `inventory`, que todavía no existe. Sin implementación del puerto la política falla cerrada —nunca abierta—, de modo que toda llamada respondería un conflicto para siempre. Publicar una operación que jamás ha tenido éxito es peor que no publicarla: los clientes programarían contra algo que nunca funcionó, y el documento OpenAPI mentiría.
+#### Por qué se había aceptado diferirla
+La regla sólo permite el cambio cuando el producto no tiene saldos ni movimientos de Kardex, y quien podía responder esa pregunta era `inventory`, que todavía no existía. Sin implementación del puerto la política fallaba cerrada —nunca abierta—, de modo que toda llamada habría respondido un conflicto para siempre. Publicar una operación que jamás tuvo éxito es peor que no publicarla: los clientes programarían contra algo que nunca funcionó, y el documento OpenAPI mentiría.
 
-#### Por qué es deuda
-La regla, el puerto y la política son código de producción sin ruta de entrada. Están cubiertos por pruebas unitarias precisamente para que no se degraden a código muerto, pero nadie los ejercita de punta a punta hasta que llegue su implementador.
+#### Por qué era deuda
+La regla, el puerto y la política eran código de producción sin ruta de entrada. Estaban cubiertos por pruebas unitarias precisamente para que no se degradaran a código muerto, pero nadie los ejercitaba de punta a punta.
 
-#### Plan de pago
-El cambio que construya `inventory`:
+#### Cómo se pagó
+`inventory` ya existe y su `InventoryStockPresenceAdapter` implementa `ProductStockPresencePort` de verdad (el predicado exacto: un producto está intacto cuando **(a)** no tiene fila de `branch_inventories` con existencia actual, reservada o en tránsito distinta de cero, **y (b)** no tiene ninguna fila de `kardex_movements`, en ninguna sucursal, nunca), así que la política dejó de fallar cerrada por ausencia de implementación. Sobre esa base, este pago ejecutó los tres pasos que quedaban del plan original:
 
-1. Implementa `ProductStockPresencePort` con un adaptador propio. El predicado es exacto: un producto está intacto cuando **(a)** no tiene fila de `branch_inventories` con existencia actual, reservada o en tránsito distinta de cero, **y (b)** no tiene ninguna fila de `kardex_movements`, en ninguna sucursal, nunca. La cláusula (b) no es redundante: un producto cuyo saldo volvió a cero conserva historial escrito en la unidad base **anterior**, y RN-13 existe justamente para impedir que ese historial se reinterprete en silencio.
-2. Publica `PATCH /api/catalog/products/{externalId}/base-unit`.
-3. Define **dos** códigos de error distintos: uno para «el producto tiene historial» y otro para «no puedo verificarlo». Unificarlos haría que una carencia de infraestructura pareciera un rechazo de negocio, tanto para quien llama como para quien lee los registros.
-4. Verifica que la comprobación de la precondición y la escritura de `base_unit` ocurran en **la misma transacción**: si se separan, una recepción de mercadería concurrente crea el primer movimiento entre la comprobación y el `commit`.
+1. **`PATCH /api/catalog/products/{externalId}/base-unit`** se publicó en `ProductController`, con la misma autorización `ADMIN` que el resto de las mutaciones de catálogo (`SecurityConfig`'s `/api/catalog/**` matcher).
+2. `CatalogExceptionHandler` mapea `BaseUnitChangeRejectedException` a **dos** códigos distintos según su `Reason`: `base_unit_has_history` (`409`, rechazo de negocio — RN-13) y `base_unit_precondition_unverifiable` (`503`, el puerto no pudo responder — carencia de infraestructura). Unificarlos habría hecho que una falla de infraestructura pareciera un rechazo de negocio, tanto para quien llama como para quien lee los registros.
+3. Se verificó que `ProductAdminService.changeBaseUnit` ya ejecutaba la comprobación de la precondición y la escritura de `base_unit` bajo un único `@Transactional`: no hizo falta ningún cambio para cerrar esta condición, sólo confirmarla con una prueba de integración de punta a punta contra el endpoint real.
+
+Sin cambios de esquema: `base_unit` ya era columna de `products` desde el modelo original.
+
+#### Verificación
+`ProductCatalogIT` prueba el endpoint contra HTTP real: éxito para un producto sin stock ni historial, y `409 base_unit_has_history` para uno con saldo en `branch_inventories`, sin tocar `base_unit`. `CatalogApiContractIT` se actualizó de "dieciséis endpoints y ninguna ruta de unidad base" a "diecisiete endpoints, exactamente uno de ellos el `PATCH .../base-unit`", y sigue probando que ningún `id` numérico escapa por esa ruta.
 
 #### Referencias
-RN-13 · RF-INV-01 · RF-INV-02 · `openspec/changes/add-catalog-module/contract.md` §2.2 y decisión PA-08.
+RN-13 · RF-INV-01 · RF-INV-02 · `openspec/changes/archive/2026-08-28-add-catalog-module/contract.md` §2.2 y decisión PA-08.
 
 ---
 
@@ -313,6 +320,34 @@ Cuando llegue el próximo cambio de esquema:
 
 #### Referencias
 RF-VAL-01 · HU-ALE-01 · HU-ALE-02 · RN-07 · `openspec/changes/add-inventory-module/design.md` §6.3, §9, D-2.
+
+---
+
+### DT-10 — El tope de tamaño de página se resuelve distinto en `catalog` que en el resto de los módulos
+
+**Severidad:** Baja · **Estado:** Aceptada · **Esfuerzo estimado:** pequeño · **Origen:** verificación del módulo `inventory`
+
+#### Situación actual
+Los dos módulos acotan el tamaño de página al mismo tope de 100, pero reaccionan distinto cuando el cliente pide más. `catalog` **clampea en silencio**: `Math.min(Math.max(size, 1), MAX_PAGE_SIZE)` devuelve 100 sin avisar. `inventory` y `notifications` **rechazan** con `400 invalid_request`. Es el mismo parámetro de consulta con dos contratos distintos según el endpoint que se toque.
+
+#### Por qué se aceptó
+El descubrimiento llegó con `inventory` ya construido y `catalog` ya entregado, incluido su frontend, que fue escrito contra el comportamiento de clampeo. Unificar exige elegir uno de los dos y cambiar el otro; cualquiera de las dos direcciones altera un contrato ya publicado y consumido. A pocos días de la entrega, el riesgo de romper una pantalla que hoy funciona supera la ganancia de uniformar un comportamiento de borde que ningún requerimiento distingue: **RNF-PER-04** exige que ninguna respuesta sea de volumen no acotado, y las dos variantes lo cumplen.
+
+Se elige además una dirección para lo que viene: los módulos que falten construir siguen el patrón de rechazo explícito, de modo que la excepción quede aislada en un solo módulo en lugar de repartirse.
+
+#### Por qué es deuda
+El clampeo silencioso es una coerción que el cliente no puede detectar. Quien pida 200 elementos recibe 100 y una respuesta sin ninguna marca de que su petición fue alterada, así que puede concluir que vio el conjunto completo cuando en realidad vio la mitad. El rechazo explícito no tiene ese modo de fallo: obliga a corregir la petición.
+
+La inconsistencia además se paga sola con el tiempo. Cada módulo nuevo obliga a decidir de nuevo cuál de los dos patrones seguir, y cada cliente que consuma dos módulos distintos tiene que aprender que el mismo parámetro se comporta de dos maneras.
+
+#### Plan de pago
+1. Unificar en el rechazo explícito: reemplazar el clampeo de `catalog` por la validación que ya usan `inventory` y `notifications`.
+2. Ajustar en el mismo cambio el frontend de `catalog`, que hoy depende de que un tamaño excesivo se corrija solo.
+3. Actualizar la prueba `listingRespectsActiveFilterSizeClampAndSortAllowList`, que fija el comportamiento actual de clampeo.
+4. Documentar el tope y su código de error en el contrato de API, para que la regla sea descubrible sin leer el código.
+
+#### Referencias
+RNF-PER-04 · `openspec/changes/archive/2026-08-29-add-inventory-module/verify-report.md` — advertencia 2.
 
 ---
 

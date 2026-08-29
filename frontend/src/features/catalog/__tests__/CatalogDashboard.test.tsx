@@ -8,6 +8,7 @@ import {
 import { CatalogDashboard } from '../components/CatalogDashboard.tsx'
 import { productService } from '../services/product.service.ts'
 import { categoryService } from '../services/category.service.ts'
+import { alertService } from '@/features/notifications/services/alert.service.ts'
 import { queryKeys } from '@/lib/query-keys.ts'
 
 vi.mock('@tanstack/react-router', async () => {
@@ -48,6 +49,12 @@ describe('Catalog Dashboard Component Tests', () => {
       page: 0,
       size: 10,
     })
+    vi.spyOn(alertService, 'listAlerts').mockResolvedValue({
+      content: [],
+      totalElements: 0,
+      page: 0,
+      size: 10,
+    })
   })
 
   it('renders CatalogDashboard with summary stats and tabs', async () => {
@@ -63,7 +70,7 @@ describe('Catalog Dashboard Component Tests', () => {
 
     renderWithProviders(<CatalogDashboard />, { queryClient })
 
-    expect(screen.getByText('OptiPlant')).toBeInTheDocument()
+    expect(screen.getAllByText('OptiPlant')[0]).toBeInTheDocument()
     expect(screen.getByText('admin_user')).toBeInTheDocument()
     expect(await screen.findByText('12')).toBeInTheDocument()
     expect(await screen.findByText('4')).toBeInTheDocument()

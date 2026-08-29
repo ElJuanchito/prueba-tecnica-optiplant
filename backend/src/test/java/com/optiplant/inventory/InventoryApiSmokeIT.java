@@ -85,6 +85,27 @@ class InventoryApiSmokeIT {
 		assertNoNumericIdLeak(response.getBody());
 	}
 
+	/**
+	 * R-00 (RNF-PER-04): a page size above {@code MAX_PAGE_SIZE} must be refused with
+	 * {@code 400 invalid_request}, never silently clamped. Both controllers'
+	 * {@code resolveSize} implement this identically; neither had a test until DT-07's
+	 * payment closed this gap.
+	 */
+	@Test
+	void pageSizeAboveTheCapIsRejectedOnInventoryAndAlertsEndpoints() {
+		String token = token("gerente.bogota");
+
+		ResponseEntity<ErrorBody> stockResponse = getRaw("/api/inventory/stock?size=101", token);
+		assertThat(stockResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(stockResponse.getBody()).isNotNull();
+		assertThat(stockResponse.getBody().code()).isEqualTo("invalid_request");
+
+		ResponseEntity<ErrorBody> alertsResponse = getRaw("/api/notifications/alerts?size=101", token);
+		assertThat(alertsResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(alertsResponse.getBody()).isNotNull();
+		assertThat(alertsResponse.getBody().code()).isEqualTo("invalid_request");
+	}
+
 	@Test
 	void thresholdPutReturnsTheUpdatedValue() {
 		String token = token("gerente.bogota");
@@ -118,6 +139,13 @@ class InventoryApiSmokeIT {
 				.toEntity(String.class);
 	}
 
+	/** Like {@link #get}, but surfaces a non-2xx status as a body instead of throwing. */
+	private ResponseEntity<ErrorBody> getRaw(String path, String token) {
+		return restClient.get().uri(path).header(HttpHeaders.AUTHORIZATION, "Bearer " + token).retrieve()
+				.onStatus(status -> true, (req, res) -> {
+				}).toEntity(ErrorBody.class);
+	}
+
 	private String token(String username) {
 		LoginResponseBody body = restClient.post().uri("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
 				.body(new LoginRequestBody(username, SEED_PASSWORD)).retrieve().body(LoginResponseBody.class);
@@ -130,5 +158,8 @@ class InventoryApiSmokeIT {
 
 	private record LoginResponseBody(String accessToken, String refreshToken, long expiresInSeconds, String role,
 			String branchId, String branchName, String branchCode) {
+	}
+
+	private record ErrorBody(String code, String message) {
 	}
 }

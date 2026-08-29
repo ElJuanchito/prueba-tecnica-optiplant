@@ -36,9 +36,11 @@ import org.springframework.web.client.RestClient;
  * rejection of a {@code baseUnit} field (design §6.1, D-8), the listing filters /
  * {@code size} clamp / {@code sort} allow-list (R-12), the seeded {@code npk}
  * search hit, that a {@code Pageable} {@code Sort} built from {@code ProductSort}
- * actually orders on all three fields both directions (task 5.4), and that
+ * actually orders on all three fields both directions (task 5.4), that
  * disabling a product with stock leaves its {@code branch_inventories} rows
- * untouched (R-10).
+ * untouched (R-10), and the {@code PATCH .../base-unit} endpoint (DT-07, paid):
+ * success against a stock-free product, {@code 409 base_unit_has_history} against
+ * one with balances.
  */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -312,40 +314,63 @@ class ProductCatalogIT {
 		assertThat((BigDecimal) rows.get(1).get("current_stock")).isEqualByComparingTo("10.0000");
 	}
 
-	// --- 3.7 (regression: catalog's StockPresence.UNKNOWN is now a real answer) --------------
+	// --- 3.7 / DT-07 (base-unit change, exposed end to end) -------------------------------
 
 	/**
-	 * tasks.md 3.7 — task 2.6 turned {@code catalog}'s fail-closed {@code StockPresence.UNKNOWN}
-	 * placeholder into a real {@code InventoryStockPresenceAdapter} answer. No controller reaches
-	 * {@code ManageProductsUseCase.changeBaseUnit} (PA-08, DT-07), so the only way to prove this
-	 * regression is exercising the real, fully-wired Spring bean directly — before 2.6 this call
-	 * always refused with {@code PRECONDITION_UNVERIFIABLE} (the bean's {@code Optional} was
-	 * empty); now, for a product with no stock and no Kardex history, it must actually succeed.
+	 * DT-07, paid: {@code PATCH /products/{externalId}/base-unit} now reaches
+	 * {@code ManageProductsUseCase.changeBaseUnit} through real HTTP, exercising the full stack —
+	 * {@code SecurityConfig}'s {@code ADMIN} matcher, the controller, the service's single
+	 * transaction and the real {@code InventoryStockPresenceAdapter} — for a product with no stock
+	 * and no Kardex history, where the change must succeed.
 	 */
 	@Test
-	void changeBaseUnitNowSucceedsForAnUntouchedProductWithTheRealStockPresenceAdapterWired() {
+	void changeBaseUnitEndpointSucceedsForAnUntouchedProduct() {
 		String sfx = suffix();
 		ProductDetailBody product = createOk(new CreateBody("BASEUNIT-OK-" + sfx, "Sin stock " + sfx, null,
 				SEED_ACTIVE_CATEGORY, "KG", null)).getBody();
 		assertThat(product).isNotNull();
-		AuthenticatedPrincipal admin = new AuthenticatedPrincipal(SEED_ADMIN_USER, "admin.corp", Role.ADMIN, null);
 
-		var updated = manageProductsUseCase.changeBaseUnit(admin, product.externalId(), "LITRO");
+		ProductDetailBody updated = changeBaseUnit(product.externalId(), "LITRO");
 
-		assertThat(updated.baseUnit().value()).isEqualTo("LITRO");
-		ProductDetailBody fetched = get(product.externalId());
-		assertThat(fetched.baseUnit()).isEqualTo("LITRO");
+		assertThat(updated.baseUnit()).isEqualTo("LITRO");
+		assertThat(get(product.externalId()).baseUnit()).isEqualTo("LITRO");
 	}
 
 	/**
-	 * Same regression, opposite branch of {@code InventoryStockPresenceAdapter}'s predicate: a
-	 * product with a non-zero {@code branch_inventories} balance must still be refused with
-	 * {@code HAS_HISTORY} — the adapter answering for real must not accidentally fail open.
+	 * Opposite branch of {@code InventoryStockPresenceAdapter}'s predicate: a product with a
+	 * non-zero {@code branch_inventories} balance is refused with {@code 409
+	 * base_unit_has_history} (DT-07 plan step 3) — the adapter answering for real must not
+	 * accidentally fail open — and {@code base_unit} is left untouched.
 	 */
 	@Test
-	void changeBaseUnitIsStillRefusedForAProductWithBranchInventoryHistory() {
+	void changeBaseUnitEndpointRejectsAProductWithBranchInventoryHistory() {
 		String sfx = suffix();
 		ProductDetailBody product = createOk(new CreateBody("BASEUNIT-HIST-" + sfx, "Con stock " + sfx, null,
+				SEED_ACTIVE_CATEGORY, "KG", null)).getBody();
+		assertThat(product).isNotNull();
+		Long productId = jdbcTemplate.queryForObject("SELECT id FROM products WHERE external_id = ?", Long.class,
+				product.externalId());
+		jdbcTemplate.update("INSERT INTO branch_inventories (branch_id, product_id, current_stock) VALUES (1, ?, ?)",
+				productId, new BigDecimal("5.0000"));
+
+		ResponseEntity<ErrorBody> response = changeBaseUnitRaw(product.externalId(), "LITRO");
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+		assertThat(response.getBody()).isNotNull();
+		assertThat(response.getBody().code()).isEqualTo("base_unit_has_history");
+		assertThat(get(product.externalId()).baseUnit()).isEqualTo("KG");
+	}
+
+	/**
+	 * Direct-bean regression kept alongside the HTTP test above: it pins
+	 * {@code BaseUnitChangeRejectedException.reason()} to {@code HAS_HISTORY}, a domain detail the
+	 * HTTP error code intentionally does not re-expose one-to-one (contract §7 exposes only the
+	 * {@code code} string).
+	 */
+	@Test
+	void changeBaseUnitServiceThrowsHasHistoryReasonForAProductWithBranchInventoryHistory() {
+		String sfx = suffix();
+		ProductDetailBody product = createOk(new CreateBody("BASEUNIT-REASON-" + sfx, "Con stock " + sfx, null,
 				SEED_ACTIVE_CATEGORY, "KG", null)).getBody();
 		assertThat(product).isNotNull();
 		Long productId = jdbcTemplate.queryForObject("SELECT id FROM products WHERE external_id = ?", Long.class,
@@ -357,7 +382,6 @@ class ProductCatalogIT {
 		assertThatThrownBy(() -> manageProductsUseCase.changeBaseUnit(admin, product.externalId(), "LITRO"))
 				.isInstanceOfSatisfying(BaseUnitChangeRejectedException.class,
 						ex -> assertThat(ex.reason()).isEqualTo(Reason.HAS_HISTORY));
-		assertThat(get(product.externalId()).baseUnit()).isEqualTo("KG");
 	}
 
 	// --- helpers ---------------------------------------------------------
@@ -402,6 +426,19 @@ class ProductCatalogIT {
 				.onStatus(status -> true, (req, res) -> {}).toEntity(ErrorBody.class);
 	}
 
+	private ProductDetailBody changeBaseUnit(UUID externalId, String newBaseUnit) {
+		return restClient.method(HttpMethod.PATCH).uri("/api/catalog/products/{id}/base-unit", externalId)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken).contentType(MediaType.APPLICATION_JSON)
+				.body(new ChangeBaseUnitBody(newBaseUnit)).retrieve().body(ProductDetailBody.class);
+	}
+
+	private ResponseEntity<ErrorBody> changeBaseUnitRaw(UUID externalId, String newBaseUnit) {
+		return restClient.method(HttpMethod.PATCH).uri("/api/catalog/products/{id}/base-unit", externalId)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken).contentType(MediaType.APPLICATION_JSON)
+				.body(new ChangeBaseUnitBody(newBaseUnit)).retrieve().onStatus(status -> true, (req, res) -> {})
+				.toEntity(ErrorBody.class);
+	}
+
 	private UUID createCategory(String name) {
 		@SuppressWarnings("unchecked")
 		Map<String, Object> body = restClient.post().uri("/api/catalog/categories")
@@ -444,6 +481,9 @@ class ProductCatalogIT {
 	}
 
 	private record EditBody(String sku, String name, String description, UUID categoryExternalId, String baseUnit) {
+	}
+
+	private record ChangeBaseUnitBody(String baseUnit) {
 	}
 
 	private record EditWithBaseUnitBody(String sku, String name, String description, UUID categoryExternalId,

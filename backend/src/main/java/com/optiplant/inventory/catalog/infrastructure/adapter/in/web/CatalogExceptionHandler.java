@@ -1,5 +1,6 @@
 package com.optiplant.inventory.catalog.infrastructure.adapter.in.web;
 
+import com.optiplant.inventory.catalog.domain.exception.BaseUnitChangeRejectedException;
 import com.optiplant.inventory.catalog.domain.exception.CategoryInUseException;
 import com.optiplant.inventory.catalog.domain.exception.CategoryInactiveException;
 import com.optiplant.inventory.catalog.domain.exception.CategoryNotFoundException;
@@ -28,9 +29,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * ({@code IamExceptionHandler.java:26}) — so neither module's advice can swallow
  * the other's exceptions.
  *
- * <p>{@code BaseUnitChangeRejectedException} deliberately gets <strong>no</strong>
- * mapping: PA-08 defers the endpoint that would raise it and a code with no
- * reachable path is dead contract (design §3.4). Category and product mappings are
+ * <p>{@code BaseUnitChangeRejectedException} maps to <strong>two</strong> distinct
+ * codes, one per {@code Reason} (DT-07, paid): {@code base_unit_has_history} is a
+ * business rejection (RN-13) and stays a {@code 409}, while
+ * {@code base_unit_precondition_unverifiable} means the stock-presence port could
+ * not answer — an infrastructure gap, never a {@code 409}, so a caller or a log
+ * reader cannot mistake one for the other (contract §2.2, DT-07 plan step 3).
+ * Category and product mappings are
  * wired here (S3, S5), including {@code DuplicateProductUnitException} and
  * {@code InvalidConversionFactorException}, both reachable through
  * {@code POST /products} with inline units. Slice S6 adds
@@ -124,6 +129,30 @@ class CatalogExceptionHandler {
 					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onMultipleDefaultSaleUnits(MultipleDefaultSaleUnitsException ex) {
 		return build(HttpStatus.BAD_REQUEST, "invalid_request", "a product may have at most one default sale unit");
+	}
+
+	/**
+	 * {@code Reason.HAS_HISTORY} is a business rejection (RN-13): the product has
+	 * balances or Kardex history in the old base unit, so {@code 409}, same family as
+	 * every other "the state does not allow this" catalog conflict.
+	 * {@code Reason.PRECONDITION_UNVERIFIABLE} means the stock-presence port
+	 * ({@code shared/stock/ProductStockPresencePort}) could not answer — an
+	 * infrastructure gap, not a business decision — so it is never folded into the
+	 * same {@code 409}: {@code 503} names it for what it is, both to the caller and to
+	 * whoever reads the logs (DT-07 plan step 3).
+	 */
+	@ExceptionHandler(BaseUnitChangeRejectedException.class)
+	@ApiResponse(responseCode = "409", description = "base_unit_has_history — uniform { code, message } envelope",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE, schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "503",
+			description = "base_unit_precondition_unverifiable — uniform { code, message } envelope",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE, schema = @Schema(implementation = ErrorResponse.class)))
+	ResponseEntity<ErrorResponse> onBaseUnitChangeRejected(BaseUnitChangeRejectedException ex) {
+		return switch (ex.reason()) {
+			case HAS_HISTORY -> build(HttpStatus.CONFLICT, "base_unit_has_history", ex.getMessage());
+			case PRECONDITION_UNVERIFIABLE ->
+				build(HttpStatus.SERVICE_UNAVAILABLE, "base_unit_precondition_unverifiable", ex.getMessage());
+		};
 	}
 
 	@ExceptionHandler(DuplicateSkuException.class)

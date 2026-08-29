@@ -4,6 +4,9 @@ import { LoginForm } from '@/features/iam/components/LoginForm.tsx'
 import { useSession } from '@/features/iam/hooks/use-auth.ts'
 import { Skeleton } from '@/components/ui/skeleton.tsx'
 
+import { Permissions } from '@/lib/permissions.ts'
+import { InventoryDashboard } from '@/features/inventory/components/InventoryDashboard.tsx'
+
 export const Route = createFileRoute('/')({
   component: function IndexPage() {
     const sessionQuery = useSession()
@@ -22,7 +25,10 @@ export const Route = createFileRoute('/')({
     }
 
     if (sessionQuery.data?.accessToken) {
-      return <IamDashboard />
+      if (Permissions.canAccessIam(sessionQuery.data.role)) {
+        return <IamDashboard />
+      }
+      return <InventoryDashboard />
     }
 
     return (

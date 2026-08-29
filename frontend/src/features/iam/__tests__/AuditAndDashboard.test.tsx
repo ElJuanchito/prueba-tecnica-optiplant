@@ -9,6 +9,7 @@ import { IamDashboard } from '../components/IamDashboard.tsx'
 import { auditService } from '../services/audit.service.ts'
 import { userService } from '../services/user.service.ts'
 import { branchService } from '../services/branch.service.ts'
+import { alertService } from '@/features/notifications/services/alert.service.ts'
 import { queryKeys } from '@/lib/query-keys.ts'
 
 vi.mock('@tanstack/react-router', async () => {
@@ -49,6 +50,12 @@ describe('Audit and Dashboard Components', () => {
       size: 10,
     })
     vi.spyOn(branchService, 'listBranches').mockResolvedValue({
+      content: [],
+      totalElements: 0,
+      page: 0,
+      size: 10,
+    })
+    vi.spyOn(alertService, 'listAlerts').mockResolvedValue({
       content: [],
       totalElements: 0,
       page: 0,
@@ -98,7 +105,7 @@ describe('Audit and Dashboard Components', () => {
 
     renderWithProviders(<IamDashboard />, { queryClient })
 
-    expect(screen.getByText('OptiPlant')).toBeInTheDocument()
+    expect(screen.getAllByText('OptiPlant')[0]).toBeInTheDocument()
     expect(screen.getByText('admin')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /users/i })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /branches/i })).toBeInTheDocument()

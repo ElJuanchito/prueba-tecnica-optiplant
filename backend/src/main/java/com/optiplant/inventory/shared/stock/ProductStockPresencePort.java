@@ -18,10 +18,11 @@ import java.util.UUID;
  * history — quantities, unit costs and running balances — recorded in the <em>old</em>
  * base unit, and RN-13 exists to stop a base-unit change silently reinterpreting it.
  *
- * <p>One consumer ({@code catalog}), one future implementer ({@code inventory}), one
- * question (PA-09). This interface MUST NOT grow a stock-shaped return type or a second
- * method. While no implementation exists, the domain rule treats the absence as
- * "cannot prove the product is untouched" and refuses the change — it MUST NOT fail open.
+ * <p>One consumer ({@code catalog}), one implementer
+ * ({@code inventory}'s {@code InventoryStockPresenceAdapter}, DT-07). This interface
+ * MUST NOT grow a stock-shaped return type or a second method. Absent any bean the
+ * domain rule treats it as "cannot prove the product is untouched" and refuses the
+ * change — it MUST NOT fail open.
  */
 public interface ProductStockPresencePort {
 
