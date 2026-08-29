@@ -159,7 +159,9 @@ describe('User Management Components', () => {
   it('renders Access Restricted when OPERATOR attempts to render UserTable', () => {
     renderWithProviders(<UserTable currentActorRole="OPERATOR" />)
     expect(screen.getByText('Access Restricted')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /create user/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /create user/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('does not render UserFormDialog for OPERATOR', () => {

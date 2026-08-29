@@ -2,6 +2,7 @@ package com.optiplant.inventory.catalog.domain.model;
 
 import com.optiplant.inventory.catalog.domain.exception.DuplicateProductUnitException;
 import com.optiplant.inventory.catalog.domain.exception.InvalidConversionFactorException;
+import com.optiplant.inventory.catalog.domain.exception.MultipleDefaultSaleUnitsException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,7 +30,7 @@ import java.util.UUID;
  *   <li>R-13 — a unit named like the base unit must have factor {@code 1}
  *       ({@link InvalidConversionFactorException});</li>
  *   <li>R-14 — at most one unit is the default sale unit
- *       ({@link IllegalStateException}).</li>
+ *       ({@link MultipleDefaultSaleUnitsException}).</li>
  * </ul>
  */
 public record Product(UUID externalId, Sku sku, String name, String description, UnitCode baseUnit, boolean active,
@@ -58,7 +59,7 @@ public record Product(UUID externalId, Sku sku, String name, String description,
 
 		long defaults = units.stream().filter(ProductUnit::defaultSaleUnit).count();
 		if (defaults > 1) {
-			throw new IllegalStateException("a product may have at most one default sale unit (R-14)");
+			throw new MultipleDefaultSaleUnitsException("a product may have at most one default sale unit (R-14)");
 		}
 	}
 

@@ -1,12 +1,13 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { IamDashboard } from '@/features/iam/components/IamDashboard.tsx'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { CatalogDashboard } from '@/features/catalog/components/CatalogDashboard.tsx'
 import { LoginForm } from '@/features/iam/components/LoginForm.tsx'
 import { useSession } from '@/features/iam/hooks/use-auth.ts'
 import { Skeleton } from '@/components/ui/skeleton.tsx'
 
-export const Route = createFileRoute('/')({
-  component: function IndexPage() {
+export const Route = createFileRoute('/catalog')({
+  component: function CatalogPage() {
     const sessionQuery = useSession()
+    const navigate = useNavigate()
 
     if (sessionQuery.isLoading) {
       return (
@@ -22,14 +23,18 @@ export const Route = createFileRoute('/')({
     }
 
     if (sessionQuery.data?.accessToken) {
-      return <IamDashboard />
+      return <CatalogDashboard />
     }
 
     return (
       <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-slate-950 text-slate-100 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(#ea580c15_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40" />
+        <div className="absolute inset-0 bg-[radial-gradient(#4f46e515_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40" />
         <div className="w-full max-w-md relative z-10">
-          <LoginForm />
+          <LoginForm
+            onSuccess={() => {
+              navigate({ to: '/catalog' })
+            }}
+          />
         </div>
       </div>
     )

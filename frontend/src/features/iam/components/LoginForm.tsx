@@ -16,14 +16,7 @@ import { Label } from '@/components/ui/label.tsx'
 import { useLogin } from '../hooks/use-auth.ts'
 import { loginRequestSchema } from '../schemas/auth.schema.ts'
 import type { LoginRequest } from '../types/auth.types.ts'
-import {
-  AlertCircle,
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  User,
-} from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, User } from 'lucide-react'
 
 interface LoginFormProps {
   onSuccess?: () => void
@@ -92,15 +85,26 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4 pt-0">
           {errorMessage && (
-            <Alert variant="destructive" data-testid="login-error-alert" className="animate-in fade-in-50 duration-200 py-2.5">
+            <Alert
+              variant="destructive"
+              data-testid="login-error-alert"
+              className="animate-in fade-in-50 duration-200 py-2.5"
+            >
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle className="text-xs font-semibold">Authentication Failed</AlertTitle>
-              <AlertDescription className="text-xs">{errorMessage}</AlertDescription>
+              <AlertTitle className="text-xs font-semibold">
+                Authentication Failed
+              </AlertTitle>
+              <AlertDescription className="text-xs">
+                {errorMessage}
+              </AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="username" className="text-xs font-medium text-slate-700">
+            <Label
+              htmlFor="username"
+              className="text-xs font-medium text-slate-700"
+            >
               Username
             </Label>
             <div className="relative">
@@ -124,7 +128,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-xs font-medium text-slate-700">
+              <Label
+                htmlFor="password"
+                className="text-xs font-medium text-slate-700"
+              >
                 Password
               </Label>
             </div>
@@ -141,7 +148,9 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
               <button
                 type="button"
-                aria-label={showPassword ? 'Hide secret input' : 'Reveal secret input'}
+                aria-label={
+                  showPassword ? 'Hide secret input' : 'Reveal secret input'
+                }
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
                 className="absolute right-2.5 top-2 p-1 text-slate-400 hover:text-slate-600 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 transition-colors cursor-pointer"
@@ -187,5 +196,3 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     </Card>
   )
 }
-
-

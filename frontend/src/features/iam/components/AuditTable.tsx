@@ -116,7 +116,9 @@ export function AuditTable() {
               </div>
             )
           } catch {
-            return <span className="text-xs font-mono text-slate-600">{raw}</span>
+            return (
+              <span className="text-xs font-mono text-slate-600">{raw}</span>
+            )
           }
         },
       },
@@ -130,11 +132,16 @@ export function AuditTable() {
           const isSuccess =
             action.includes('CREATE') || action.includes('REGISTER')
           const isAuth =
-            action.includes('LOGIN') || action.includes('AUTH') || action.includes('REFRESH')
+            action.includes('LOGIN') ||
+            action.includes('AUTH') ||
+            action.includes('REFRESH')
 
           if (isDanger) {
             return (
-              <Badge variant="destructive" className="font-mono text-[11px] font-medium">
+              <Badge
+                variant="destructive"
+                className="font-mono text-[11px] font-medium"
+              >
                 {action}
               </Badge>
             )
@@ -154,7 +161,10 @@ export function AuditTable() {
             )
           }
           return (
-            <Badge variant="secondary" className="font-mono text-[11px] font-medium bg-slate-100 text-slate-700">
+            <Badge
+              variant="secondary"
+              className="font-mono text-[11px] font-medium bg-slate-100 text-slate-700"
+            >
               {action}
             </Badge>
           )
@@ -371,7 +381,10 @@ export function AuditTable() {
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="text-xs font-semibold text-slate-600 uppercase tracking-wider py-3">
+                  <TableHead
+                    key={header.id}
+                    className="text-xs font-semibold text-slate-600 uppercase tracking-wider py-3"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -415,7 +428,10 @@ export function AuditTable() {
               ))
             ) : table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                <TableRow
+                  key={row.id}
+                  className="hover:bg-slate-50/60 transition-colors"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="py-3">
                       {flexRender(
@@ -436,9 +452,12 @@ export function AuditTable() {
                     <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
                       <ClipboardList className="h-6 w-6" />
                     </div>
-                    <p className="font-semibold text-slate-700">No audit entries found</p>
+                    <p className="font-semibold text-slate-700">
+                      No audit entries found
+                    </p>
                     <p className="text-xs text-slate-500 max-w-sm">
-                      Audit events will record automatically when user and branch mutations occur.
+                      Audit events will record automatically when user and
+                      branch mutations occur.
                     </p>
                   </div>
                 </TableCell>
@@ -554,4 +573,3 @@ export function AuditTable() {
     </div>
   )
 }
-

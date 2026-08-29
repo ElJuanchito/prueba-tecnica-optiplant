@@ -169,7 +169,10 @@ export function BranchFormDialog({
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
           {serverError && (
-            <Alert variant="destructive" className="animate-in fade-in-50 duration-200">
+            <Alert
+              variant="destructive"
+              className="animate-in fade-in-50 duration-200"
+            >
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{serverError}</AlertDescription>
             </Alert>
@@ -184,7 +187,10 @@ export function BranchFormDialog({
 
             {!isEdit && (
               <div className="space-y-1">
-                <Label htmlFor="branch-code" className="text-xs font-semibold text-slate-700">
+                <Label
+                  htmlFor="branch-code"
+                  className="text-xs font-semibold text-slate-700"
+                >
                   Branch Code
                 </Label>
                 <Input
@@ -203,7 +209,10 @@ export function BranchFormDialog({
             )}
 
             <div className="space-y-1">
-              <Label htmlFor="branch-name" className="text-xs font-semibold text-slate-700">
+              <Label
+                htmlFor="branch-name"
+                className="text-xs font-semibold text-slate-700"
+              >
                 Branch Name
               </Label>
               <Input
@@ -229,7 +238,10 @@ export function BranchFormDialog({
             </h4>
 
             <div className="space-y-1">
-              <Label htmlFor="branch-address" className="text-xs font-semibold text-slate-700">
+              <Label
+                htmlFor="branch-address"
+                className="text-xs font-semibold text-slate-700"
+              >
                 Address
               </Label>
               <Input
@@ -248,7 +260,10 @@ export function BranchFormDialog({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="branch-city" className="text-xs font-semibold text-slate-700">
+                <Label
+                  htmlFor="branch-city"
+                  className="text-xs font-semibold text-slate-700"
+                >
                   City
                 </Label>
                 <div className="relative">
@@ -269,7 +284,10 @@ export function BranchFormDialog({
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="branch-phone" className="text-xs font-semibold text-slate-700">
+                <Label
+                  htmlFor="branch-phone"
+                  className="text-xs font-semibold text-slate-700"
+                >
                   Phone (Optional)
                 </Label>
                 <div className="relative">
@@ -318,4 +336,3 @@ export function BranchFormDialog({
     </Dialog>
   )
 }
-

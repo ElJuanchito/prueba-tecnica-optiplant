@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { Link } from '@tanstack/react-router'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent } from '@/components/ui/card.tsx'
@@ -17,6 +18,7 @@ import { BranchTable } from './BranchTable.tsx'
 import { UserTable } from './UserTable.tsx'
 import {
   Activity,
+  Boxes,
   Building2,
   FileText,
   Loader2,
@@ -63,13 +65,15 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
     })
   }
 
-  const userInitial = session?.username ? session.username.charAt(0).toUpperCase() : 'U'
+  const userInitial = session?.username
+    ? session.username.charAt(0).toUpperCase()
+    : 'U'
   const assignedBranchName = session?.branchName
     ? session.branchCode
       ? `${session.branchName} (${session.branchCode})`
       : session.branchName
     : session?.branchId
-      ? branchesMap.get(session.branchId) ?? 'Assigned Branch'
+      ? (branchesMap.get(session.branchId) ?? 'Assigned Branch')
       : null
 
   const isOperator = role === 'OPERATOR'
@@ -80,20 +84,37 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
       {/* Top Corporate Navigation Bar */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 rounded bg-orange-600 flex items-center justify-center text-white font-bold text-sm tracking-tight">
-              OP
-            </div>
-            <div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-black text-lg text-slate-900 tracking-tight">
-                  OptiPlant
-                </span>
-                <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">
-                  CONSULTORES
-                </span>
+          <div className="flex items-center space-x-6">
+            <Link to="/" className="flex items-center space-x-3">
+              <div className="h-8 w-8 rounded bg-orange-600 flex items-center justify-center text-white font-bold text-sm tracking-tight">
+                OP
               </div>
-            </div>
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-black text-lg text-slate-900 tracking-tight">
+                    OptiPlant
+                  </span>
+                  <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">
+                    CONSULTORES
+                  </span>
+                </div>
+              </div>
+            </Link>
+
+            <nav className="hidden md:flex items-center space-x-2">
+              <Link
+                to="/"
+                className="text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md"
+              >
+                IAM & Governance
+              </Link>
+              <Link
+                to="/catalog"
+                className="text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-2.5 py-1 rounded-md transition-colors"
+              >
+                Catalog Master Data
+              </Link>
+            </nav>
           </div>
 
           <div className="flex items-center space-x-4">
@@ -262,8 +283,22 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
                 Plant Operator Session
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Your account is configured with Operator permissions for <strong>{assignedBranchName ?? 'your assigned plant'}</strong>. User directory and administrative governance are managed by Branch Managers and Administrators.
+                Your account is configured with Operator permissions for{' '}
+                <strong>{assignedBranchName ?? 'your assigned plant'}</strong>.
+                User directory and administrative governance are managed by
+                Branch Managers and Administrators.
               </p>
+              <div className="pt-2">
+                <Link to="/catalog">
+                  <Button
+                    size="sm"
+                    className="text-xs bg-indigo-700 hover:bg-indigo-800 text-white cursor-pointer"
+                  >
+                    <Boxes className="h-3.5 w-3.5 mr-1.5" />
+                    Browse Catalog Master Data
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         ) : (
@@ -307,7 +342,10 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
             </TabsContent>
 
             {isAdmin && (
-              <TabsContent value="branches" className="focus-visible:outline-none">
+              <TabsContent
+                value="branches"
+                className="focus-visible:outline-none"
+              >
                 <BranchTable />
               </TabsContent>
             )}
@@ -323,5 +361,3 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
     </div>
   )
 }
-
-

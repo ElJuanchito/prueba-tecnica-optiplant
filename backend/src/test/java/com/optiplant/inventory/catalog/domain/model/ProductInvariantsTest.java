@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.optiplant.inventory.catalog.domain.exception.DuplicateProductUnitException;
 import com.optiplant.inventory.catalog.domain.exception.InvalidConversionFactorException;
+import com.optiplant.inventory.catalog.domain.exception.MultipleDefaultSaleUnitsException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -56,7 +57,7 @@ class ProductInvariantsTest {
 	void rejectsTwoDefaultSaleUnits() {
 		assertThatThrownBy(() -> productWith(UnitCode.baseUnit("KG"),
 				List.of(unit("CAJA", "12", true), unit("SACO", "50", true))))
-				.isInstanceOf(IllegalStateException.class);
+				.isInstanceOf(MultipleDefaultSaleUnitsException.class);
 	}
 
 	@Test

@@ -9,6 +9,9 @@ import com.optiplant.inventory.iam.domain.exception.RefreshTokenRejectedExceptio
 import com.optiplant.inventory.iam.domain.exception.TooManyLoginAttemptsException;
 import com.optiplant.inventory.iam.domain.exception.UserDisabledException;
 import com.optiplant.inventory.iam.domain.exception.UserNotFoundException;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,15 +29,24 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(basePackages = "com.optiplant.inventory.iam.infrastructure.adapter.in.web")
 class IamExceptionHandler {
 
+	/** JSON media type of the uniform error envelope, reused by the OpenAPI annotations below. */
+	private static final String ERROR_ENVELOPE_MEDIA_TYPE = "application/json";
+
 	// Same response for both: neither may reveal whether the username exists
 	// (CU-SEG-01 EX-01) or is merely disabled (EX-02).
 	@ExceptionHandler({ InvalidCredentialsException.class, UserDisabledException.class })
+	@ApiResponse(responseCode = "401", description = "Uniform { code, message } error envelope",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onInvalidCredentials() {
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
 				.body(new ErrorResponse("invalid_credentials", "Invalid username or password"));
 	}
 
 	@ExceptionHandler(TooManyLoginAttemptsException.class)
+	@ApiResponse(responseCode = "429", description = "Uniform { code, message } error envelope",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onTooManyAttempts() {
 		return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
 				.body(new ErrorResponse("too_many_attempts", "Too many login attempts, try again later"));
@@ -52,6 +64,9 @@ class IamExceptionHandler {
 	// no existence-leak concern here — a distinct 403 does not reveal anything new
 	// (branch-isolation "Cross-branch mutation is rejected").
 	@ExceptionHandler(CrossBranchMutationException.class)
+	@ApiResponse(responseCode = "403", description = "Uniform { code, message } error envelope",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onCrossBranchMutation() {
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(new ErrorResponse("cross_branch_mutation", "Cannot mutate a resource of another branch"));
@@ -62,6 +77,9 @@ class IamExceptionHandler {
 	// concern here (the caller is an already-authenticated ADMIN who supplied
 	// the colliding value itself).
 	@ExceptionHandler(DuplicateUsernameException.class)
+	@ApiResponse(responseCode = "409", description = "Uniform { code, message } error envelope",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onDuplicateUsername(DuplicateUsernameException ex) {
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("duplicate_user_field", ex.getMessage()));
 	}
@@ -80,6 +98,9 @@ class IamExceptionHandler {
 	}
 
 	@ExceptionHandler(UserNotFoundException.class)
+	@ApiResponse(responseCode = "404", description = "Uniform { code, message } error envelope",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onUserNotFound() {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("user_not_found", "User not found"));
 	}
@@ -95,6 +116,9 @@ class IamExceptionHandler {
 	// scoped to this package's advice only, so it cannot swallow an
 	// IllegalArgumentException thrown by some future module's controller.
 	@ExceptionHandler(IllegalArgumentException.class)
+	@ApiResponse(responseCode = "400", description = "Uniform { code, message } error envelope",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onIllegalArgument(IllegalArgumentException ex) {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("invalid_request", ex.getMessage()));
 	}
