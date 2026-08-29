@@ -26,6 +26,7 @@ import com.optiplant.inventory.shared.stock.StockMovementType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -39,12 +40,12 @@ import org.springframework.transaction.annotation.Transactional;
  * with an entry that lives or dies with the balance and Kardex writes in the same transaction
  * (RN-02, RNF-INT-01, CLAUDE.md's synchronous-effects invariant).
  *
- * <p>Deliberately <strong>not</strong> {@code @Service} yet: every constructor dependency here is
- * a port with no adapter in this slice (S1 is domain + application only). Registering this as a
- * bean now would fail {@code ApplicationContextIT}'s full context boot with an unsatisfied
- * dependency. The {@code @Service} annotation is added in S2, alongside the adapters that satisfy
- * these ports.
+ * <p>{@code @Service} restored in S2 (task 2.14): S1 shipped this class unannotated because
+ * every constructor dependency was a port with no adapter yet, and registering it as a bean
+ * would have failed {@code ApplicationContextIT}'s full context boot with an unsatisfied
+ * dependency. Tasks 2.1-2.6 now supply those adapters.
  */
+@Service
 public class StockMovementService implements RegisterStockMovementUseCase {
 
 	private final BranchInventoryRepositoryPort branchInventoryRepository;

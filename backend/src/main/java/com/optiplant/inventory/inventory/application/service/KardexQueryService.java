@@ -7,6 +7,7 @@ import com.optiplant.inventory.inventory.domain.model.DateRange;
 import com.optiplant.inventory.inventory.domain.model.KardexPage;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -14,9 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code ADMIN} reads any branch (contract §5) — a {@code BRANCH_MANAGER} of branch A requesting
  * a movement of branch B simply finds nothing in the filtered result (R-19).
  *
- * <p>Deliberately <strong>not</strong> {@code @Service} yet — see {@code StockMovementService}'s
- * class Javadoc. {@code @Service} is added in S2, alongside the adapter that satisfies this port.
+ * <p>{@code @Service} restored in S2 (task 2.14) — see {@code StockMovementService}'s class
+ * Javadoc for why S1 shipped this unannotated.
  */
+@Service
 public class KardexQueryService implements QueryKardexUseCase {
 
 	private final KardexRepositoryPort kardexRepository;

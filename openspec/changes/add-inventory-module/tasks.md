@@ -53,48 +53,48 @@ ExceptionHandler` already exists in `catalog` — read that counterpart before w
 - [x] 1.18 Run `cd backend && ./mvnw test` (surefire only, no Docker), then `./mvnw verify` for
       `ModuleBoundariesTest` and `SharedIsFrameworkFreeTest`.
 
-## Phase 2 — S2: infrastructure, web and the alert listener (PR2)
+## Phase 2 — S2: infrastructure, web and the alert listener (PR2) — COMPLETE
 
-- [ ] 2.1 Create `inventory/…/out/persistence/BranchInventoryJpaEntity` and `KardexMovementJpaEntity`
+- [x] 2.1 Create `inventory/…/out/persistence/BranchInventoryJpaEntity` and `KardexMovementJpaEntity`
       — FKs mapped as plain `Long` columns, **no `@ManyToOne`**, and **no `@Entity` for
       `products`/`branches`/`users`** (design §6.1). Add `BranchInventoryMapper`, `KardexMovementMapper`.
-- [ ] 2.2 Create `BranchInventorySpringDataRepository` with the lock query annotated
+- [x] 2.2 Create `BranchInventorySpringDataRepository` with the lock query annotated
       `@Lock(LockModeType.PESSIMISTIC_WRITE)`. **No `@QueryHints` lock timeout** — PostgreSQL renders
       no numeric timeout (design §7, verified against `hibernate-core-7.4.5.Final`).
-- [ ] 2.3 Create `KardexMovementSpringDataRepository` — query methods only, no `delete*`, no
+- [x] 2.3 Create `KardexMovementSpringDataRepository` — query methods only, no `delete*`, no
       `@Modifying` update (R-17).
-- [ ] 2.4 Create `ForeignKeyResolverSpringDataRepository` — native `@Query` resolving `external_id
+- [x] 2.4 Create `ForeignKeyResolverSpringDataRepository` — native `@Query` resolving `external_id
       → id` for `products`/`branches`/`users`, the `ProductDescriptor` projection, and the
       active-branch list (design §6.1).
-- [ ] 2.5 Create `BranchInventoryPersistenceAdapter` — `createZeroed` sets `min_stock_threshold`
+- [x] 2.5 Create `BranchInventoryPersistenceAdapter` — `createZeroed` sets `min_stock_threshold`
       **explicitly to 0**, never inheriting the default `10.0000` (design §8, F-3). Then
       `KardexPersistenceAdapter` and `ProductLookupAdapter`.
-- [ ] 2.6 Create `…/out/stock/InventoryStockPresenceAdapter` implementing
+- [x] 2.6 Create `…/out/stock/InventoryStockPresenceAdapter` implementing
       `shared/stock/ProductStockPresencePort` — `catalog`'s base-unit rule stops answering `UNKNOWN`
       — and `…/out/event/SpringAlertEventPublisher` wrapping `ApplicationEventPublisher`.
-- [ ] 2.7 Create `…/in/web/InventoryController` — the six endpoints of contract §6. No `branchId` in
+- [x] 2.7 Create `…/in/web/InventoryController` — the six endpoints of contract §6. No `branchId` in
       path, query or body (RN-14); page size clamped server-side; no numeric id in any payload.
-- [ ] 2.8 Create `InventoryExceptionHandler` mirroring `CatalogExceptionHandler`, mapping every
+- [x] 2.8 Create `InventoryExceptionHandler` mirroring `CatalogExceptionHandler`, mapping every
       contract §7 code — incl. `PessimisticLockingFailureException` → `concurrent_stock_update` 409.
-- [ ] 2.9 Create `notifications/…/out/persistence/`: `SystemAlertJpaEntity`, `AlertMapper`,
+- [x] 2.9 Create `notifications/…/out/persistence/`: `SystemAlertJpaEntity`, `AlertMapper`,
       `AlertSpringDataRepository` (advisory-lock native query + dedup query on
       `branch_id, alert_type, title, is_resolved = false`), `AlertPersistenceAdapter`.
-- [ ] 2.10 Create `notifications/…/in/event/OperationalAlertListener` —
+- [x] 2.10 Create `notifications/…/in/event/OperationalAlertListener` —
       `@TransactionalEventListener(phase = AFTER_COMMIT)` + `@Transactional(propagation = REQUIRES_NEW)`,
       whole body in a `try/catch (RuntimeException)` that logs and returns (P-10, design §6.3).
-- [ ] 2.11 Create `notifications/…/in/web/AlertController` and `NotificationsExceptionHandler`.
-- [ ] 2.12 Edit `iam/infrastructure/config/SecurityConfig` — add the five matchers of design §6.2
+- [x] 2.11 Create `notifications/…/in/web/AlertController` and `NotificationsExceptionHandler`.
+- [x] 2.12 Edit `iam/infrastructure/config/SecurityConfig` — add the five matchers of design §6.2
       before `anyRequest()`. **String literals only**: importing an `inventory` type there creates an
       `iam → inventory` edge and fails `ModuleBoundariesTest`.
-- [ ] 2.13 Verify every contract §7 code is reachable from a controller path — no dead error code;
+- [x] 2.13 Verify every contract §7 code is reachable from a controller path — no dead error code;
       list the path per code in the PR description.
-- [ ] 2.14 Restore `@Service` on the five application services written in S1 —
+- [x] 2.14 Restore `@Service` on the five application services written in S1 —
       `StockMovementService`, `StockQueryService`, `StockThresholdService`, `KardexQueryService`,
       `AlertService`. S1 deliberately shipped them unannotated because their out-ports had no
       adapter yet and registering them as beans broke `ApplicationContextIT`. Once 2.1–2.6 supply
       those adapters the annotation must come back, or the `@Transactional` boundaries declared in
       S1 stay inert and no controller can be injected.
-- [ ] 2.15 Run `./scripts/validar_esquema.sh` (green **and unaffected**), `./mvnw verify`.
+- [x] 2.15 Run `./scripts/validar_esquema.sh` (green **and unaffected**), `./mvnw verify`.
 
 ## Phase 3 — S3: cross-cutting verification and documentation (PR3)
 

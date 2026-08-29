@@ -16,6 +16,7 @@ import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -24,12 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
  * change (R-23); {@link #raise} has no acting user to audit against — it is invoked by the
  * {@code AFTER_COMMIT} listener, not by a request.
  *
- * <p>Deliberately <strong>not</strong> {@code @Service} yet — {@code AlertRepositoryPort} has no
- * adapter in this slice (S1 is domain + application only for both {@code inventory} and
- * {@code notifications}). Registering this as a bean now would fail
- * {@code ApplicationContextIT}'s full context boot with an unsatisfied dependency. The
- * {@code @Service} annotation is added in S2, alongside {@code AlertPersistenceAdapter}.
+ * <p>{@code @Service} restored in S2 (task 2.14), alongside {@code AlertPersistenceAdapter}: S1
+ * shipped this class unannotated because {@code AlertRepositoryPort} had no adapter yet.
  */
+@Service
 public class AlertService implements ManageAlertsUseCase {
 
 	private final AlertRepositoryPort alertRepository;
