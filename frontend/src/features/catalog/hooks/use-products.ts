@@ -17,12 +17,14 @@ import type {
 
 export function useProducts(
   params?: ProductQueryParams,
+  enabled: boolean = true,
 ): UseQueryResult<ProductPageResponse, Error> {
   return useQuery({
     queryKey: queryKeys.products.list(
       (params ?? {}) as Record<string, unknown>,
     ),
     queryFn: () => productService.listProducts(params),
+    enabled,
   })
 }
 

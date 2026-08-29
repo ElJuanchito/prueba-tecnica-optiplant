@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { Link } from '@tanstack/react-router'
-import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent } from '@/components/ui/card.tsx'
 import {
@@ -10,30 +9,27 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs.tsx'
 import { useAuditLogs } from '../hooks/use-audit.ts'
-import { useLogout, useSession } from '../hooks/use-auth.ts'
+import { useSession } from '../hooks/use-auth.ts'
 import { useBranches } from '../hooks/use-branches.ts'
 import { useUsers } from '../hooks/use-users.ts'
 import { AuditTable } from './AuditTable.tsx'
 import { BranchTable } from './BranchTable.tsx'
 import { UserTable } from './UserTable.tsx'
+import { AppLayout } from '@/components/layout/AppLayout.tsx'
 import {
   Activity,
   Boxes,
   Building2,
   FileText,
-  Loader2,
-  LogOut,
-  MapPin,
   Users,
 } from 'lucide-react'
 
 interface IamDashboardProps {
-  onLogout?: () => void
+  onLogout?: (() => void) | undefined
 }
 
 export function IamDashboard({ onLogout }: IamDashboardProps) {
   const sessionQuery = useSession()
-  const logoutMutation = useLogout()
   const session = sessionQuery.data
 
   const role = session?.role ?? 'OPERATOR'
@@ -57,17 +53,6 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
   const totalBranches = branchesQuery.data?.totalElements ?? 0
   const totalAuditLogs = auditQuery.data?.totalElements ?? 0
 
-  const handleLogout = () => {
-    logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        onLogout?.()
-      },
-    })
-  }
-
-  const userInitial = session?.username
-    ? session.username.charAt(0).toUpperCase()
-    : 'U'
   const assignedBranchName = session?.branchName
     ? session.branchCode
       ? `${session.branchName} (${session.branchCode})`
@@ -80,85 +65,21 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
   const canManageUsers = isAdmin || isBranchManager
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
-      {/* Top Corporate Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <Link to="/" className="flex items-center space-x-3">
-              <div className="h-8 w-8 rounded bg-orange-600 flex items-center justify-center text-white font-bold text-sm tracking-tight">
-                OP
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-black text-lg text-slate-900 tracking-tight">
-                    OptiPlant
-                  </span>
-                  <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">
-                    CONSULTORES
-                  </span>
-                </div>
-              </div>
-            </Link>
-
-            <nav className="hidden md:flex items-center space-x-2">
-              <Link
-                to="/"
-                className="text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md"
-              >
-                IAM & Governance
-              </Link>
-              <Link
-                to="/catalog"
-                className="text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-2.5 py-1 rounded-md transition-colors"
-              >
-                Catalog Master Data
-              </Link>
-            </nav>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-2.5 bg-slate-100 px-3 py-1 rounded-md border border-slate-200 text-xs">
-              <div className="h-5 w-5 rounded bg-slate-800 text-white flex items-center justify-center font-bold text-[10px]">
-                {userInitial}
-              </div>
-              <span className="font-medium text-slate-800">
-                {session?.username ?? 'Authenticated User'}
-              </span>
-              <Badge
-                variant={isAdmin ? 'default' : 'secondary'}
-                className="text-[10px] py-0 px-1.5 font-semibold"
-              >
-                {role}
-              </Badge>
-              {session?.branchId && (
-                <span className="flex items-center text-[11px] text-slate-600 pl-1.5 border-l border-slate-300">
-                  <MapPin className="h-3 w-3 mr-1 text-slate-400" />
-                  {assignedBranchName}
-                </span>
-              )}
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              disabled={logoutMutation.isPending}
-              className="text-xs text-slate-600 hover:text-slate-900 border-slate-300 hover:bg-slate-50 cursor-pointer"
-            >
-              {logoutMutation.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-              ) : (
-                <LogOut className="h-3.5 w-3.5 mr-1.5" />
-              )}
-              {logoutMutation.isPending ? 'Cerrando...' : 'Sign Out'}
-            </Button>
+    <AppLayout activeModule="iam" onLogout={onLogout}>
+      <div className="space-y-6">
+        {/* Module Title Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+              {isAdmin ? 'IAM Governance & Security Dashboard' : 'Branch Governance & Operations'}
+            </h1>
+            <p className="text-xs text-slate-600 mt-1">
+              {isAdmin
+                ? 'Multi-branch enterprise identity management, role-based access control (RBAC), and immutable audit trail.'
+                : 'Branch operator management and local audit visibility.'}
+            </p>
           </div>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         {/* Sober Overview Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {canManageUsers ? (
@@ -357,7 +278,7 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
             )}
           </Tabs>
         )}
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   )
 }

@@ -1,15 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { IamDashboard } from '@/features/iam/components/IamDashboard.tsx'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Skeleton } from '@/components/ui/skeleton.tsx'
 import { LoginForm } from '@/features/iam/components/LoginForm.tsx'
 import { useSession } from '@/features/iam/hooks/use-auth.ts'
-import { Skeleton } from '@/components/ui/skeleton.tsx'
-
-import { Permissions } from '@/lib/permissions.ts'
 import { InventoryDashboard } from '@/features/inventory/components/InventoryDashboard.tsx'
 
-export const Route = createFileRoute('/')({
-  component: function IndexPage() {
+import { Permissions } from '@/lib/permissions.ts'
+
+export const Route = createFileRoute('/notifications')({
+  component: function NotificationsPage() {
     const sessionQuery = useSession()
+    const navigate = useNavigate()
 
     if (sessionQuery.isLoading) {
       return (
@@ -25,17 +25,21 @@ export const Route = createFileRoute('/')({
     }
 
     if (sessionQuery.data?.accessToken) {
-      if (Permissions.canAccessIam(sessionQuery.data.role)) {
-        return <IamDashboard />
+      if (!Permissions.canAccessAlerts(sessionQuery.data.role)) {
+        return <InventoryDashboard defaultTab="stock" />
       }
-      return <InventoryDashboard />
+      return <InventoryDashboard defaultTab="alerts" />
     }
 
     return (
       <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-slate-950 text-slate-100 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(#ea580c15_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40" />
+        <div className="absolute inset-0 bg-[radial-gradient(#e11d4815_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40" />
         <div className="w-full max-w-md relative z-10">
-          <LoginForm />
+          <LoginForm
+            onSuccess={() => {
+              navigate({ to: '/notifications' })
+            }}
+          />
         </div>
       </div>
     )

@@ -1,6 +1,3 @@
-import { Link } from '@tanstack/react-router'
-import { Badge } from '@/components/ui/badge.tsx'
-import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent } from '@/components/ui/card.tsx'
 import {
   Tabs,
@@ -8,24 +5,24 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs.tsx'
-import { useLogout, useSession } from '@/features/iam/hooks/use-auth.ts'
+import { AppLayout } from '@/components/layout/AppLayout.tsx'
+import { useSession } from '@/features/iam/hooks/use-auth.ts'
+import { Permissions } from '@/lib/permissions.ts'
 import { useCategories } from '../hooks/use-categories.ts'
 import { useProducts } from '../hooks/use-products.ts'
 import { CategoryTable } from './CategoryTable.tsx'
 import { ProductTable } from './ProductTable.tsx'
-import { Boxes, FolderTree, Loader2, LogOut, MapPin, Scale } from 'lucide-react'
+import { Boxes, FolderTree, Scale } from 'lucide-react'
 
 interface CatalogDashboardProps {
-  onLogout?: () => void
+  onLogout?: (() => void) | undefined
 }
 
 export function CatalogDashboard({ onLogout }: CatalogDashboardProps) {
   const sessionQuery = useSession()
-  const logoutMutation = useLogout()
   const session = sessionQuery.data
 
   const role = session?.role ?? 'OPERATOR'
-  const isAdmin = role === 'ADMIN'
 
   // Metric queries for quick overview
   const productsQuery = useProducts({ page: 0, size: 1, active: 'all' })
@@ -34,105 +31,22 @@ export function CatalogDashboard({ onLogout }: CatalogDashboardProps) {
   const totalProducts = productsQuery.data?.totalElements ?? 0
   const totalCategories = categoriesQuery.data?.totalElements ?? 0
 
-  const handleLogout = () => {
-    logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        onLogout?.()
-      },
-    })
-  }
-
-  const userInitial = session?.username
-    ? session.username.charAt(0).toUpperCase()
-    : 'U'
-  const assignedBranchName = session?.branchName
-    ? session.branchCode
-      ? `${session.branchName} (${session.branchCode})`
-      : session.branchName
-    : session?.branchId
-      ? 'Assigned Branch'
-      : null
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
-      {/* Top Corporate Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <Link to="/" className="flex items-center space-x-3">
-              <div className="h-8 w-8 rounded bg-indigo-600 flex items-center justify-center text-white font-bold text-sm tracking-tight">
-                OP
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-black text-lg text-slate-900 tracking-tight">
-                    OptiPlant
-                  </span>
-                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
-                    CATÁLOGO
-                  </span>
-                </div>
-              </div>
-            </Link>
-
-            <nav className="hidden md:flex items-center space-x-2">
-              <Link
-                to="/catalog"
-                className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md"
-              >
-                Catalog Master Data
-              </Link>
-              <Link
-                to="/"
-                className="text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-2.5 py-1 rounded-md transition-colors"
-              >
-                IAM & Governance
-              </Link>
-            </nav>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-2.5 bg-slate-100 px-3 py-1 rounded-md border border-slate-200 text-xs">
-              <div className="h-5 w-5 rounded bg-slate-800 text-white flex items-center justify-center font-bold text-[10px]">
-                {userInitial}
-              </div>
-              <span className="font-medium text-slate-800">
-                {session?.username ?? 'Authenticated User'}
-              </span>
-              <Badge
-                variant={isAdmin ? 'default' : 'secondary'}
-                className="text-[10px] py-0 px-1.5 font-semibold"
-              >
-                {role}
-              </Badge>
-              {session?.branchId && (
-                <span className="flex items-center text-[11px] text-slate-600 pl-1.5 border-l border-slate-300">
-                  <MapPin className="h-3 w-3 mr-1 text-slate-400" />
-                  {assignedBranchName}
-                </span>
-              )}
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              disabled={logoutMutation.isPending}
-              className="text-xs text-slate-600 hover:text-slate-900 border-slate-300 hover:bg-slate-50 cursor-pointer"
-            >
-              {logoutMutation.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-              ) : (
-                <LogOut className="h-3.5 w-3.5 mr-1.5" />
-              )}
-              {logoutMutation.isPending ? 'Cerrando...' : 'Sign Out'}
-            </Button>
+    <AppLayout activeModule="catalog" onLogout={onLogout}>
+      <div className="space-y-6">
+        {/* Module Title Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+              {Permissions.canManageCatalog(role)
+                ? 'Catalog Master Data Management'
+                : 'Catalog Product & Category Browser'}
+            </h1>
+            <p className="text-xs text-slate-600 mt-1">
+              Centralized agricultural product definitions, taxonomy hierarchies, and multi-unit conversions.
+            </p>
           </div>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         {/* Sober Overview Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card className="bg-white border-slate-200 shadow-2xs">
@@ -230,7 +144,7 @@ export function CatalogDashboard({ onLogout }: CatalogDashboardProps) {
             <CategoryTable currentActorRole={role} />
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   )
 }
