@@ -8,49 +8,49 @@ ExceptionHandler` already exists in `catalog` — read that counterpart before w
 
 ## Phase 1 — S1: `inventory` and `notifications` domain and application (PR1)
 
-- [ ] 1.1 Create `shared/stock/`: `StockMovementType` (the eight `01-init-schema.sql:215-226`
+- [x] 1.1 Create `shared/stock/`: `StockMovementType` (the eight `01-init-schema.sql:215-226`
       literals + `isInbound()` / `requiresSuppliedCost()`), `StockMutationPort`,
       `StockMutationCommand`, `InTransitShiftCommand`, `InTransitDirection` — design §2.1 verbatim.
       Javadoc must state no implementation may be `@Async` or `AFTER_COMMIT` (P-01).
-- [ ] 1.2 Create `shared/alert/`: `OperationalAlertRaised`, `AlertType`, `AlertSeverity`
+- [x] 1.2 Create `shared/alert/`: `OperationalAlertRaised`, `AlertType`, `AlertSeverity`
       (design §2.2, D-1). No `title` field — `notifications` derives it.
-- [ ] 1.3 Create `inventory/domain/model/` value objects `Quantity`, `StockLevel`, `UnitCost`,
+- [x] 1.3 Create `inventory/domain/model/` value objects `Quantity`, `StockLevel`, `UnitCost`,
       `MovementReason`, `DateRange` with the invariants of design §3.1.
-- [ ] 1.4 Create `inventory/domain/model/BranchInventory` and `KardexMovement` (design §3.2).
+- [x] 1.4 Create `inventory/domain/model/BranchInventory` and `KardexMovement` (design §3.2).
       `KardexMovement` gets **no** `with*` method and no setter (R-17).
-- [ ] 1.5 Create the read records: `StockLine`, `StockPage`, `BranchAvailability`, `KardexLine`,
+- [x] 1.5 Create the read records: `StockLine`, `StockPage`, `BranchAvailability`, `KardexLine`,
       `NetworkAvailability`, `KardexPage`, `ThresholdView`, `MovementReceipt`, `ProductDescriptor`,
       `StockThresholdBreach`.
-- [ ] 1.6 Create `inventory/domain/exception/` — the eight of design §3.4. Then
+- [x] 1.6 Create `inventory/domain/exception/` — the eight of design §3.4. Then
       `inventory/domain/service/StockMutationPolicy` (design §3.3): it returns a
       `MovementDraft` carrying both the updated balance and the movement, so neither is obtainable
       without the other (RN-02), plus `AdjustmentPolicy`, `AlertRaisingPolicy`, `BranchScopePolicy`.
-- [ ] 1.7 Create `inventory/application/port/out/`: `BranchInventoryRepositoryPort`,
+- [x] 1.7 Create `inventory/application/port/out/`: `BranchInventoryRepositoryPort`,
       `KardexRepositoryPort`, `ProductLookupPort`, `AlertEventPublisherPort` (design §5.2).
-- [ ] 1.8 Create `inventory/application/port/in/`: `QueryStockUseCase`, `QueryKardexUseCase`,
+- [x] 1.8 Create `inventory/application/port/in/`: `QueryStockUseCase`, `QueryKardexUseCase`,
       `RegisterStockMovementUseCase`, `ManageStockThresholdUseCase` (design §5.1). **Every method
       takes `AuthenticatedPrincipal`, reads included** — the branch is session-derived (RN-14).
-- [ ] 1.9 Create `inventory/application/service/StockMovementService` — `@Transactional`;
+- [x] 1.9 Create `inventory/application/service/StockMovementService` — `@Transactional`;
       lock → policy → save → append → audit → publish, with publish **last and inside** the
       transaction (design §11 trap 4). Audit `branchId` = branch of the mutated resource (T-03).
-- [ ] 1.10 Create `StockQueryService` (`readOnly`, batch product lookup, no N+1; R-01…R-05),
+- [x] 1.10 Create `StockQueryService` (`readOnly`, batch product lookup, no N+1; R-01…R-05),
       `StockThresholdService` (R-14, R-15) and `KardexQueryService` (R-16, R-19).
-- [ ] 1.11 Create `notifications/domain/`: `Alert`, `AlertDedupKey` (its `title()` is the only writer
+- [x] 1.11 Create `notifications/domain/`: `Alert`, `AlertDedupKey` (its `title()` is the only writer
       of the F-1 token) and the two exceptions (design §4).
-- [ ] 1.12 Create `notifications/application/`: `AlertRepositoryPort`, `ManageAlertsUseCase`,
+- [x] 1.12 Create `notifications/application/`: `AlertRepositoryPort`, `ManageAlertsUseCase`,
       `AlertService` (design §5.2, R-21…R-24).
-- [ ] 1.13 Verify neither `domain/` imports Spring or Jakarta:
+- [x] 1.13 Verify neither `domain/` imports Spring or Jakarta:
       `rg "org\.springframework|jakarta\.persistence" inventory/domain notifications/domain`.
-- [ ] 1.14 Unit `*Test` (no Docker) for the value objects — boundaries and rejections (§3.1) — and
+- [x] 1.14 Unit `*Test` (no Docker) for the value objects — boundaries and rejections (§3.1) — and
       `StockMutationPolicyTest`: P-03 cost present-when-forbidden and absent-when-required both
       rejected, R-11 insufficient stock, R-12 outbound valued at `averageCost`, scale 4.
-- [ ] 1.15 Unit `AdjustmentPolicyTest` (R-06: 100 counted 92 → `ADJUSTMENT_NEG` of 8; R-08 equal and
+- [x] 1.15 Unit `AdjustmentPolicyTest` (R-06: 100 counted 92 → `ADJUSTMENT_NEG` of 8; R-08 equal and
       negative counts), `AlertRaisingPolicyTest` (R-20 severity), `BranchScopePolicyTest` (PA-02).
-- [ ] 1.16 Unit `AlertDedupKeyTest` (R-21 token shape, ≤150 chars) and `AlertServiceTest`
+- [x] 1.16 Unit `AlertDedupKeyTest` (R-21 token shape, ≤150 chars) and `AlertServiceTest`
       (dedup hit writes nothing; R-23 double resolve refused).
-- [ ] 1.17 Unit `StockMovementServiceTest` with stubbed ports — audit written on every mutation,
+- [x] 1.17 Unit `StockMovementServiceTest` with stubbed ports — audit written on every mutation,
       event published exactly when `breachesThreshold()` and not otherwise.
-- [ ] 1.18 Run `cd backend && ./mvnw test` (surefire only, no Docker), then `./mvnw verify` for
+- [x] 1.18 Run `cd backend && ./mvnw test` (surefire only, no Docker), then `./mvnw verify` for
       `ModuleBoundariesTest` and `SharedIsFrameworkFreeTest`.
 
 ## Phase 2 — S2: infrastructure, web and the alert listener (PR2)
@@ -88,7 +88,13 @@ ExceptionHandler` already exists in `catalog` — read that counterpart before w
       `iam → inventory` edge and fails `ModuleBoundariesTest`.
 - [ ] 2.13 Verify every contract §7 code is reachable from a controller path — no dead error code;
       list the path per code in the PR description.
-- [ ] 2.14 Run `./scripts/validar_esquema.sh` (green **and unaffected**), `./mvnw verify`.
+- [ ] 2.14 Restore `@Service` on the five application services written in S1 —
+      `StockMovementService`, `StockQueryService`, `StockThresholdService`, `KardexQueryService`,
+      `AlertService`. S1 deliberately shipped them unannotated because their out-ports had no
+      adapter yet and registering them as beans broke `ApplicationContextIT`. Once 2.1–2.6 supply
+      those adapters the annotation must come back, or the `@Transactional` boundaries declared in
+      S1 stay inert and no controller can be injected.
+- [ ] 2.15 Run `./scripts/validar_esquema.sh` (green **and unaffected**), `./mvnw verify`.
 
 ## Phase 3 — S3: cross-cutting verification and documentation (PR3)
 
