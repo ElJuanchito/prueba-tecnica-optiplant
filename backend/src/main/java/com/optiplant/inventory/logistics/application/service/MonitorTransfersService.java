@@ -7,6 +7,7 @@ import com.optiplant.inventory.logistics.domain.model.ActiveTransferPage;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import com.optiplant.inventory.shared.security.Role;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>{@code @Service} restored in S2 (task 2.7) — see {@code RequestTransferService}'s class
  * Javadoc ({@code transfers} module).
  */
+@Service
 public class MonitorTransfersService implements MonitorTransfersUseCase {
 
 	private final TransferMonitorReadPort monitorReadPort;

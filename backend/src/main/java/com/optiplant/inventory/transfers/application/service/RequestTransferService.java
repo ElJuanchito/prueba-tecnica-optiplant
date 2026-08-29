@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  * registering it now would fail {@code ApplicationContextIT}'s full context boot, exactly as in
  * {@code add-inventory-module} S1.
  */
+@Service
 public class RequestTransferService implements RequestTransferUseCase {
 
 	private final TransferRepositoryPort transferRepository;

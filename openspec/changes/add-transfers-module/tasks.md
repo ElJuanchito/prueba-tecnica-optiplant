@@ -50,38 +50,38 @@ SpringDataRepository → PersistenceAdapter → Controller → ExceptionHandler`
 
 ## Phase 2 — S2: infrastructure, web and the scheduler (PR2)
 
-- [ ] 2.1 Create `TransferJpaEntity` + `TransferItemJpaEntity` (`@OneToMany(cascade = ALL,
+- [x] 2.1 Create `TransferJpaEntity` + `TransferItemJpaEntity` (`@OneToMany(cascade = ALL,
       orphanRemoval = true)`), FKs as plain `Long` columns, **no `@ManyToOne`**, **no `@Entity` over
       `products`/`branches`/`users`** (§6.1). `TransferMapper` is the only place the F-1 token is
       written or read, and it sets `updated_at` explicitly (no trigger exists).
-- [ ] 2.2 Create `TransferSpringDataRepository` with `findByExternalId` annotated
+- [x] 2.2 Create `TransferSpringDataRepository` with `findByExternalId` annotated
       `@Lock(LockModeType.PESSIMISTIC_WRITE)` — **no `@QueryHints` lock timeout**, PostgreSQL renders
       none (§6.1) — plus `TransferReferenceSpringDataRepository`, `TransferReferenceAdapter` and
       `TransferPersistenceAdapter`, whose `create` takes the advisory lock, derives the next
       `TRF-<yyyy>-<nnnn>` and inserts, in that order (§6.2, D-3).
-- [ ] 2.3 Edit `inventory`'s `StockMutationAdapter` to translate its domain exceptions into
+- [x] 2.3 Edit `inventory`'s `StockMutationAdapter` to translate its domain exceptions into
       `StockMutationRejectedException` (D-4) and add `InventoryOutboundValuationAdapter` implementing
       `OutboundValuationPort` over `idx_kardex_reference` (D-2). `inventory`'s own use cases and
       exception handler stay untouched.
-- [ ] 2.4 Create `SpringTransferAlertPublisher`, `TransferController` (contract §6's seven endpoints —
+- [x] 2.4 Create `SpringTransferAlertPublisher`, `TransferController` (contract §6's seven endpoints —
       no `branchId` anywhere (RN-14), oversized page **rejected** not clamped (R-00), no numeric id and
       no raw F-1 token) and `TransfersExceptionHandler` (scoped by `basePackages`, every §7 code it
       owns, incl. `insufficient_stock` and `concurrent_transfer_update`, both 409).
-- [ ] 2.5 Create `logistics/…/out/persistence/`: `LogisticsRouteJpaEntity`, `LogisticsRouteMapper`,
+- [x] 2.5 Create `logistics/…/out/persistence/`: `LogisticsRouteJpaEntity`, `LogisticsRouteMapper`,
       `LogisticsRouteSpringDataRepository`, `LogisticsReferenceSpringDataRepository`,
       `LogisticsRoutePersistenceAdapter`, and `TransferProjectionSpringDataRepository extends
       Repository<…>` with §6.3's three native queries plus `TransferMonitorReadAdapter` — **no
       `@Modifying`, no `save`/`delete`, no `@Entity` over `transfers`** (P-12 must be structural).
-- [ ] 2.6 Create `RouteLeadTimeAdapter` (empty for a missing or inactive route, R-24),
+- [x] 2.6 Create `RouteLeadTimeAdapter` (empty for a missing or inactive route, R-24),
       `SpringLogisticsAlertPublisher`, `LogisticsController`, `LogisticsExceptionHandler`,
       `TransferDelayScheduler` and `LogisticsSchedulingConfig` carrying `@EnableScheduling` (**never**
       on `InventoryApplication`); `detect()` is `readOnly` and publishes last, or `AFTER_COMMIT` never
       fires (§6.5, D-5).
-- [ ] 2.7 Restore `@Service` on the nine application services from S1, or their `@Transactional`
+- [x] 2.7 Restore `@Service` on the nine application services from S1, or their `@Transactional`
       boundaries stay inert. Then edit `iam/…/config/SecurityConfig` with §6.4's four matcher groups,
       approval/rejection/cancellation **before** the general `/api/transfers/**` — **string literals
       only**, since importing a `transfers` type creates an `iam → transfers` edge.
-- [ ] 2.8 Verify every §7 code is reachable from a controller path (no dead code; list the path per
+- [x] 2.8 Verify every §7 code is reachable from a controller path (no dead code; list the path per
       code in the PR description), then `./scripts/validar_esquema.sh` (green **and unaffected**) and
       `./mvnw verify`.
 

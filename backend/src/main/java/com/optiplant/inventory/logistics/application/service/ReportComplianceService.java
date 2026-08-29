@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>{@code @Service} restored in S2 (task 2.7) — see {@code RequestTransferService}'s class
  * Javadoc ({@code transfers} module).
  */
+@Service
 public class ReportComplianceService implements ReportComplianceUseCase {
 
 	private final TransferMonitorReadPort monitorReadPort;
