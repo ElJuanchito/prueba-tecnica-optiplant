@@ -73,8 +73,9 @@ public class KardexPersistenceAdapter implements KardexRepositoryPort {
 		Instant from = range == null ? null : range.from();
 		Instant to = range == null ? null : range.to();
 
-		Page<KardexMovementJpaEntity> page = kardexRepository.search(branchId, productId, filter.movementType(), from,
-				to, PageRequest.of(filter.page(), filter.size()));
+		String movementType = filter.movementType() == null ? null : filter.movementType().name();
+		Page<KardexMovementJpaEntity> page = kardexRepository.search(branchId, productId, movementType, from, to,
+				PageRequest.of(filter.page(), filter.size()));
 
 		List<KardexMovementJpaEntity> rows = page.getContent();
 		Map<Long, UUID> productExternalIds = resolveExternalIds(

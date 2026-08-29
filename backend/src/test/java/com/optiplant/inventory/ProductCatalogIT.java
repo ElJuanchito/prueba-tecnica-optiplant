@@ -1,7 +1,13 @@
 package com.optiplant.inventory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.optiplant.inventory.catalog.application.port.in.ManageProductsUseCase;
+import com.optiplant.inventory.catalog.domain.exception.BaseUnitChangeRejectedException;
+import com.optiplant.inventory.catalog.domain.exception.BaseUnitChangeRejectedException.Reason;
+import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
+import com.optiplant.inventory.shared.security.Role;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -41,12 +47,18 @@ class ProductCatalogIT {
 	private static final String SEED_PASSWORD = "Password123!";
 	private static final UUID SEED_ACTIVE_CATEGORY = UUID.fromString("c0000000-0000-0000-0000-000000000001");
 	private static final UUID SEED_NPK_PRODUCT = UUID.fromString("d0000000-0000-0000-0000-000000000001");
+	// admin.corp's real external_id (02-seed-data.sql) — AuditWritePort resolves userId to a real
+	// `users` row, so a fabricated UUID.randomUUID() fails with "No user found" (tasks.md 3.7).
+	private static final UUID SEED_ADMIN_USER = UUID.fromString("e0000000-0000-0000-0000-000000000001");
 
 	@LocalServerPort
 	private int port;
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private ManageProductsUseCase manageProductsUseCase;
 
 	private RestClient restClient;
 	private String adminToken;
@@ -298,6 +310,54 @@ class ProductCatalogIT {
 		assertThat((BigDecimal) rows.get(0).get("current_stock")).isEqualByComparingTo("25.5000");
 		assertThat(((Number) rows.get(1).get("branch_id")).longValue()).isEqualTo(2L);
 		assertThat((BigDecimal) rows.get(1).get("current_stock")).isEqualByComparingTo("10.0000");
+	}
+
+	// --- 3.7 (regression: catalog's StockPresence.UNKNOWN is now a real answer) --------------
+
+	/**
+	 * tasks.md 3.7 — task 2.6 turned {@code catalog}'s fail-closed {@code StockPresence.UNKNOWN}
+	 * placeholder into a real {@code InventoryStockPresenceAdapter} answer. No controller reaches
+	 * {@code ManageProductsUseCase.changeBaseUnit} (PA-08, DT-07), so the only way to prove this
+	 * regression is exercising the real, fully-wired Spring bean directly — before 2.6 this call
+	 * always refused with {@code PRECONDITION_UNVERIFIABLE} (the bean's {@code Optional} was
+	 * empty); now, for a product with no stock and no Kardex history, it must actually succeed.
+	 */
+	@Test
+	void changeBaseUnitNowSucceedsForAnUntouchedProductWithTheRealStockPresenceAdapterWired() {
+		String sfx = suffix();
+		ProductDetailBody product = createOk(new CreateBody("BASEUNIT-OK-" + sfx, "Sin stock " + sfx, null,
+				SEED_ACTIVE_CATEGORY, "KG", null)).getBody();
+		assertThat(product).isNotNull();
+		AuthenticatedPrincipal admin = new AuthenticatedPrincipal(SEED_ADMIN_USER, "admin.corp", Role.ADMIN, null);
+
+		var updated = manageProductsUseCase.changeBaseUnit(admin, product.externalId(), "LITRO");
+
+		assertThat(updated.baseUnit().value()).isEqualTo("LITRO");
+		ProductDetailBody fetched = get(product.externalId());
+		assertThat(fetched.baseUnit()).isEqualTo("LITRO");
+	}
+
+	/**
+	 * Same regression, opposite branch of {@code InventoryStockPresenceAdapter}'s predicate: a
+	 * product with a non-zero {@code branch_inventories} balance must still be refused with
+	 * {@code HAS_HISTORY} — the adapter answering for real must not accidentally fail open.
+	 */
+	@Test
+	void changeBaseUnitIsStillRefusedForAProductWithBranchInventoryHistory() {
+		String sfx = suffix();
+		ProductDetailBody product = createOk(new CreateBody("BASEUNIT-HIST-" + sfx, "Con stock " + sfx, null,
+				SEED_ACTIVE_CATEGORY, "KG", null)).getBody();
+		assertThat(product).isNotNull();
+		Long productId = jdbcTemplate.queryForObject("SELECT id FROM products WHERE external_id = ?", Long.class,
+				product.externalId());
+		jdbcTemplate.update("INSERT INTO branch_inventories (branch_id, product_id, current_stock) VALUES (1, ?, ?)",
+				productId, new BigDecimal("5.0000"));
+		AuthenticatedPrincipal admin = new AuthenticatedPrincipal(SEED_ADMIN_USER, "admin.corp", Role.ADMIN, null);
+
+		assertThatThrownBy(() -> manageProductsUseCase.changeBaseUnit(admin, product.externalId(), "LITRO"))
+				.isInstanceOfSatisfying(BaseUnitChangeRejectedException.class,
+						ex -> assertThat(ex.reason()).isEqualTo(Reason.HAS_HISTORY));
+		assertThat(get(product.externalId()).baseUnit()).isEqualTo("KG");
 	}
 
 	// --- helpers ---------------------------------------------------------

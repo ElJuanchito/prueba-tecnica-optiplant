@@ -101,26 +101,26 @@ ExceptionHandler` already exists in `catalog` — read that counterpart before w
 Testcontainers `*IT` only for invariants that can break the system; the rest is S1 units plus one
 smoke assertion per controller group.
 
-- [ ] 3.1 `KardexAtomicityIT` — R-18: the Kardex replayed from `INITIAL_LOAD` equals `current_stock`;
+- [x] 3.1 `KardexAtomicityIT` — R-18: the Kardex replayed from `INITIAL_LOAD` equals `current_stock`;
       a forced failure after the balance update leaves neither the balance change nor the Kardex row
       (T-01). Copy the `AuditAtomicityFixtureService` fixture pattern.
-- [ ] 3.2 `InventoryBranchIsolationIT` — R-01, R-19, R-24. **Name it exactly this**:
+- [x] 3.2 `InventoryBranchIsolationIT` — R-01, R-19, R-24. **Name it exactly this**:
       `BranchIsolationIT` already exists from `iam` and would collide (design §11 trap 1).
-- [ ] 3.3 `StockValidationIT` — R-11 / RN-01 / T-02: two concurrent write-offs serialize on
+- [x] 3.3 `StockValidationIT` — R-11 / RN-01 / T-02: two concurrent write-offs serialize on
       `FOR UPDATE`; one succeeds, stock never negative, loser gets `insufficient_stock` 409, no 500.
-- [ ] 3.4 `StockAlertIT` — R-20, R-21, R-24: the alert exists after commit, is not duplicated across
+- [x] 3.4 `StockAlertIT` — R-20, R-21, R-24: the alert exists after commit, is not duplicated across
       repeated breaching movements, is not auto-resolved when stock recovers (R-22), and a forced
       listener failure does not roll back its movement.
-- [ ] 3.5 `InventoryApiSmokeIT` — one assertion per read endpoint (`/stock`, `/stock/{id}/network`,
+- [x] 3.5 `InventoryApiSmokeIT` — one assertion per read endpoint (`/stock`, `/stock/{id}/network`,
       `/kardex`, `/alerts`) plus the threshold `PUT`: status, page-envelope shape, no numeric id.
-- [ ] 3.6 `InventoryRbacIT` — the §5 matrix: `OPERATOR` denied adjustments/Kardex/alerts and allowed
+- [x] 3.6 `InventoryRbacIT` — the §5 matrix: `OPERATOR` denied adjustments/Kardex/alerts and allowed
       write-offs (R-13); corporate `ADMIN` gets `branch_context_required` on a mutation (PA-02).
-- [ ] 3.7 Confirm `ProductCatalogIT`'s base-unit expectation still holds now that 2.6 turned
+- [x] 3.7 Confirm `ProductCatalogIT`'s base-unit expectation still holds now that 2.6 turned
       `catalog`'s fail-closed `UNKNOWN` into a real `ProductStockPresencePort` answer.
-- [ ] 3.8 Register **DT-09** in `docs/deuda_tecnica.md` (Spanish; DT-01…DT-08 are taken) — alert
+- [x] 3.8 Register **DT-09** in `docs/deuda_tecnica.md` (Spanish; DT-01…DT-08 are taken) — alert
       dedup has no schema uniqueness, the advisory lock guards it, repayment is the partial unique
       index (design §9). Add both the summary-table row and the detail section.
-- [ ] 3.9 Confirm `/v3/api-docs` documents all eight operations with statuses and the
+- [x] 3.9 Confirm `/v3/api-docs` documents all eight operations with statuses and the
       `{ code, message }` envelope (RNF-API-01).
-- [ ] 3.10 Run `python3 scripts/validar_trazabilidad.py` (green; no identifier added),
+- [x] 3.10 Run `python3 scripts/validar_trazabilidad.py` (green; no identifier added),
       `./scripts/validar_esquema.sh` (green, unchanged) and `cd backend && ./mvnw verify`.
