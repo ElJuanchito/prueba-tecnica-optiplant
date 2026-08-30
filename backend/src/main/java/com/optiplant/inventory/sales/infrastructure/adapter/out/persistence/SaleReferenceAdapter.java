@@ -76,6 +76,6 @@ public class SaleReferenceAdapter implements SaleReferencePort {
 	@Override
 	public Optional<ServiceUserSubject> findExternalCredentialSubject(UUID userExternalId) {
 		return referenceRepository.findExternalCredentialSubject(userExternalId)
-				.map(row -> new ServiceUserSubject(row.getUserExternalId(), row.getUsername(), Role.valueOf(row.getRole())));
+				.map(row -> new ServiceUserSubject(row.getExternalId(), row.getUsername(), Role.valueOf(row.getRole())));
 	}
 }

@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestrates voiding/cancelling a sale (CU-VEN-03, design §5, §7).
@@ -64,6 +65,7 @@ public class VoidSaleService implements VoidSaleUseCase {
 	}
 
 	@Override
+	@Transactional
 	public SaleDetail voidSale(AuthenticatedPrincipal actor, UUID saleExternalId, VoidSaleCommand command) {
 		Sale sale = saleRepository.lockForUpdate(saleExternalId)
 				.orElseThrow(() -> new SaleNotFoundException(saleExternalId));
