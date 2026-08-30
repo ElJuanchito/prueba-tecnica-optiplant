@@ -15,13 +15,13 @@ import com.optiplant.inventory.shared.audit.AuditWritePort;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 /**
  * Orchestrates price list administration (RF-VEN-03, design §3, §5).
  * Writes are audited synchronously in the same transaction (R-17, T-03).
- *
- * <p>Unannotated in S1 (task 1.11, design §12 trap 2); {@code @Service} is restored in S2.
  */
+@Service
 public class ManagePriceListsService implements ManagePriceListsUseCase {
 
 	private final PriceListRepositoryPort priceListRepository;

@@ -21,13 +21,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 /**
  * Orchestrates price entry management and supersession (R-15, R-16, design §3, §5).
  * Writes are audited synchronously in the same transaction (R-17, T-03).
- *
- * <p>Unannotated in S1 (task 1.11, design §12 trap 2); {@code @Service} is restored in S2.
  */
+@Service
 public class ManagePricesService implements ManagePricesUseCase {
 
 	private final PriceListRepositoryPort priceListRepository;

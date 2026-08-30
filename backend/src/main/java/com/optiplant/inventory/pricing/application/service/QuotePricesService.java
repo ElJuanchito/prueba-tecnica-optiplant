@@ -17,12 +17,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 /**
  * Orchestrates price quote calculations (CU-VEN-02 preload, design §3, §5).
- *
- * <p>Unannotated in S1 (task 1.11, design §12 trap 2); {@code @Service} is restored in S2.
  */
+@Service
 public class QuotePricesService implements QuotePricesUseCase {
 
 	private final PriceListRepositoryPort priceListRepository;

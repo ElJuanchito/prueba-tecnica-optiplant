@@ -21,6 +21,8 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.stereotype.Service;
+
 /**
  * Orchestrates voiding/cancelling a sale (CU-VEN-03, design §5, §7).
  *
@@ -34,9 +36,8 @@ import java.util.UUID;
  *   <li>Persists status change to {@code CANCELLED} and reasons in notes (F-3).</li>
  *   <li>Records audit entry on the sale's branch (T-03).</li>
  * </ol>
- *
- * <p>Unannotated in S1 (task 1.11, design §12 trap 2); {@code @Service} is restored in S2.
  */
+@Service
 public class VoidSaleService implements VoidSaleUseCase {
 
 	private final SaleRepositoryPort saleRepository;

@@ -108,6 +108,16 @@ class SecurityConfig {
 						.requestMatchers("/api/transfers/**").authenticated()
 						.requestMatchers("/api/logistics/routes/**").hasAuthority("ADMIN")
 						.requestMatchers("/api/logistics/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
+						// Precios y ventas (add-sales-module design §6.4). Los matchers de lectura
+						// y cotización van ANTES de la regla general de administración de precios
+						// (PA-03: todo vendedor necesita consultar precios vigentes); la anulación
+						// de ventas exige ADMIN/BRANCH_MANAGER y va ANTES de la regla general de
+						// ventas (R-22). String literals únicamente para evitar iam -> pricing/sales.
+						.requestMatchers(HttpMethod.POST, "/api/pricing/quotes").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/pricing/**").authenticated()
+						.requestMatchers("/api/pricing/**").hasAuthority("ADMIN")
+						.requestMatchers("/api/sales/*/cancellation").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
+						.requestMatchers("/api/sales/**").authenticated()
 						.anyRequest().authenticated())
 				.build();
 	}

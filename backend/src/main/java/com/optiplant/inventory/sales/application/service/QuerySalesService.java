@@ -13,6 +13,7 @@ import com.optiplant.inventory.shared.price.PriceResolutionPort;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import com.optiplant.inventory.shared.security.Role;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 /**
  * Orchestrates querying sales, receipts and filtered summaries (CU-VEN-04, HU-VEN-04, design §5).
@@ -20,9 +21,8 @@ import java.util.UUID;
  * <p>Enforces branch scoping (R-25): {@code ADMIN} can query network-wide; other roles see only
  * sales belonging to their session branch. A sale belonging to another branch is answered with
  * {@link SaleNotFoundException} (404) to prevent enumeration (RNF-SEC-03).
- *
- * <p>Unannotated in S1 (task 1.11, design §12 trap 2); {@code @Service} is restored in S2.
  */
+@Service
 public class QuerySalesService implements QuerySalesUseCase {
 
 	private final SaleRepositoryPort saleRepository;

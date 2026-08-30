@@ -42,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.stereotype.Service;
+
 /**
  * Orchestrates sale registration (CU-VEN-01, CU-EXT-02, design §5, §7, §11).
  *
@@ -59,9 +61,8 @@ import java.util.UUID;
  *   <li>Stock decrement via {@link StockMutationPort} in lock order without supplied cost (P-01, P-03, R-03).</li>
  *   <li>Audit log recording on the sale's branch (T-03).</li>
  * </ol>
- *
- * <p>Unannotated in S1 (task 1.11, design §12 trap 2); {@code @Service} is restored in S2.
  */
+@Service
 public class RegisterSaleService implements RegisterSaleUseCase {
 
 	private final SaleRepositoryPort saleRepository;

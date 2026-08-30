@@ -1,5 +1,6 @@
 package com.optiplant.inventory.inventory.infrastructure.adapter.out.stock;
 
+import com.optiplant.inventory.inventory.application.port.out.AlertEventPublisherPort;
 import com.optiplant.inventory.inventory.application.port.out.BranchInventoryRepositoryPort;
 import com.optiplant.inventory.inventory.application.port.out.KardexRepositoryPort;
 import com.optiplant.inventory.inventory.application.port.out.KardexRepositoryPort.NewMovement;
@@ -11,6 +12,7 @@ import com.optiplant.inventory.inventory.domain.model.KardexMovement;
 import com.optiplant.inventory.inventory.domain.model.Quantity;
 import com.optiplant.inventory.inventory.domain.model.StockLevel;
 import com.optiplant.inventory.inventory.domain.model.UnitCost;
+import com.optiplant.inventory.inventory.domain.service.AlertRaisingPolicy;
 import com.optiplant.inventory.inventory.domain.service.StockMutationPolicy;
 import com.optiplant.inventory.inventory.domain.service.StockMutationPolicy.MovementDraft;
 import com.optiplant.inventory.shared.stock.InTransitDirection;
@@ -43,11 +45,13 @@ public class StockMutationAdapter implements StockMutationPort {
 
 	private final BranchInventoryRepositoryPort branchInventoryRepository;
 	private final KardexRepositoryPort kardexRepository;
+	private final AlertEventPublisherPort alertEventPublisherPort;
 
 	public StockMutationAdapter(BranchInventoryRepositoryPort branchInventoryRepository,
-			KardexRepositoryPort kardexRepository) {
+			KardexRepositoryPort kardexRepository, AlertEventPublisherPort alertEventPublisherPort) {
 		this.branchInventoryRepository = branchInventoryRepository;
 		this.kardexRepository = kardexRepository;
+		this.alertEventPublisherPort = alertEventPublisherPort;
 	}
 
 	@Override
@@ -59,8 +63,10 @@ public class StockMutationAdapter implements StockMutationPort {
 					new Quantity(command.quantity()), suppliedCost, command.referenceType(), command.referenceId(),
 					command.notes(), command.actorUserExternalId(), Instant.now());
 
-			branchInventoryRepository.save(draft.updated());
+			BranchInventory saved = branchInventoryRepository.save(draft.updated());
 			KardexMovement movement = kardexRepository.append(toNewMovement(draft.movement()));
+			AlertRaisingPolicy.evaluate(saved, movement.externalId())
+					.ifPresent(b -> alertEventPublisherPort.publish(AlertRaisingPolicy.render(b)));
 			return movement.externalId();
 		} catch (InsufficientStockException ex) {
 			throw new StockMutationRejectedException(Reason.INSUFFICIENT_STOCK, ex.getMessage());
