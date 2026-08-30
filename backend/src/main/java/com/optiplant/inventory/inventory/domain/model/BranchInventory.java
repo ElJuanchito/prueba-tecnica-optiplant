@@ -9,8 +9,9 @@ import java.util.UUID;
  * in one branch. Immutable — a mutation is a {@code with*} copy.
  *
  * <p>Carries {@code external_id} only, never the internal numeric {@code id}. {@code averageCost}
- * is read and stamped on outbound movements but never recalculated here — RN-10's inbound
- * revaluation belongs to CU-COM-04, out of scope for this change.
+ * is stamped on outbound movements and recalculated on a {@code PURCHASE_RECEIPT} by
+ * {@link com.optiplant.inventory.inventory.domain.service.WeightedAverageCostPolicy} (RN-10),
+ * applied through {@link #withStockAndCost(StockLevel, UnitCost, Instant)}.
  */
 public record BranchInventory(UUID externalId, UUID branchExternalId, UUID productExternalId,
 		StockLevel currentStock, StockLevel reservedStock, StockLevel inTransitStock, StockLevel minStockThreshold,
@@ -26,10 +27,18 @@ public record BranchInventory(UUID externalId, UUID branchExternalId, UUID produ
 		return currentStock.value().compareTo(minStockThreshold.value()) <= 0;
 	}
 
-	/** Replaces the current balance; {@code lastUpdatedAt} advances to {@code at}. */
+	/** Replaces the current balance, leaving {@code averageCost} untouched; {@code lastUpdatedAt}
+	 *  advances to {@code at}. The seven movement types other than {@code PURCHASE_RECEIPT} use this. */
 	public BranchInventory withStock(StockLevel newStock, Instant at) {
+		return withStockAndCost(newStock, averageCost, at);
+	}
+
+	/** Replaces the current balance and the average cost together (RN-10, design §2.4);
+	 *  {@code lastUpdatedAt} advances to {@code at}. Only a {@code PURCHASE_RECEIPT} passes a
+	 *  {@code newAverageCost} different from the current one. */
+	public BranchInventory withStockAndCost(StockLevel newStock, UnitCost newAverageCost, Instant at) {
 		return new BranchInventory(externalId, branchExternalId, productExternalId, newStock, reservedStock,
-				inTransitStock, minStockThreshold, averageCost, at);
+				inTransitStock, minStockThreshold, newAverageCost, at);
 	}
 
 	/** Replaces the minimum-stock threshold; {@code lastUpdatedAt} advances to {@code at} (R-14). No
