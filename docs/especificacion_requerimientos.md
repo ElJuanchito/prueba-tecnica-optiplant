@@ -120,6 +120,7 @@ Los requerimientos funcionales se encuentran organizados por módulos de dominio
 | **RF-VEN-03** | Listas de Precios y Descuentos | El sistema debe administrar múltiples listas de precios (minorista, mayorista, institucional), cada una con su precio vigente por producto —corporativo o con excepción por sucursal— y su tope máximo de descuento. Al registrar una venta debe precargar el precio vigente resuelto y rechazar todo descuento que supere el tope de la lista aplicada. |
 | **RF-VEN-04** | Comprobantes y Registro de Venta | El sistema debe generar un comprobante/resumen digital de la transacción con identificador único y permitir su consulta posterior. |
 | **RF-VEN-05** | Anulación de Venta | El sistema debe permitir anular una venta confirmada, reintegrando el stock a la sucursal mediante un movimiento de reversión en el Kardex, sin eliminar el movimiento original. |
+| **RF-VEN-06** | Gestión de Clientes | El sistema debe permitir registrar, editar, deshabilitar y consultar clientes con sus datos de contacto e identificación tributaria, asociarlos opcionalmente a las ventas comerciales y consultar su histórico de compras. |
 
 > **Soporte de modelo de datos (RF-VEN-03):** resuelto en la versión 1.2. El modelo incorpora `price_lists` (lista con su tope de descuento) y `price_list_items` (precio por producto, con excepción opcional por sucursal y vigencia acotada por `valid_from` / `valid_to`). La venta registra la lista aplicada y cada ítem congela el precio de lista del momento, haciendo auditable el descuento. Ver [`diagrama_er.md`](./diagrama_er.md), sección 1.1.
 
@@ -172,7 +173,7 @@ Los requerimientos funcionales se encuentran organizados por módulos de dominio
 | Prioridad | Requerimientos | Criterio |
 | :--- | :--- | :--- |
 | **Must** | RF-SEG-01, RF-SEG-02, RF-SEG-03, RF-INV-01 … RF-INV-08, RF-COM-01, RF-COM-02, RF-COM-04, RF-VEN-01, RF-VEN-02, RF-VEN-04, RF-TRA-01 … RF-TRA-05, RF-LOG-01, RF-DSH-01, RF-DSH-02, RF-DSH-04 | Sin ellos el sistema no cumple su objetivo: no hay inventario confiable, ni trazabilidad, ni ciclo de transferencia completo. |
-| **Should** | RF-SEG-04, RF-COM-03, RF-COM-05, RF-COM-06, RF-VEN-03, RF-VEN-05, RF-TRA-06, RF-LOG-02, RF-LOG-03, RF-LOG-04, RF-DSH-03, RF-DSH-05, RF-VAL-01, RF-VAL-02 | Aportan valor operativo y de control significativos, pero el núcleo funciona sin ellos. |
+| **Should** | RF-SEG-04, RF-COM-03, RF-COM-05, RF-COM-06, RF-VEN-03, RF-VEN-05, RF-VEN-06, RF-TRA-06, RF-LOG-02, RF-LOG-03, RF-LOG-04, RF-DSH-03, RF-DSH-05, RF-VAL-01, RF-VAL-02 | Aportan valor operativo y de control significativos, pero el núcleo funciona sin ellos. |
 | **Could** | RF-EXT-01, RF-EXT-02 | El propio enunciado los declara opcionales; se diseñan los contratos aunque no se integre un sistema real. |
 
 ---
@@ -333,4 +334,4 @@ Las decisiones de postergar trabajo y las limitaciones conocidas del diseño se 
 | ID | Asunto | Impacto | Estado |
 | :--- | :--- | :--- | :--- |
 | **OI-01** | RF-VEN-03 requería una entidad de precios de venta que el modelo no contemplaba: `products` no poseía columna de precio y no existía tabla de listas de precios. | Bloqueaba la implementación del módulo de ventas. | **Resuelto en v1.2.** Se incorporaron `price_lists` y `price_list_items` al esquema, a las tres representaciones del diagrama E-R y a los datos semilla. Verificado contra PostgreSQL 17. |
-| **OI-02** | El enunciado menciona perfiles de clientes asociados a listas de precios. El modelo actual registra el cliente de forma desnormalizada en la venta (`customer_name`, `customer_tax_id`) sin entidad propia. | Impide segmentar precios por cliente; no impide operar. | **Aceptado para v1.** La segmentación por cliente se declara fuera de alcance (sección 1.3). |
+| **OI-02** | El enunciado menciona perfiles de clientes asociados a listas de precios. | Impide segmentar precios por cliente; no impide operar. | **Parcialmente resuelto.** Se incorporó la entidad `customers` con gestión CRUD, asociación opcional en ventas e histórico de compras. La segmentación de listas de precios por cliente se mantiene fuera de alcance (sección 1.3). |

@@ -9,6 +9,7 @@
 | 1.3 | 2026-08-29 | Se salda la exposición HTTP del cambio de unidad base: `inventory` ya implementa `ProductStockPresencePort`, así que se publicó `PATCH /api/catalog/products/{externalId}/base-unit` con sus dos códigos de error distintos y la transacción única ya verificada. |
 | 1.4 | 2026-08-29 | Se agrega un ítem surgido de la verificación del módulo `inventory`: el tope de tamaño de página se clampea en `catalog` y se rechaza en el resto de los módulos. |
 | 1.5 | 2026-08-30 | Se agrega un ítem surgido del diseño del módulo `sales`: la asignación de `invoice_number` sin una secuencia de base de datos. |
+| 1.6 | 2026-08-30 | Se salda el ítem «Cliente sin entidad propia en las ventas»: el sub-dominio de clientes dentro de `sales` incorpora la tabla `customers`, el CRUD, la asociación opcional a la venta con congelado del nombre y la identificación, y el histórico de compras por cliente. La segmentación de listas de precios por cliente se mantiene fuera de alcance. |
 
 ---
 
@@ -41,7 +42,7 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-01** | Versionado del esquema con Flyway | Alta | Aceptada | Al montar el backend |
 | **DT-02** | Datos de demostración acoplados al bootstrap del esquema | Media | Aceptada | Al montar el backend |
 | **DT-03** | Rangos históricos de precio solapados no restringidos por el esquema | Media | Aceptada | Antes de habilitar la edición de precios históricos |
-| **DT-04** | Cliente sin entidad propia en las ventas | Baja | Aceptada | Si se requiere historial o segmentación por cliente |
+| **DT-04** | Cliente sin entidad propia en las ventas | Baja | Resuelta | Saldada en la versión 1.6: entidad `customers` con CRUD, asociación e histórico |
 | **DT-05** | La coherencia del precio congelado sólo se verifica en el dominio | Baja | Aceptada | Ninguno; se mitiga con pruebas |
 | **DT-06** | Tipografía inconsistente en el diagrama E-R | Baja | Aceptada | Si se rehace el diagrama E-R |
 | **DT-07** | Exposición HTTP del cambio de unidad base, diferida | Baja | **Resuelta (2026-08-29)** | Ninguno — pagada al construir `inventory` |
@@ -184,19 +185,19 @@ RN-16 · RF-VEN-03 · sección 1.1 de [`diagrama_er.md`](./diagrama_er.md).
 
 ### DT-04 — Cliente sin entidad propia en las ventas
 
-**Severidad:** Baja · **Estado:** Aceptada
+**Severidad:** Baja · **Estado:** Resuelta (versión 1.6)
 
-#### Situación actual
-`sales` guarda el cliente de forma desnormalizada en `customer_name` y `customer_tax_id`. No existe tabla de clientes.
+#### Situación original
+`sales` guardaba el cliente de forma desnormalizada en `customer_name` y `customer_tax_id`, sin tabla de clientes. No había historial de compras por cliente y el mismo cliente podía quedar escrito de varias formas distintas.
 
-#### Consecuencia
-No hay historial de compras por cliente, no se puede segmentar una lista de precios por cliente y el mismo cliente puede quedar escrito de varias formas distintas. Es la razón por la que `RF-VEN-03` se materializa como listas de precios por sucursal y no por perfil de cliente.
+#### Cómo se saldó
+El sub-dominio de clientes dentro del módulo `sales` (sin módulo nuevo) incorpora la tabla `customers`, un CRUD completo (`RF-VEN-06`, `CU-VEN-05`), la columna `sales.customer_id` como clave foránea nullable, la asociación opcional al registrar la venta y el histórico de compras por cliente con aislamiento por sucursal (`CU-VEN-06`). El nombre y la identificación tributaria se congelan en la venta al confirmarla, así que una edición posterior del cliente no altera un comprobante pasado. Un índice único parcial sobre `customers.tax_id` impide la duplicación por identificación tributaria.
 
-#### Por qué se aceptó
-El dominio de la prueba es la gestión de inventario multi-sucursal, no el CRM. La segmentación por cliente está declarada explícitamente fuera de alcance.
+#### Qué se mantiene fuera de alcance
+La **segmentación de listas de precios por perfil de cliente**. `RF-VEN-03` sigue materializándose como listas por sucursal; el asunto abierto OI-02 queda parcialmente resuelto por esta razón.
 
 #### Referencias
-Asunto abierto OI-02 de [`especificacion_requerimientos.md`](./especificacion_requerimientos.md).
+`RF-VEN-06` · `CU-VEN-05` · `CU-VEN-06` · asunto abierto OI-02 de [`especificacion_requerimientos.md`](./especificacion_requerimientos.md) · `openspec/changes/archive/` (cambio `add-sales-customers`).
 
 ---
 

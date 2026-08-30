@@ -191,12 +191,14 @@ controller calling another controller's static, were both rejected.
 literals only, `hasAuthority` never `hasRole`:
 
 ```java
-.requestMatchers(HttpMethod.GET, "/api/sales/customers/**").authenticated()
-.requestMatchers("/api/sales/customers/**").hasAuthority("ADMIN")
+.requestMatchers(HttpMethod.PATCH, "/api/sales/customers/*/disable", "/api/sales/customers/*/enable").hasAuthority("ADMIN")
+.requestMatchers("/api/sales/customers", "/api/sales/customers/**").authenticated()
 ```
 
-GET covers list, detail and the history sub-resource (§6: every role reads); `POST`/`PUT`/`PATCH` fall
-to the `ADMIN` line (D-5). `/api/sales/*/cancellation` matches one segment, so it cannot collide.
+Only deactivation/reactivation is `ADMIN`-only (D-5); every authenticated internal role may `GET`,
+`POST` and `PUT` a customer — the specific `PATCH` matcher precedes the catch-all so it is not
+shadowed. `/api/sales/*/cancellation` matches one path segment, so it cannot collide with
+`/api/sales/customers/**`.
 
 ## 8. Schema, validator and ER document
 

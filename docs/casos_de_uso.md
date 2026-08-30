@@ -72,6 +72,8 @@ Materializa el requerimiento **RNF-SEC-01** (control de acceso basado en roles) 
 | Gestionar sucursales | ✅ | ❌ | ❌ | ❌ |
 | Gestionar usuarios | ✅ | ⚠️ *(solo `OPERATOR` de su sucursal)* | ❌ | ❌ |
 | Gestionar catálogo maestro y unidades de medida | ✅ | ❌ | ❌ | ❌ |
+| Registrar y editar clientes | ✅ | ✅ | ✅ | ❌ |
+| Activar / desactivar clientes | ✅ | ❌ | ❌ | ❌ |
 | Consultar stock de la sucursal propia | ✅ | ✅ | ✅ | ✅ |
 | Consultar stock de otras sucursales (lectura) | ✅ | ✅ | ✅ | ✅ |
 | Mutar stock de otra sucursal | ✅ | ❌ | ❌ | ❌ |
@@ -135,6 +137,8 @@ Materializa el requerimiento **RNF-SEC-01** (control de acceso basado en roles) 
 | **CU-VEN-02** | Aplicar lista de precios y descuentos | Operador de Inventario | RF-VEN-03 |
 | **CU-VEN-03** | Anular venta y revertir stock | Gerente de Sucursal | RF-VEN-05 |
 | **CU-VEN-04** | Consultar comprobante y detalle de venta | Operador de Inventario | RF-VEN-04 |
+| **CU-VEN-05** | Administrar clientes (registrar, editar; desactivar solo Administrador) | Operador de Inventario | RF-VEN-06, RF-VAL-02 |
+| **CU-VEN-06** | Consultar histórico de compras de un cliente | Operador de Inventario | RF-VEN-06 |
 
 ### 3.5. Módulo de Transferencias entre Sucursales
 
@@ -196,7 +200,7 @@ flowchart LR
         SEG["Seguridad e Identidad<br/>CU-SEG-01 .. CU-SEG-04"]
         INV["Inventario y Catálogo<br/>CU-INV-01 .. CU-INV-08"]
         COM["Compras<br/>CU-COM-01 .. CU-COM-05"]
-        VEN["Ventas<br/>CU-VEN-01 .. CU-VEN-04"]
+        VEN["Ventas<br/>CU-VEN-01 .. CU-VEN-06"]
         TRA["Transferencias<br/>CU-TRA-01 .. CU-TRA-06"]
         LOG["Logística<br/>CU-LOG-01 .. CU-LOG-03"]
         DSH["Dashboard y Analítica<br/>CU-DSH-01 .. CU-DSH-03"]
@@ -582,6 +586,7 @@ Se especifican en formato extendido los casos de uso que concentran la complejid
 | RF-VEN-03 | CU-VEN-02 |
 | RF-VEN-04 | CU-VEN-04 |
 | RF-VEN-05 | CU-VEN-03 |
+| RF-VEN-06 | CU-VEN-05, CU-VEN-06, CU-VEN-01 |
 | RF-TRA-01 | CU-TRA-01 |
 | RF-TRA-02 | CU-TRA-02 |
 | RF-TRA-03 | CU-TRA-03 |

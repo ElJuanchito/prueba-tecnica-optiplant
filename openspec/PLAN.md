@@ -17,10 +17,12 @@ actualiza al cerrar cada cambio SDD.
 | `notifications` | `notifications/` | Archivado | `CU-ALE-01`, `CU-ALE-02` |
 | `transfers` | `transfers/` | Archivado | `CU-TRA-01` … `CU-TRA-06` |
 | `logistics` | `logistics/` | Archivado | `CU-LOG-01` … `CU-LOG-03` |
-| `sales` | `sales/` | Archivado | `CU-VEN-01`, `CU-VEN-03`, `CU-VEN-04`, `CU-EXT-02` |
+| `sales` | `sales/` | Archivado | `CU-VEN-01`, `CU-VEN-03`, `CU-VEN-04`, `CU-VEN-05`, `CU-VEN-06`, `CU-EXT-02` |
 | `pricing` | `pricing/` | Archivado | `CU-VEN-02` |
 
-**28 de 37 casos de uso entregados.** Ocho paquetes de módulo de diez.
+**30 de 39 casos de uso entregados.** Ocho paquetes de módulo de diez. El sub-dominio
+de clientes (`CU-VEN-05`, `CU-VEN-06`) se construyó dentro de `sales` en el cambio
+`add-sales-customers`, sin paquete de módulo nuevo.
 
 Los ciclos SDD cerrados viven en `openspec/changes/archive/`, cada uno con su contrato,
 diseño, tareas, informe de verificación e informe de archivado.

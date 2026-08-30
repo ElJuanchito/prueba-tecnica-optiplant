@@ -190,13 +190,12 @@ and `docs/diagrams/casos_de_uso_04_ventas.excalidraw` gains the two use cases. E
 
 ## 6. Authorization matrix
 
-Extends §5 of the archived sales contract; cross-checked against `docs/casos_de_uso.md` §2.3, whose
-nearest analogue for organisation-global master data is *«Gestionar catálogo maestro»* — `ADMIN` only.
+Extends §5 of the archived sales contract; cross-checked against `docs/casos_de_uso.md` §2.3.
 Enforced with `hasAuthority()`.
 
 | Operation | `ADMIN` | `BRANCH_MANAGER` | `OPERATOR` | External | Branch rule |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| Create / edit customer (CU-VEN-05) | ✅ | ❌ | ❌ | ❌ | none — organisation-global, like `price_lists` |
+| Create / edit customer (CU-VEN-05) | ✅ | ✅ | ✅ | ❌ | none — the customer carries no branch |
 | Deactivate / reactivate customer | ✅ | ❌ | ❌ | ❌ | none |
 | Read / list / search customers | ✅ | ✅ | ✅ | ❌ | none — every seller must find the customer to bill |
 | Associate a customer with a sale (CU-VEN-01) | ✅\* | ✅ | ✅ | ✅ | the **sale's** branch is still session-derived (RN-14); the customer carries no branch |
@@ -204,11 +203,15 @@ Enforced with `hasAuthority()`.
 
 **\*** A corporate `ADMIN` still cannot register a sale — `403 branch_context_required` (§5 of the
 archived contract) — and this change does not soften it. **No endpoint here accepts a branch** in path,
-query or body. The new §2.3 row *«Gestionar clientes»* is `✅ ❌ ❌ ❌`.
+query or body. The new §2.3 rows are *«Registrar y editar clientes»* `✅ ✅ ✅ ❌` and
+*«Activar/desactivar clientes»* `✅ ❌ ❌ ❌`.
 
-**D-5 — writes are `ADMIN`-only, reads open to every authenticated role.** Identical reasoning to
-PA-03 for price administration: §2.3 has no row for it, the nearest analogue is `ADMIN`-only, and an
-`OPERATOR` who cannot look a customer up cannot bill one. Reversal: one security matcher.
+**D-5 — creating and editing a customer is open to every authenticated internal role; only
+deactivation/reactivation is `ADMIN`-only.** The role follows *who performs the operation in the real
+workflow*, not an analogy to other master data: the `BRANCH_MANAGER` administers the branch and the
+`OPERATOR` is the one making the sale with a new customer at the counter, so both must be able to
+register that customer. `ADMIN` is reserved for what is pure master-data administration — pruning a
+customer out of use — not for what is part of daily selling. Reversal: one security matcher.
 
 ---
 
@@ -327,8 +330,11 @@ Two slices (`openspec/PLAN.md`). Every item is a command to run or a file to ope
 ## 12. Open questions
 
 **None blocking.** Six decisions were taken here rather than escalated — D-1 (no new module), D-2, D-3
-(optional-but-unique tax id), D-4 (inactive customers refused on new sales), D-5 (`ADMIN`-only writes),
-D-6 (`disable`/`enable`) — each with its reversal cost stated in place.
+(optional-but-unique tax id), D-4 (inactive customers refused on new sales), D-5 (create/edit open to
+every internal role, deactivation `ADMIN`-only), D-6 (`disable`/`enable`) — each with its reversal cost
+stated in place. D-5 was revised by the project owner after the first draft: the role follows who
+performs the operation in practice (the `OPERATOR` bills the new customer, the `BRANCH_MANAGER`
+administers the branch), not an analogy to other master data.
 
 - **D-2 — `sales.customer_id` is NULLABLE and the association stays optional.** Making it mandatory
   would break every existing flow at once: `CU-VEN-01`'s walk-in sale, `CU-EXT-02`'s external POS

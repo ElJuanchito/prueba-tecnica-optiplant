@@ -31,16 +31,16 @@ Every task names its files and the rule it satisfies. `docs/` is Spanish; code a
 
 ## S2 — integration tests and documentary close
 
-- [ ] **2.1** `CustomerSaleAssociationIT` — R-C6 / T-C1: FK **and** snapshot written together; editing the customer afterwards leaves the stored receipt unchanged (RNF-INT-01).
-- [ ] **2.2** `CustomerSalesHistoryIT` — R-C12 / R-C13 / R-C14 / R-C15: branch A sees only its own sales and matching aggregates; `ADMIN` sees both; unknown customer `404`; customer with no sales `200` empty; a null-`customer_id` sale appears in `GET /api/sales` and in no history.
-- [ ] **2.3** `CustomerCrudIT` — R-C2 / R-C4 / R-C7 / §6: duplicate tax id `409`; two null tax ids accepted; `OPERATOR` refused a write, allowed a read; disabled customer refused on a new sale but keeps their history; no `DELETE` route.
-- [ ] **2.4** `docs/especificacion_requerimientos.md`: `RF-VEN-06` in the `RF` table **and** in the Should priority table (§4).
-- [ ] **2.5** `docs/casos_de_uso.md`: `CU-VEN-05`, `CU-VEN-06` in the catalogue; §6 matrix row `| RF-VEN-06 | CU-VEN-05, CU-VEN-06, CU-VEN-01 |`; §2.3 «Gestionar clientes» row `✅ ❌ ❌ ❌`; line 199 `CU-VEN-01 .. CU-VEN-04` → `.. CU-VEN-06`.
-- [ ] **2.6** `docs/historias_de_usuario.md`: `HU-VEN-05`. `docs/diagrams/casos_de_uso_04_ventas.excalidraw`: the two use cases.
-- [ ] **2.7** `docs/deuda_tecnica.md`: DT-04 **Aceptada → Resuelta**, ficha pointing at this change; OI-02 (SRS §5) partially resolved, price-list segmentation still out of scope. Neither cited by a retired id in any changelog line (§3.4).
-- [ ] **2.8** `openspec/PLAN.md`: `sales` row gains `CU-VEN-05`, `CU-VEN-06`.
-- [ ] **2.9** `python3 scripts/validar_trazabilidad.py` green, reporting **43 RF · 34 RNF · 17 RN · 39 CU · 12 DT**.
-- [ ] **2.10** `./scripts/validar_esquema.sh` green; `cd backend && ./mvnw verify` green.
+- [x] **2.1** `CustomerSaleAssociationIT` — R-C6 / T-C1: FK **and** snapshot written together; editing the customer afterwards leaves the stored receipt unchanged (RNF-INT-01).
+- [x] **2.2** `CustomerSalesHistoryIT` — R-C12 / R-C13 / R-C14 / R-C15: branch A sees only its own sales and matching aggregates; `ADMIN` sees both; unknown customer `404`; customer with no sales `200` empty; a null-`customer_id` sale appears in `GET /api/sales` and in no history.
+- [x] **2.3** `CustomerCrudIT` — R-C2 / R-C4 / R-C7 / §6: duplicate tax id `409`; two null tax ids accepted; every internal role may create/edit; only ADMIN may deactivate; disabled customer refused on a new sale but keeps their history; no `DELETE` route.
+- [x] **2.4** `docs/especificacion_requerimientos.md`: `RF-VEN-06` in the `RF` table **and** in the Should priority table (§4).
+- [x] **2.5** `docs/casos_de_uso.md`: `CU-VEN-05`, `CU-VEN-06` in the catalogue; §6 matrix row `| RF-VEN-06 | CU-VEN-05, CU-VEN-06, CU-VEN-01 |`; §2.3 dos filas: «Registrar y editar clientes» `✅ ✅ ✅ ❌` y «Activar / desactivar clientes» `✅ ❌ ❌ ❌`; line 199 `CU-VEN-01 .. CU-VEN-04` → `.. CU-VEN-06`.
+- [x] **2.6** `docs/historias_de_usuario.md`: `HU-VEN-05`. `docs/diagrams/casos_de_uso_04_ventas.excalidraw`: the two use cases.
+- [x] **2.7** `docs/deuda_tecnica.md`: DT-04 **Aceptada → Resuelta**, ficha pointing at this change; OI-02 (SRS §5) partially resolved, price-list segmentation still out of scope. Neither cited by a retired id in any changelog line (§3.4).
+- [x] **2.8** `openspec/PLAN.md`: `sales` row gains `CU-VEN-05`, `CU-VEN-06`.
+- [x] **2.9** `python3 scripts/validar_trazabilidad.py` green, reporting **43 RF · 34 RNF · 17 RN · 39 CU · 12 DT**.
+- [x] **2.10** `./scripts/validar_esquema.sh` green; `cd backend && ./mvnw verify` green.
 
 **PR boundary:** S1 and S2 are one chained PR each — S1 is not mergeable without S2's documentary
 close, but is independently reviewable. Docker-requiring tests end in `IT`; never `Test`.
