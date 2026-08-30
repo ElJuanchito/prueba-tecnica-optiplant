@@ -8,6 +8,7 @@
 | 1.2 | 2026-08-29 | Se agrega un ítem surgido del diseño del módulo `inventory`: la deduplicación de alertas operativas sin restricción de unicidad en el esquema. |
 | 1.3 | 2026-08-29 | Se salda la exposición HTTP del cambio de unidad base: `inventory` ya implementa `ProductStockPresencePort`, así que se publicó `PATCH /api/catalog/products/{externalId}/base-unit` con sus dos códigos de error distintos y la transacción única ya verificada. |
 | 1.4 | 2026-08-29 | Se agrega un ítem surgido de la verificación del módulo `inventory`: el tope de tamaño de página se clampea en `catalog` y se rechaza en el resto de los módulos. |
+| 1.5 | 2026-08-30 | Se agrega un ítem surgido del diseño del módulo `sales`: la asignación de `invoice_number` sin una secuencia de base de datos. |
 
 ---
 
@@ -48,6 +49,7 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-09** | Deduplicación de alertas operativas sin restricción de unicidad en el esquema | Media | Aceptada | Cuando llegue el próximo cambio de esquema |
 | **DT-10** | El tope de tamaño de página se resuelve distinto en `catalog` que en el resto de los módulos | Baja | Aceptada | Cuando se pueda ajustar el frontend de `catalog` en el mismo cambio |
 | **DT-11** | `transfer_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
+| **DT-12** | `sales.invoice_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 
 ---
 
@@ -374,6 +376,32 @@ Cuando llegue el próximo cambio de esquema:
 
 #### Referencias
 RF-TRA-01 · HU-TRA-01 · `openspec/changes/add-transfers-module/design.md` §6.2, §9, D-3.
+
+---
+
+### DT-12 — `sales.invoice_number` se asigna sin una secuencia de base de datos
+
+**Severidad:** Baja · **Estado:** Aceptada · **Esfuerzo estimado:** trivial · **Origen:** diseño del módulo `sales`
+
+#### Situación actual
+`sales` no tiene ninguna columna de secuencia ni un `SEQUENCE` de PostgreSQL que numere `invoice_number` (`01-init-schema.sql`, §2.5 de `openspec/changes/archive/2026-08-30-add-sales-module/contract.md`). RF-VEN-01 y RF-VEN-02 exigen un número correlativo único legible con el formato `VEN-<yyyy>-<nnnn>`. `SalePersistenceAdapter.create` lo resuelve sin tocar el esquema —únicamente cuando la orden no suministra un número del punto de venta externo—: toma un bloqueo consultivo de transacción de PostgreSQL con alcance anual (`pg_advisory_xact_lock(hashtext('sale_invoice_number:' || :year))`) como primera sentencia, calcula `MAX(...) + 1` sobre los números internos ya asignados ese año y recién entonces inserta —la misma técnica que **DT-11** utiliza para numerar transferencias y **DT-09** para deduplicar alertas—.
+
+#### Por qué se aceptó
+El bloqueo consultivo serializa correctamente las creaciones concurrentes dentro de un mismo año sin requerir una migración de esquema (§2.5 prohíbe deliberadamente tocar `01-init-schema.sql` en este cambio). La restricción `UNIQUE` existente sobre `sales.invoice_number` queda como última línea de defensa (T-07): si alguna vez el bloqueo se omitiera, el `INSERT` duplicado fallaría en la base en vez de corromper silenciosamente la numeración. Además, el adaptador externo de punto de venta (CU-EXT-02) rechaza números con el prefijo reservado `VEN-\d{4}-\d+` para no alterar el cálculo del correlativo interno.
+
+#### Por qué es deuda
+La corrección depende enteramente de que **todo** escritor futuro de `sales` tome el mismo bloqueo consultivo antes de calcular el siguiente número correlativo. Un segundo camino de escritura —una migración de datos, un script administrativo o un proceso por lotes que inserte directamente en `sales`— que no respete ese orden puede colisionar con una creación concurrente y verse rechazado por la restricción `UNIQUE` en vez de recibir un número válido. No hay una secuencia de base de datos que garantice la asignación correlativa de forma estructural.
+
+#### Plan de pago
+Cuando llegue el próximo cambio de esquema:
+
+1. `CREATE SEQUENCE sale_invoice_number_seq;`.
+2. Retirar `pg_advisory_xact_lock` y la consulta `MAX(...)` de `SalePersistenceAdapter.create`.
+3. Retirar el guardián de prefijo reservado en `InvoiceNumber`.
+4. Formatear `invoice_number` a partir de `nextval('sale_invoice_number_seq')` combinado con el año en curso, conservando el formato `VEN-<yyyy>-<nnnn>` que el frontend y los clientes externos ya asumen.
+
+#### Referencias
+RF-VEN-01 · RF-VEN-02 · RF-EXT-02 · `openspec/changes/archive/2026-08-30-add-sales-module/design.md` §6.3, §10, D-5.
 
 ---
 

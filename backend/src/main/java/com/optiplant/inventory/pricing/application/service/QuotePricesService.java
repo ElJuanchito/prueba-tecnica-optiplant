@@ -18,11 +18,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestrates price quote calculations (CU-VEN-02 preload, design §3, §5).
  */
 @Service
+@Transactional(readOnly = true)
 public class QuotePricesService implements QuotePricesUseCase {
 
 	private final PriceListRepositoryPort priceListRepository;

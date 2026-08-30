@@ -3,7 +3,7 @@
 Estado del trabajo pendiente y las decisiones de planificación que lo gobiernan. Se
 actualiza al cerrar cada cambio SDD.
 
-**Última actualización:** 2026-08-29
+**Última actualización:** 2026-08-30
 
 ---
 
@@ -17,8 +17,10 @@ actualiza al cerrar cada cambio SDD.
 | `notifications` | `notifications/` | Archivado | `CU-ALE-01`, `CU-ALE-02` |
 | `transfers` | `transfers/` | Archivado | `CU-TRA-01` … `CU-TRA-06` |
 | `logistics` | `logistics/` | Archivado | `CU-LOG-01` … `CU-LOG-03` |
+| `sales` | `sales/` | Archivado | `CU-VEN-01`, `CU-VEN-03`, `CU-VEN-04`, `CU-EXT-02` |
+| `pricing` | `pricing/` | Archivado | `CU-VEN-02` |
 
-**23 de 37 casos de uso entregados.** Seis paquetes de módulo de diez.
+**28 de 37 casos de uso entregados.** Ocho paquetes de módulo de diez.
 
 Los ciclos SDD cerrados viven en `openspec/changes/archive/`, cada uno con su contrato,
 diseño, tareas, informe de verificación e informe de archivado.
@@ -27,21 +29,19 @@ diseño, tareas, informe de verificación e informe de archivado.
 
 ## 2. Lo que falta
 
-Tres cambios SDD que crean los cuatro paquetes de módulo restantes y cubren los 14
+Dos cambios SDD que crean los dos paquetes de módulo restantes y cubren los 9
 casos de uso pendientes.
 
 | Orden | Cambio SDD | Paquetes que crea | Casos de uso |
 | :--- | :--- | :--- | :--- |
-| 1 | `add-sales-module` | `sales`, `pricing` | `CU-VEN-01` … `CU-VEN-04`, `CU-EXT-02` |
-| 2 | `add-purchases-module` | `purchases` | `CU-COM-01` … `CU-COM-05` |
-| 3 | `add-analytics-module` | `analytics` | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
+| 1 | `add-purchases-module` | `purchases` | `CU-COM-01` … `CU-COM-05` |
+| 2 | `add-analytics-module` | `analytics` | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
 
-### Por qué `sales` va primero
+### Por qué `purchases` va primero
 
-`transfers` probó que `shared/stock/StockMutationPort` estaba bien planteado y su
-implementación es correcta. `sales` es el segundo consumidor del puerto: crea
-movimientos por venta, y la máquina de transiciones de `transfers` ya validó el flujo
-de puertos y la atomicidad de saldo + Kardex.
+`purchases` completa el circuito de abastecimiento y la valoración por costo promedio
+ponderado (RN-10). Con él, las tablas del sistema quedan con datos de ventas y de compras
+reales para el tablero analítico.
 
 ### Por qué `analytics` va último
 

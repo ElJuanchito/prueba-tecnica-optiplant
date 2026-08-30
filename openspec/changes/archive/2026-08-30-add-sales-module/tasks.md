@@ -95,26 +95,26 @@ never invent it.
 
 **Docker-needing classes end in `IT`, never `Test`** — `*IT` is reserved for invariants that can break the system.
 
-- [ ] 3.1 `SaleRegistrationAtomicityIT` — R-03/R-04/R-08/T-01: stock decremented and one `SALE` Kardex row per item with
+- [x] 3.1 `SaleRegistrationAtomicityIT` — R-03/R-04/R-08/T-01: stock decremented and one `SALE` Kardex row per item with
       `reference_type = 'SALE_INVOICE'`; a forced mid-sale failure leaves sale, balances and Kardex untouched; a sale
       crossing the threshold raises one `STOCK_MINIMUM` alert per product (P-08); insufficient stock writes nothing.
-- [ ] 3.2 `SaleConcurrencyIT` — R-05/T-02: two concurrent sales over the last unit, exactly one succeeds, stock never
+- [x] 3.2 `SaleConcurrencyIT` — R-05/T-02: two concurrent sales over the last unit, exactly one succeeds, stock never
       negative, no `500`; two simultaneous registrations yield two distinct `invoice_number` values (D-5).
-- [ ] 3.3 `SaleVoidReversalIT` — R-19/R-20/R-21: the void adds an `ADJUSTMENT_POS` with `reference_type = 'SALE_VOID'`
+- [x] 3.3 `SaleVoidReversalIT` — R-19/R-20/R-21: the void adds an `ADJUSTMENT_POS` with `reference_type = 'SALE_VOID'`
       at the original unit cost, the original `SALE` row survives, replaying the Kardex reproduces `current_stock`, and
       `average_cost` is unmoved.
-- [ ] 3.4 `SaleBranchIsolationIT` (**name it exactly this**; three `*BranchIsolationIT` already exist) — R-25/§5: branch
+- [x] 3.4 `SaleBranchIsolationIT` (**name it exactly this**; three `*BranchIsolationIT` already exist) — R-25/§5: branch
       A gets `sale_not_found` for branch B's sale, an `OPERATOR` is refused the void, and a corporate `ADMIN`
       registering gets `branch_context_required`.
-- [ ] 3.5 `PriceResolutionIT` — R-11/R-16/RN-16: a branch exception beats corporate, the seeded expired row
+- [x] 3.5 `PriceResolutionIT` — R-11/R-16/RN-16: a branch exception beats corporate, the seeded expired row
       (`50000000-…-0010`) is ignored, and a second current price is refused with `price_period_conflict`.
-- [ ] 3.6 `ExternalSaleIntakeIT` — R-26/R-27/R-29: the POS path produces the same rows as the internal path, ignores any
+- [x] 3.6 `ExternalSaleIntakeIT` — R-26/R-27/R-29: the POS path produces the same rows as the internal path, ignores any
       branch in the body, and refuses a retried receipt number, an absent key and an unknown key.
-- [ ] 3.7 `SalesApiSmokeIT` and `PricingApiSmokeIT` — one assertion per read endpoint and price-list CRUD: status,
+- [x] 3.7 `SalesApiSmokeIT` and `PricingApiSmokeIT` — one assertion per read endpoint and price-list CRUD: status,
       page-envelope shape, aggregates present, no numeric id, no raw `VOID_REASON` token (RNF-API-02).
-- [ ] 3.8 Register **DT-12** in `docs/deuda_tecnica.md` (Spanish; DT-01…DT-11 are taken) — no sequence behind
+- [x] 3.8 Register **DT-12** in `docs/deuda_tecnica.md` (Spanish; DT-01…DT-11 are taken) — no sequence behind
       `sales.invoice_number`, repayment `CREATE SEQUENCE sale_invoice_number_seq` — with both the summary-table row and
-      the detail section. Update `openspec/PLAN.md` §1–§2 and confirm `/v3/api-docs` documents all fourteen operations
+      the detail section. Update `openspec/PLAN.md` §1–§2 and confirm `/v3/api-docs` documents all fifteen operations
       (RNF-API-01).
-- [ ] 3.9 Run `python3 scripts/validar_trazabilidad.py` (green; §3 expects no `docs/` requirement edit),
+- [x] 3.9 Run `python3 scripts/validar_trazabilidad.py` (green; §3 expects no `docs/` requirement edit),
       `./scripts/validar_esquema.sh` (green, unchanged) and `cd backend && ./mvnw verify`.

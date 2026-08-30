@@ -45,7 +45,7 @@ public interface SaleReferenceSpringDataRepository extends Repository<SaleJpaEnt
 			@Param("unitOfMeasureExternalId") UUID unitOfMeasureExternalId);
 
 	@Query(value = """
-			SELECT u.external_id AS userExternalId, u.username AS username, u.role AS role
+			SELECT u.external_id AS externalId, u.username AS username, u.role AS role
 			FROM users u
 			WHERE u.external_id = :userExternalId AND u.is_active = TRUE
 			""", nativeQuery = true)
@@ -116,7 +116,7 @@ public interface SaleReferenceSpringDataRepository extends Repository<SaleJpaEnt
 	}
 
 	interface ServiceUserSubjectRow {
-		UUID getUserExternalId();
+		UUID getExternalId();
 
 		String getUsername();
 

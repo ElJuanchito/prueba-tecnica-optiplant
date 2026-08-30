@@ -16,12 +16,14 @@ import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestrates price list administration (RF-VEN-03, design §3, §5).
  * Writes are audited synchronously in the same transaction (R-17, T-03).
  */
 @Service
+@Transactional
 public class ManagePriceListsService implements ManagePriceListsUseCase {
 
 	private final PriceListRepositoryPort priceListRepository;

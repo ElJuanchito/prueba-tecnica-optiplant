@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestrates sale registration (CU-VEN-01, CU-EXT-02, design §5, §7, §11).
@@ -86,6 +87,7 @@ public class RegisterSaleService implements RegisterSaleUseCase {
 	}
 
 	@Override
+	@Transactional
 	public SaleDetail register(AuthenticatedPrincipal actor, RegisterSaleCommand command) {
 		UUID branchExternalId = SaleAccessPolicy.resolveRegistrationBranch(actor);
 

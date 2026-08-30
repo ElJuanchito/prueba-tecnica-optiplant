@@ -14,6 +14,7 @@ import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import com.optiplant.inventory.shared.security.Role;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestrates querying sales, receipts and filtered summaries (CU-VEN-04, HU-VEN-04, design §5).
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Service;
  * {@link SaleNotFoundException} (404) to prevent enumeration (RNF-SEC-03).
  */
 @Service
+@Transactional(readOnly = true)
 public class QuerySalesService implements QuerySalesUseCase {
 
 	private final SaleRepositoryPort saleRepository;
