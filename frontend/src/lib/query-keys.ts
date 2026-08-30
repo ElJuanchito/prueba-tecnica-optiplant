@@ -106,4 +106,33 @@ export const queryKeys = {
         [...queryKeys.logistics.compliance.lists(), filters] as const,
     },
   },
+  sales: {
+    all: ['sales'] as const,
+    lists: () => [...queryKeys.sales.all, 'list'] as const,
+    list: (filters: Record<string, unknown>) =>
+      [...queryKeys.sales.lists(), filters] as const,
+    detail: (externalId: string) =>
+      [...queryKeys.sales.all, 'detail', externalId] as const,
+    byInvoice: (invoiceNumber: string) =>
+      [...queryKeys.sales.all, 'by-invoice', invoiceNumber] as const,
+  },
+  pricing: {
+    all: ['pricing'] as const,
+    priceLists: {
+      all: ['pricing', 'priceLists'] as const,
+      lists: () => [...queryKeys.pricing.priceLists.all, 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.pricing.priceLists.lists(), filters] as const,
+      detail: (externalId: string) =>
+        [...queryKeys.pricing.priceLists.all, 'detail', externalId] as const,
+    },
+    prices: {
+      all: ['pricing', 'prices'] as const,
+      byPriceList: (
+        priceListExternalId: string,
+        filters: Record<string, unknown>,
+      ) =>
+        [...queryKeys.pricing.prices.all, priceListExternalId, filters] as const,
+    },
+  },
 } as const

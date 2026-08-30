@@ -8,6 +8,7 @@ import { AlertBadge } from '@/features/notifications/components/AlertBadge.tsx'
 import { LanguageSwitcher, useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   ArrowLeftRight,
+  BadgePercent,
   BellRing,
   Boxes,
   ChevronLeft,
@@ -18,6 +19,7 @@ import {
   Package,
   Route as RouteIcon,
   ShieldCheck,
+  ShoppingCart,
   X,
 } from 'lucide-react'
 
@@ -30,6 +32,8 @@ interface AppLayoutProps {
     | 'catalog'
     | 'transfers'
     | 'logistics'
+    | 'sales'
+    | 'pricing'
     | undefined
   onLogout?: (() => void) | undefined
 }
@@ -159,6 +163,28 @@ export function AppLayout({
       badge: isAdmin ? 'Network' : 'Monitor',
       color: 'text-emerald-600 group-hover:text-emerald-700',
       activeBg: 'bg-emerald-50 text-emerald-900 border-emerald-200',
+    },
+    {
+      id: 'sales',
+      label: t('nav.sales'),
+      shortLabel: 'Sales',
+      path: '/sales',
+      icon: ShoppingCart,
+      visible: Permissions.canAccessSales(role),
+      badge: null,
+      color: 'text-teal-600 group-hover:text-teal-700',
+      activeBg: 'bg-teal-50 text-teal-900 border-teal-200',
+    },
+    {
+      id: 'pricing',
+      label: t('nav.pricing'),
+      shortLabel: 'Pricing',
+      path: '/pricing',
+      icon: BadgePercent,
+      visible: Permissions.canAccessPricing(role),
+      badge: isAdmin ? 'Admin' : 'View',
+      color: 'text-violet-600 group-hover:text-violet-700',
+      activeBg: 'bg-violet-50 text-violet-900 border-violet-200',
     },
   ].filter((item) => item.visible)
 
