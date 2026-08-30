@@ -28,6 +28,7 @@ import {
 } from './NetworkAvailabilityDialog.tsx'
 import { ThresholdDialog } from './ThresholdDialog.tsx'
 import { WriteOffDialog } from './WriteOffDialog.tsx'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   AlertCircle,
   AlertTriangle,
@@ -55,17 +56,22 @@ export function StockTable({
   currentActorRole,
   onViewKardex,
 }: StockTableProps) {
+  const { t } = useTranslation()
   const isAdmin = currentActorRole === 'ADMIN'
 
   const [page, setPage] = React.useState(0)
   const [size] = React.useState(15)
   const [searchFilter, setSearchFilter] = React.useState('')
   const [belowThreshold, setBelowThreshold] = React.useState(false)
-  const [sortBy, setSortBy] = React.useState<'product' | 'currentStock'>('product')
+  const [sortBy, setSortBy] = React.useState<'product' | 'currentStock'>(
+    'product',
+  )
 
   // Modals state
-  const [selectedStockProduct, setSelectedStockProduct] = React.useState<StockLineResponse | null>(null)
-  const [selectedAdminProduct, setSelectedAdminProduct] = React.useState<NetworkAvailabilityProduct | null>(null)
+  const [selectedStockProduct, setSelectedStockProduct] =
+    React.useState<StockLineResponse | null>(null)
+  const [selectedAdminProduct, setSelectedAdminProduct] =
+    React.useState<NetworkAvailabilityProduct | null>(null)
   const [isNetworkOpen, setIsNetworkOpen] = React.useState(false)
   const [isAdjustOpen, setIsAdjustOpen] = React.useState(false)
   const [isWriteOffOpen, setIsWriteOffOpen] = React.useState(false)
@@ -115,12 +121,14 @@ export function StockTable({
     () => [
       {
         accessorKey: 'name',
-        header: 'Product / SKU',
+        header: t('inventory.productSku'),
         cell: ({ row }) => {
           const item = row.original
           return (
             <div>
-              <p className="font-semibold text-slate-900 text-xs">{item.name}</p>
+              <p className="font-semibold text-slate-900 text-xs">
+                {item.name}
+              </p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="font-mono text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200">
                   {item.sku}
@@ -137,7 +145,7 @@ export function StockTable({
       },
       {
         accessorKey: 'baseUnit',
-        header: 'Base Unit',
+        header: t('inventory.baseUnit'),
         cell: ({ row }) => (
           <span className="font-mono text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
             {row.original.baseUnit}
@@ -146,7 +154,7 @@ export function StockTable({
       },
       {
         accessorKey: 'active',
-        header: 'Catalog Status',
+        header: t('catalog.catalogStatus'),
         cell: ({ row }) => (
           <Badge
             variant="outline"
@@ -156,13 +164,13 @@ export function StockTable({
                 : 'bg-slate-100 text-slate-500 border-slate-300'
             }`}
           >
-            {row.original.active ? 'Active Master' : 'Disabled'}
+            {row.original.active ? t('catalog.activeMaster') : t('common.disabled')}
           </Badge>
         ),
       },
       {
         id: 'actions',
-        header: () => <div className="text-right">Network Actions</div>,
+        header: () => <div className="text-right">{t('common.actions')}</div>,
         cell: ({ row }) => {
           const item = row.original
           return (
@@ -178,18 +186,18 @@ export function StockTable({
                   })
                   setIsNetworkOpen(true)
                 }}
-                className="h-7 px-2.5 text-xs font-semibold text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                className="h-7 px-2.5 text-xs font-semibold text-indigo-700 border-indigo-200 hover:bg-indigo-50 cursor-pointer"
               >
                 <Globe className="h-3.5 w-3.5 mr-1" />
-                Network Availability
+                {t('inventory.networkAvailability')}
               </Button>
               {onViewKardex && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  title="View Multi-Branch Kardex Movements"
+                  title={t('inventory.viewKardex')}
                   onClick={() => onViewKardex(item.externalId)}
-                  className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
                 >
                   <History className="h-3.5 w-3.5" />
                 </Button>
@@ -199,19 +207,21 @@ export function StockTable({
         },
       },
     ],
-    [onViewKardex],
+    [onViewKardex, t],
   )
 
   const columns = React.useMemo<ColumnDef<StockLineResponse>[]>(
     () => [
       {
         accessorKey: 'product',
-        header: 'Product / SKU',
+        header: t('inventory.productSku'),
         cell: ({ row }) => {
           const item = row.original
           return (
             <div>
-              <p className="font-semibold text-slate-900 text-xs">{item.name}</p>
+              <p className="font-semibold text-slate-900 text-xs">
+                {item.name}
+              </p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="font-mono text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200">
                   {item.sku}
@@ -229,7 +239,7 @@ export function StockTable({
       },
       {
         accessorKey: 'currentStock',
-        header: () => <div className="text-right">Current Stock</div>,
+        header: () => <div className="text-right">{t('inventory.currentStock')}</div>,
         cell: ({ row }) => (
           <div className="text-right font-mono font-bold text-xs text-slate-900">
             {row.original.currentStock}
@@ -238,7 +248,7 @@ export function StockTable({
       },
       {
         accessorKey: 'reservedStock',
-        header: () => <div className="text-right">Reserved</div>,
+        header: () => <div className="text-right">{t('inventory.reservedStock')}</div>,
         cell: ({ row }) => {
           const val = row.original.reservedStock
           return (
@@ -254,7 +264,7 @@ export function StockTable({
       },
       {
         accessorKey: 'inTransitStock',
-        header: () => <div className="text-right">In-Transit</div>,
+        header: () => <div className="text-right">{t('inventory.inTransitStock')}</div>,
         cell: ({ row }) => {
           const val = row.original.inTransitStock
           return (
@@ -270,7 +280,7 @@ export function StockTable({
       },
       {
         accessorKey: 'availableStock',
-        header: () => <div className="text-right">Available</div>,
+        header: () => <div className="text-right">{t('inventory.availableStock')}</div>,
         cell: ({ row }) => {
           const val = row.original.availableStock
           return (
@@ -286,7 +296,7 @@ export function StockTable({
       },
       {
         accessorKey: 'threshold',
-        header: () => <div className="text-right">Min Threshold</div>,
+        header: () => <div className="text-right">{t('inventory.minThreshold')}</div>,
         cell: ({ row }) => (
           <div className="text-right font-mono text-xs text-slate-700">
             {row.original.minStockThreshold}
@@ -295,7 +305,7 @@ export function StockTable({
       },
       {
         accessorKey: 'status',
-        header: 'Stock Status',
+        header: t('inventory.stockStatus'),
         cell: ({ row }) => {
           const { currentStock, minStockThreshold } = row.original
           if (currentStock === 0) {
@@ -304,7 +314,7 @@ export function StockTable({
                 variant="destructive"
                 className="text-[10px] py-0 px-1.5 bg-rose-100 text-rose-800 border-rose-200"
               >
-                Out of Stock
+                {t('inventory.outOfStock')}
               </Badge>
             )
           }
@@ -315,7 +325,7 @@ export function StockTable({
                 className="text-[10px] py-0 px-1.5 bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1 w-fit"
               >
                 <AlertTriangle className="h-2.5 w-2.5 text-amber-600" />
-                Low Stock
+                {t('inventory.lowStock')}
               </Badge>
             )
           }
@@ -324,21 +334,25 @@ export function StockTable({
               variant="outline"
               className="text-[10px] py-0 px-1.5 bg-emerald-50 text-emerald-800 border-emerald-300"
             >
-              In Stock
+              {t('inventory.inStock')}
             </Badge>
           )
         },
       },
       {
         accessorKey: 'valuation',
-        header: () => <div className="text-right">Avg Cost / Value</div>,
+        header: () => <div className="text-right">{t('inventory.avgCostValuation')}</div>,
         cell: ({ row }) => {
           const { currentStock, averageCost } = row.original
           const totalVal = currentStock * averageCost
           return (
             <div className="text-right text-xs font-mono">
               <p className="font-semibold text-slate-900">
-                ${totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                $
+                {totalVal.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </p>
               <p className="text-[10px] text-slate-600">
                 ${averageCost.toFixed(2)}/u
@@ -349,7 +363,7 @@ export function StockTable({
       },
       {
         id: 'actions',
-        header: () => <div className="text-right">Actions</div>,
+        header: () => <div className="text-right">{t('common.actions')}</div>,
         cell: ({ row }) => {
           const item = row.original
           return (
@@ -357,12 +371,12 @@ export function StockTable({
               <Button
                 variant="ghost"
                 size="sm"
-                title="View stock across branches (CU-INV-04)"
+                title={t('inventory.networkAvailability')}
                 onClick={() => {
                   setSelectedStockProduct(item)
                   setIsNetworkOpen(true)
                 }}
-                className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
               >
                 <Globe className="h-3.5 w-3.5" />
               </Button>
@@ -371,12 +385,12 @@ export function StockTable({
                 <Button
                   variant="ghost"
                   size="sm"
-                  title="Adjust stock discrepancy (CU-INV-05)"
+                  title={t('inventory.adjustStock')}
                   onClick={() => {
                     setSelectedStockProduct(item)
                     setIsAdjustOpen(true)
                   }}
-                  className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
                 >
                   <Sliders className="h-3.5 w-3.5" />
                 </Button>
@@ -386,12 +400,12 @@ export function StockTable({
                 <Button
                   variant="ghost"
                   size="sm"
-                  title="Write-off damage or waste (CU-INV-06)"
+                  title={t('inventory.writeOff')}
                   onClick={() => {
                     setSelectedStockProduct(item)
                     setIsWriteOffOpen(true)
                   }}
-                  className="h-7 w-7 p-0 text-rose-600 hover:text-rose-900 hover:bg-rose-50"
+                  className="h-7 w-7 p-0 text-rose-600 hover:text-rose-900 hover:bg-rose-50 cursor-pointer"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -401,12 +415,12 @@ export function StockTable({
                 <Button
                   variant="ghost"
                   size="sm"
-                  title="Set safety stock threshold (CU-INV-07)"
+                  title={t('inventory.setThreshold')}
                   onClick={() => {
                     setSelectedStockProduct(item)
                     setIsThresholdOpen(true)
                   }}
-                  className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
                 >
                   <Bell className="h-3.5 w-3.5" />
                 </Button>
@@ -416,9 +430,9 @@ export function StockTable({
                 <Button
                   variant="ghost"
                   size="sm"
-                  title="View Kardex movements history"
+                  title={t('inventory.viewKardex')}
                   onClick={() => onViewKardex(item.productExternalId)}
-                  className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
                 >
                   <History className="h-3.5 w-3.5" />
                 </Button>
@@ -428,7 +442,7 @@ export function StockTable({
         },
       },
     ],
-    [canAdjust, canSetThreshold, canWriteOff, onViewKardex],
+    [canAdjust, canSetThreshold, canWriteOff, onViewKardex, t],
   )
 
   const branchTable = useReactTable({
@@ -467,7 +481,7 @@ export function StockTable({
                 setSearchFilter(e.target.value)
                 setPage(0)
               }}
-              placeholder="Filter by SKU or Product Name..."
+              placeholder={t('common.search')}
               className="pl-8 text-xs h-8 bg-slate-50 border-slate-200"
             />
           </div>
@@ -480,7 +494,7 @@ export function StockTable({
               className="text-xs py-1 px-2.5 bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1.5 font-medium"
             >
               <Globe className="h-3.5 w-3.5" />
-              Corporate Network Explorer
+              {t('inventory.corporateExplorer')}
             </Badge>
           </div>
         ) : (
@@ -492,14 +506,16 @@ export function StockTable({
                 setBelowThreshold(!belowThreshold)
                 setPage(0)
               }}
-              className={`text-xs h-8 ${
+              className={`text-xs h-8 cursor-pointer ${
                 belowThreshold
                   ? 'bg-amber-600 hover:bg-amber-700 text-white'
                   : 'text-slate-700 border-slate-300 hover:bg-slate-50'
               }`}
             >
               <Filter className="h-3 w-3 mr-1.5" />
-              {belowThreshold ? 'Critical Stock Filter Active' : 'Filter Below Threshold'}
+              {belowThreshold
+                ? t('inventory.criticalFilterActive')
+                : t('inventory.filterBelowThreshold')}
             </Button>
 
             <Button
@@ -509,10 +525,10 @@ export function StockTable({
                 setSortBy(sortBy === 'product' ? 'currentStock' : 'product')
                 setPage(0)
               }}
-              className="text-xs h-8 text-slate-700 border-slate-300 hover:bg-slate-50"
+              className="text-xs h-8 text-slate-700 border-slate-300 hover:bg-slate-50 cursor-pointer"
             >
               <ArrowUpDown className="h-3 w-3 mr-1.5" />
-              Sort: {sortBy === 'product' ? 'Product Name' : 'Current Stock'}
+              {sortBy === 'product' ? t('inventory.sortByProduct') : t('inventory.sortByStock')}
             </Button>
           </div>
         )}
@@ -523,12 +539,7 @@ export function StockTable({
         <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3.5 flex items-start gap-3 text-xs text-indigo-900">
           <Info className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold text-indigo-950">
-              Corporate Administrator Multi-Branch Scope:
-            </span>{' '}
-            As corporate administrator, stock balances are distributed across branch stations. Click{' '}
-            <span className="font-semibold text-indigo-800">"Network Availability"</span> on any product
-            to inspect real-time local balances, reservations, and in-transit units across all active branches.
+            {t('inventory.corporateExplorerBanner')}
           </div>
         </div>
       )}
@@ -548,10 +559,10 @@ export function StockTable({
               <AlertCircle className="h-5 w-5" />
             </div>
             <p className="text-sm font-bold text-slate-900">
-              {isAdmin ? 'Failed to load catalog products' : 'Failed to load stock data'}
+              {t('common.error')}
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              {errorObj instanceof Error ? errorObj.message : 'Unknown error'}
+              {errorObj instanceof Error ? errorObj.message : t('common.error')}
             </p>
           </div>
         ) : !hasRows ? (
@@ -560,14 +571,7 @@ export function StockTable({
               <Package className="h-6 w-6" />
             </div>
             <p className="text-sm font-bold text-slate-800">
-              {isAdmin ? 'No catalog products found' : 'No stock records found'}
-            </p>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              {isAdmin
-                ? 'There are no catalog products matching the search query.'
-                : belowThreshold
-                  ? 'No products are currently at or below their minimum stock threshold.'
-                  : 'There are no registered stock balances in this branch yet.'}
+              {t('common.noData')}
             </p>
           </div>
         ) : isAdmin ? (
@@ -650,19 +654,19 @@ export function StockTable({
         {!isLoading && !isError && hasRows && (
           <div className="p-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
             <div>
-              Showing{' '}
+              {t('common.showing')}{' '}
               <span className="font-semibold text-slate-900">
                 {page * size + 1}
               </span>{' '}
-              to{' '}
+              {t('common.to')}{' '}
               <span className="font-semibold text-slate-900">
                 {Math.min((page + 1) * size, totalElements)}
               </span>{' '}
-              of{' '}
+              {t('common.of')}{' '}
               <span className="font-semibold text-slate-900">
                 {totalElements}
               </span>{' '}
-              {isAdmin ? 'catalog products' : 'products in stock'}
+              {t('common.results')}
             </div>
             <div className="flex items-center gap-1.5">
               <Button
@@ -670,22 +674,25 @@ export function StockTable({
                 size="sm"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="h-7 px-2.5 text-xs"
+                className="h-7 px-2.5 text-xs cursor-pointer"
               >
                 <ChevronLeft className="h-3 w-3 mr-1" />
-                Previous
+                {t('common.previous')}
               </Button>
               <span className="px-2 text-xs font-medium">
-                Page {page + 1} of {totalPages}
+                {t('common.pageOf', {
+                  page: String(page + 1),
+                  totalPages: String(totalPages),
+                })}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1}
-                className="h-7 px-2.5 text-xs"
+                className="h-7 px-2.5 text-xs cursor-pointer"
               >
-                Next
+                {t('common.next')}
                 <ChevronRight className="h-3 w-3 ml-1" />
               </Button>
             </div>

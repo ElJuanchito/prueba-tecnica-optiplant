@@ -13,7 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LogisticsRouteImport } from './routes/logistics'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as TransfersRouteImport } from './routes/transfers'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,9 +37,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LogisticsRoute = LogisticsRouteImport.update({
+  id: '/logistics',
+  path: '/logistics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransfersRoute = TransfersRouteImport.update({
+  id: '/transfers',
+  path: '/transfers',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -46,14 +58,18 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof CatalogRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
+  '/logistics': typeof LogisticsRoute
   '/notifications': typeof NotificationsRoute
+  '/transfers': typeof TransfersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/catalog': typeof CatalogRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
+  '/logistics': typeof LogisticsRoute
   '/notifications': typeof NotificationsRoute
+  '/transfers': typeof TransfersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,14 +77,38 @@ export interface FileRoutesById {
   '/catalog': typeof CatalogRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
+  '/logistics': typeof LogisticsRoute
   '/notifications': typeof NotificationsRoute
+  '/transfers': typeof TransfersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/catalog' | '/inventory' | '/login' | '/notifications'
+  fullPaths:
+    | '/'
+    | '/catalog'
+    | '/inventory'
+    | '/login'
+    | '/logistics'
+    | '/notifications'
+    | '/transfers'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/catalog' | '/inventory' | '/login' | '/notifications'
-  id: '__root__' | '/' | '/catalog' | '/inventory' | '/login' | '/notifications'
+  to:
+    | '/'
+    | '/catalog'
+    | '/inventory'
+    | '/login'
+    | '/logistics'
+    | '/notifications'
+    | '/transfers'
+  id:
+    | '__root__'
+    | '/'
+    | '/catalog'
+    | '/inventory'
+    | '/login'
+    | '/logistics'
+    | '/notifications'
+    | '/transfers'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,7 +116,9 @@ export interface RootRouteChildren {
   CatalogRoute: typeof CatalogRoute
   InventoryRoute: typeof InventoryRoute
   LoginRoute: typeof LoginRoute
+  LogisticsRoute: typeof LogisticsRoute
   NotificationsRoute: typeof NotificationsRoute
+  TransfersRoute: typeof TransfersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,11 +151,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/logistics': {
+      id: '/logistics'
+      path: '/logistics'
+      fullPath: '/logistics'
+      preLoaderRoute: typeof LogisticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/notifications': {
       id: '/notifications'
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transfers': {
+      id: '/transfers'
+      path: '/transfers'
+      fullPath: '/transfers'
+      preLoaderRoute: typeof TransfersRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -124,7 +180,9 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogRoute: CatalogRoute,
   InventoryRoute: InventoryRoute,
   LoginRoute: LoginRoute,
+  LogisticsRoute: LogisticsRoute,
   NotificationsRoute: NotificationsRoute,
+  TransfersRoute: TransfersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

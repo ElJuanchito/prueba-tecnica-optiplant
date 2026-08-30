@@ -14,6 +14,7 @@ import { useProducts } from '@/features/catalog/hooks/use-products.ts'
 import { useStock } from '../hooks/use-inventory.ts'
 import { KardexTable } from './KardexTable.tsx'
 import { StockTable } from './StockTable.tsx'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   AlertTriangle,
   Boxes,
@@ -33,8 +34,10 @@ export function InventoryDashboard({
   onLogout,
   defaultTab = 'stock',
 }: InventoryDashboardProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = React.useState<string>(defaultTab)
-  const [selectedKardexProductId, setSelectedKardexProductId] = React.useState<string>('')
+  const [selectedKardexProductId, setSelectedKardexProductId] =
+    React.useState<string>('')
 
   const sessionQuery = useSession()
   const session = sessionQuery.data
@@ -47,7 +50,10 @@ export function InventoryDashboard({
   // Metrics Queries - stock is branch-scoped, so corporate ADMIN uses catalog & network scope
   const productsQuery = useProducts({ page: 0, size: 100 }, isAdmin)
   const allStockQuery = useStock({ page: 0, size: 100 }, !isAdmin)
-  const criticalStockQuery = useStock({ page: 0, size: 1, belowThreshold: true }, !isAdmin)
+  const criticalStockQuery = useStock(
+    { page: 0, size: 1, belowThreshold: true },
+    !isAdmin,
+  )
   const alertsQuery = useAlerts({ resolved: false, page: 0, size: 100 })
 
   const stockItems = allStockQuery.data?.content ?? []
@@ -71,7 +77,7 @@ export function InventoryDashboard({
       ? `${session.branchName} (${session.branchCode})`
       : session.branchName
     : session?.branchId
-      ? 'Assigned Branch'
+      ? t('iam.assignedBranch')
       : null
 
   return (
@@ -84,10 +90,10 @@ export function InventoryDashboard({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900">
-              Inventory & Stock Management
+              {t('inventory.title')}
             </h1>
             <p className="text-xs text-slate-600 mt-1">
-              Real-time branch inventory tracking, immutable Kardex ledger, and corporate network availability.
+              {t('inventory.subtitle')}
             </p>
           </div>
         </div>
@@ -98,7 +104,9 @@ export function InventoryDashboard({
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  {isAdmin ? 'Catalog Products' : 'Total Products in Stock'}
+                  {isAdmin
+                    ? t('inventory.catalogProducts')
+                    : t('inventory.totalProductsInStock')}
                 </p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-2xl font-bold text-slate-900">
@@ -111,7 +119,9 @@ export function InventoryDashboard({
                         : totalStockItems}
                   </span>
                   <span className="text-xs text-slate-500">
-                    {isAdmin ? 'Master Catalog' : 'Registered Lines'}
+                    {isAdmin
+                      ? t('catalog.productsCount')
+                      : t('inventory.stockTab')}
                   </span>
                 </div>
               </div>
@@ -125,7 +135,9 @@ export function InventoryDashboard({
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  {isAdmin ? 'Active System Alerts' : 'Critical / Low Stock'}
+                  {isAdmin
+                    ? t('inventory.operationalAlerts')
+                    : t('inventory.criticalStock')}
                 </p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span
@@ -144,7 +156,9 @@ export function InventoryDashboard({
                         : criticalCount}
                   </span>
                   <span className="text-xs text-slate-500">
-                    {isAdmin ? 'Network Requiring Action' : 'Below Safety Threshold'}
+                    {isAdmin
+                      ? t('alerts.unresolved')
+                      : t('inventory.lowStock')}
                   </span>
                 </div>
               </div>
@@ -164,12 +178,14 @@ export function InventoryDashboard({
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  {isAdmin ? 'Scope' : 'Local Stock Valuation'}
+                  {isAdmin
+                    ? t('inventory.corporateScopeCard')
+                    : t('inventory.stockValuation')}
                 </p>
                 <div className="flex items-baseline gap-2 mt-1">
                   {isAdmin ? (
                     <span className="text-base font-bold text-slate-900 truncate">
-                      Corporate Multi-Branch
+                      {t('nav.corporateScope')}
                     </span>
                   ) : (
                     <span className="text-2xl font-bold text-slate-900 font-mono">
@@ -183,12 +199,16 @@ export function InventoryDashboard({
                 </div>
                 <p className="text-[10px] text-slate-500 mt-0.5">
                   {isAdmin
-                    ? 'Global network inventory overview'
-                    : 'Based on weighted average cost (CPP)'}
+                    ? t('inventory.networkDesc')
+                    : t('inventory.avgCostValuation')}
                 </p>
               </div>
               <div className="h-9 w-9 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
-                {isAdmin ? <Globe className="h-4 w-4 text-emerald-700" /> : <DollarSign className="h-4 w-4" />}
+                {isAdmin ? (
+                  <Globe className="h-4 w-4 text-emerald-700" />
+                ) : (
+                  <DollarSign className="h-4 w-4" />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -198,17 +218,21 @@ export function InventoryDashboard({
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Operational Alerts
+                    {t('inventory.operationalAlerts')}
                   </p>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span
                       className={`text-2xl font-bold ${
-                        unresolvedAlertsCount > 0 ? 'text-amber-600' : 'text-slate-900'
+                        unresolvedAlertsCount > 0
+                          ? 'text-amber-600'
+                          : 'text-slate-900'
                       }`}
                     >
                       {alertsQuery.isLoading ? '...' : unresolvedAlertsCount}
                     </span>
-                    <span className="text-xs text-slate-500">Requiring Action</span>
+                    <span className="text-xs text-slate-500">
+                      {t('alerts.unresolved')}
+                    </span>
                   </div>
                 </div>
                 <div
@@ -227,16 +251,13 @@ export function InventoryDashboard({
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Station Scope
+                    {t('nav.branchScope')}
                   </p>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className="text-sm font-bold text-slate-900 truncate max-w-[170px]">
-                      {assignedBranchName ?? 'Assigned Station'}
+                      {assignedBranchName ?? t('iam.assignedBranch')}
                     </span>
                   </div>
-                  <p className="text-[10px] text-emerald-700 mt-0.5 font-medium">
-                    Operational Write-Offs Authorized
-                  </p>
                 </div>
                 <div className="h-9 w-9 rounded bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200">
                   <MapPin className="h-4 w-4" />
@@ -247,32 +268,36 @@ export function InventoryDashboard({
         </div>
 
         {/* Tabbed Main Interface */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-4"
+        >
           <TabsList className="bg-white border border-slate-200 p-0.5 rounded-md h-auto">
             <TabsTrigger
               value="stock"
-              className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-amber-900 data-[state=active]:text-white transition-colors"
+              className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-amber-900 data-[state=active]:text-white transition-colors cursor-pointer"
             >
               <Boxes className="h-3.5 w-3.5" />
-              <span>Stock Balances</span>
+              <span>{t('inventory.stockTab')}</span>
             </TabsTrigger>
 
             {canViewKardexAndAlerts && (
               <>
                 <TabsTrigger
                   value="kardex"
-                  className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-amber-900 data-[state=active]:text-white transition-colors"
+                  className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-amber-900 data-[state=active]:text-white transition-colors cursor-pointer"
                 >
                   <History className="h-3.5 w-3.5" />
-                  <span>Kardex Ledger</span>
+                  <span>{t('inventory.kardexTab')}</span>
                 </TabsTrigger>
 
                 <TabsTrigger
                   value="alerts"
-                  className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-amber-900 data-[state=active]:text-white transition-colors"
+                  className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-amber-900 data-[state=active]:text-white transition-colors cursor-pointer"
                 >
                   <ShieldAlert className="h-3.5 w-3.5" />
-                  <span>Alerts & Notifications</span>
+                  <span>{t('inventory.alertsTab')}</span>
                   {unresolvedAlertsCount > 0 && (
                     <span className="bg-rose-500 text-white text-[10px] px-1 rounded-full font-mono">
                       {unresolvedAlertsCount}
@@ -286,17 +311,27 @@ export function InventoryDashboard({
           <TabsContent value="stock" className="focus-visible:outline-none">
             <StockTable
               currentActorRole={role}
-              onViewKardex={canViewKardexAndAlerts ? handleViewKardexForProduct : undefined}
+              onViewKardex={
+                canViewKardexAndAlerts ? handleViewKardexForProduct : undefined
+              }
             />
           </TabsContent>
 
           {canViewKardexAndAlerts && (
             <>
-              <TabsContent value="kardex" className="focus-visible:outline-none">
-                <KardexTable initialProductExternalId={selectedKardexProductId} />
+              <TabsContent
+                value="kardex"
+                className="focus-visible:outline-none"
+              >
+                <KardexTable
+                  initialProductExternalId={selectedKardexProductId}
+                />
               </TabsContent>
 
-              <TabsContent value="alerts" className="focus-visible:outline-none">
+              <TabsContent
+                value="alerts"
+                className="focus-visible:outline-none"
+              >
                 <AlertCenter currentActorRole={role} />
               </TabsContent>
             </>

@@ -103,9 +103,17 @@ describe('Inventory Zod Schemas', () => {
     })
 
     it('validates setThresholdRequestSchema with positive or zero value', () => {
-      expect(setThresholdRequestSchema.parse({ minStockThreshold: 0 }).minStockThreshold).toBe(0)
-      expect(setThresholdRequestSchema.parse({ minStockThreshold: 50 }).minStockThreshold).toBe(50)
-      expect(() => setThresholdRequestSchema.parse({ minStockThreshold: -5 })).toThrow()
+      expect(
+        setThresholdRequestSchema.parse({ minStockThreshold: 0 })
+          .minStockThreshold,
+      ).toBe(0)
+      expect(
+        setThresholdRequestSchema.parse({ minStockThreshold: 50 })
+          .minStockThreshold,
+      ).toBe(50)
+      expect(() =>
+        setThresholdRequestSchema.parse({ minStockThreshold: -5 }),
+      ).toThrow()
     })
 
     it('validates thresholdResponseSchema', () => {

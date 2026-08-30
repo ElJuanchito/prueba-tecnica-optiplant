@@ -13,7 +13,9 @@ describe('Notifications Zod Schemas', () => {
   it('validates AlertType and AlertSeverity schemas', () => {
     expect(alertTypeSchema.parse('STOCK_MINIMUM')).toBe('STOCK_MINIMUM')
     expect(alertTypeSchema.parse('LOGISTIC_DELAY')).toBe('LOGISTIC_DELAY')
-    expect(alertTypeSchema.parse('TRANSFER_DISCREPANCY')).toBe('TRANSFER_DISCREPANCY')
+    expect(alertTypeSchema.parse('TRANSFER_DISCREPANCY')).toBe(
+      'TRANSFER_DISCREPANCY',
+    )
     expect(alertTypeSchema.parse('PRICE_CHANGE')).toBe('PRICE_CHANGE')
     expect(() => alertTypeSchema.parse('INVALID_ALERT')).toThrow()
 

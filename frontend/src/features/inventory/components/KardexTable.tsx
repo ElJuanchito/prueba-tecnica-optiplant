@@ -29,6 +29,7 @@ import { useProducts } from '@/features/catalog/hooks/use-products.ts'
 import { useKardex } from '../hooks/use-inventory.ts'
 import { STOCK_MOVEMENT_TYPE } from '../schemas/kardex.schema.ts'
 import type { KardexLineResponse, StockMovementType } from '../types/index.ts'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   AlertCircle,
   ArrowDownRight,
@@ -48,12 +49,15 @@ interface KardexTableProps {
 }
 
 export function KardexTable({ initialProductExternalId }: KardexTableProps) {
+  const { t } = useTranslation()
   const [page, setPage] = React.useState(0)
   const [size] = React.useState(20)
   const [productExternalId, setProductExternalId] = React.useState<string>(
     initialProductExternalId ?? '',
   )
-  const [movementType, setMovementType] = React.useState<StockMovementType | 'ALL'>('ALL')
+  const [movementType, setMovementType] = React.useState<
+    StockMovementType | 'ALL'
+  >('ALL')
   const [fromDate, setFromDate] = React.useState<string>('')
   const [toDate, setToDate] = React.useState<string>('')
 
@@ -106,7 +110,7 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
     () => [
       {
         accessorKey: 'createdAt',
-        header: 'Timestamp (UTC)',
+        header: t('common.date'),
         cell: ({ row }) => {
           const d = new Date(row.original.createdAt)
           return (
@@ -123,16 +127,22 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
       },
       {
         accessorKey: 'productExternalId',
-        header: 'Product',
+        header: t('inventory.product'),
         cell: ({ row }) => {
           const pId = row.original.productExternalId
           const prod = productsMap.get(pId)
           if (!prod) {
-            return <span className="text-xs font-mono text-slate-600">{pId.substring(0, 8)}...</span>
+            return (
+              <span className="text-xs text-slate-500 font-medium italic">
+                {t('inventory.productNotCataloged')}
+              </span>
+            )
           }
           return (
             <div className="text-xs max-w-[180px]">
-              <p className="font-semibold text-slate-900 truncate">{prod.name}</p>
+              <p className="font-semibold text-slate-900 truncate">
+                {prod.name}
+              </p>
               <span className="font-mono text-[10px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200">
                 {prod.sku}
               </span>
@@ -142,7 +152,7 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
       },
       {
         accessorKey: 'movementType',
-        header: 'Movement Type',
+        header: t('inventory.movementType'),
         cell: ({ row }) => {
           const type = row.original.movementType
           const inbound = isInbound(type)
@@ -173,7 +183,7 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
       },
       {
         accessorKey: 'quantity',
-        header: () => <div className="text-right">Quantity</div>,
+        header: () => <div className="text-right">{t('inventory.quantity')}</div>,
         cell: ({ row }) => {
           const { quantity, movementType } = row.original
           const inbound = isInbound(movementType)
@@ -190,16 +200,21 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
       },
       {
         accessorKey: 'costs',
-        header: () => <div className="text-right">Unit / Total Cost</div>,
+        header: () => <div className="text-right">{t('inventory.costs')}</div>,
         cell: ({ row }) => {
           const { unitCost, totalCost } = row.original
           if (unitCost === null || unitCost === undefined) {
-            return <div className="text-right text-[11px] text-slate-600">—</div>
+            return (
+              <div className="text-right text-[11px] text-slate-600">—</div>
+            )
           }
           return (
             <div className="text-right text-xs">
               <p className="font-mono text-slate-900 font-semibold">
-                ${totalCost ? totalCost.toFixed(2) : (unitCost * row.original.quantity).toFixed(2)}
+                $
+                {totalCost
+                  ? totalCost.toFixed(2)
+                  : (unitCost * row.original.quantity).toFixed(2)}
               </p>
               <p className="text-[10px] text-slate-600 font-mono">
                 ${unitCost.toFixed(2)}/u
@@ -210,7 +225,7 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
       },
       {
         accessorKey: 'balance',
-        header: 'Balance Progression',
+        header: t('inventory.balanceProgression'),
         cell: ({ row }) => {
           const { previousStock, resultingStock } = row.original
           return (
@@ -224,7 +239,7 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
       },
       {
         accessorKey: 'reason',
-        header: 'Reason / Reference',
+        header: t('inventory.reasonRef'),
         cell: ({ row }) => {
           const { notes, referenceType, referenceId } = row.original
           return (
@@ -236,7 +251,9 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
                 </p>
               )}
               {!notes && !referenceType && (
-                <span className="text-[11px] text-slate-600 italic">No notes</span>
+                <span className="text-[11px] text-slate-600 italic">
+                  {t('common.noData')}
+                </span>
               )}
             </div>
           )
@@ -244,22 +261,22 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
       },
       {
         accessorKey: 'userExternalId',
-        header: 'Responsible User',
+        header: t('inventory.user'),
         cell: ({ row }) => {
           const userId = row.original.userExternalId
           if (!userId) {
             return (
               <div className="flex items-center gap-1 text-[11px] text-slate-500 font-mono italic">
                 <Shield className="h-3 w-3 text-slate-400" />
-                <span>System</span>
+                <span>{t('inventory.system')}</span>
               </div>
             )
           }
-          const username = usersMap.get(userId) ?? `${userId.substring(0, 8)}...`
+          const username = usersMap.get(userId) ?? t('inventory.authorizedUser')
           return (
             <div
               className="flex items-center gap-1.5 text-xs text-slate-800 font-medium"
-              title={`User ID: ${userId}`}
+              title={`${t('inventory.user')}: ${username}`}
             >
               <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
               <span className="font-semibold text-slate-900">{username}</span>
@@ -268,7 +285,7 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
         },
       },
     ],
-    [usersMap, productsMap],
+    [usersMap, productsMap, t],
   )
 
   const table = useReactTable({
@@ -298,24 +315,24 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
               <History className="h-3.5 w-3.5" />
             </div>
             <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Immutable Kardex Audit Ledger
+              {t('inventory.kardexAuditLedger')}
             </span>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleResetFilters}
-            className="text-xs h-7 text-slate-600 hover:text-slate-900"
+            className="text-xs h-7 text-slate-600 hover:text-slate-900 cursor-pointer"
           >
             <RotateCcw className="h-3 w-3 mr-1" />
-            Reset Filters
+            {t('inventory.resetFilters')}
           </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
           <div>
             <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-              Movement Type
+              {t('inventory.filterMovementType')}
             </label>
             <Select
               value={movementType}
@@ -325,25 +342,39 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
               }}
             >
               <SelectTrigger className="text-xs h-8 bg-slate-50 border-slate-200">
-                <SelectValue placeholder="All Movement Types" />
+                <SelectValue placeholder={t('inventory.allMovementTypes')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Movement Types</SelectItem>
-                <SelectItem value="PURCHASE_RECEIPT">PURCHASE_RECEIPT (Inbound)</SelectItem>
+                <SelectItem value="ALL">{t('inventory.allMovementTypes')}</SelectItem>
+                <SelectItem value="PURCHASE_RECEIPT">
+                  PURCHASE_RECEIPT (Inbound)
+                </SelectItem>
                 <SelectItem value="SALE">SALE (Outbound)</SelectItem>
-                <SelectItem value="TRANSFER_IN">TRANSFER_IN (Inbound)</SelectItem>
-                <SelectItem value="TRANSFER_OUT">TRANSFER_OUT (Outbound)</SelectItem>
-                <SelectItem value="ADJUSTMENT_POS">ADJUSTMENT_POS (Inbound)</SelectItem>
-                <SelectItem value="ADJUSTMENT_NEG">ADJUSTMENT_NEG (Outbound)</SelectItem>
-                <SelectItem value="DAMAGE_WASTE">DAMAGE_WASTE (Outbound)</SelectItem>
-                <SelectItem value="INITIAL_LOAD">INITIAL_LOAD (Inbound)</SelectItem>
+                <SelectItem value="TRANSFER_IN">
+                  TRANSFER_IN (Inbound)
+                </SelectItem>
+                <SelectItem value="TRANSFER_OUT">
+                  TRANSFER_OUT (Outbound)
+                </SelectItem>
+                <SelectItem value="ADJUSTMENT_POS">
+                  ADJUSTMENT_POS (Inbound)
+                </SelectItem>
+                <SelectItem value="ADJUSTMENT_NEG">
+                  ADJUSTMENT_NEG (Outbound)
+                </SelectItem>
+                <SelectItem value="DAMAGE_WASTE">
+                  DAMAGE_WASTE (Outbound)
+                </SelectItem>
+                <SelectItem value="INITIAL_LOAD">
+                  INITIAL_LOAD (Inbound)
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
             <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-              From Date
+              {t('inventory.fromDate')}
             </label>
             <div className="relative">
               <Calendar className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -361,7 +392,7 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
 
           <div>
             <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-              To Date
+              {t('inventory.toDate')}
             </label>
             <div className="relative">
               <Calendar className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -377,20 +408,35 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
             </div>
           </div>
 
-          <div>
+          <div className="w-full sm:w-56">
             <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-              Product ID Filter (Optional)
+              {t('inventory.filterProduct')}
             </label>
-            <Input
-              type="text"
-              placeholder="UUID filter..."
-              value={productExternalId}
-              onChange={(e) => {
-                setProductExternalId(e.target.value.trim())
+            <Select
+              value={productExternalId || 'ALL'}
+              onValueChange={(val) => {
+                setProductExternalId(val === 'ALL' ? '' : val)
                 setPage(0)
               }}
-              className="text-xs h-8 font-mono bg-slate-50 border-slate-200"
-            />
+            >
+              <SelectTrigger className="text-xs h-8 bg-slate-50 border-slate-200 truncate">
+                <SelectValue placeholder={t('inventory.allProducts')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL" className="text-xs">
+                  {t('inventory.allProducts')}
+                </SelectItem>
+                {productsQuery.data?.content.map((p) => (
+                  <SelectItem
+                    key={p.externalId}
+                    value={p.externalId}
+                    className="text-xs"
+                  >
+                    {p.name} ({p.sku})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -409,17 +455,20 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
             <div className="h-10 w-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">
               <AlertCircle className="h-5 w-5" />
             </div>
-            <p className="text-sm font-bold text-slate-900">Failed to load Kardex ledger</p>
-            <p className="text-xs text-slate-500 mt-1">{kardexQuery.error.message}</p>
+            <p className="text-sm font-bold text-slate-900">
+              {t('common.error')}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              {kardexQuery.error.message}
+            </p>
           </div>
         ) : rawData.length === 0 ? (
           <div className="p-12 text-center">
             <div className="h-12 w-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
               <History className="h-6 w-6" />
             </div>
-            <p className="text-sm font-bold text-slate-800">No Kardex records found</p>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              No stock transactions match the selected filter criteria.
+            <p className="text-sm font-bold text-slate-800">
+              {t('inventory.noKardexRecords')}
             </p>
           </div>
         ) : (
@@ -462,50 +511,57 @@ export function KardexTable({ initialProductExternalId }: KardexTableProps) {
         )}
 
         {/* Pagination Bar */}
-        {!kardexQuery.isLoading && !kardexQuery.isError && rawData.length > 0 && (
-          <div className="p-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
-            <div>
-              Showing{' '}
-              <span className="font-semibold text-slate-900">
-                {page * size + 1}
-              </span>{' '}
-              to{' '}
-              <span className="font-semibold text-slate-900">
-                {Math.min((page + 1) * size, totalElements)}
-              </span>{' '}
-              of{' '}
-              <span className="font-semibold text-slate-900">
-                {totalElements}
-              </span>{' '}
-              movements
+        {!kardexQuery.isLoading &&
+          !kardexQuery.isError &&
+          rawData.length > 0 && (
+            <div className="p-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
+              <div>
+                {t('common.showing')}{' '}
+                <span className="font-semibold text-slate-900">
+                  {page * size + 1}
+                </span>{' '}
+                {t('common.to')}{' '}
+                <span className="font-semibold text-slate-900">
+                  {Math.min((page + 1) * size, totalElements)}
+                </span>{' '}
+                {t('common.of')}{' '}
+                <span className="font-semibold text-slate-900">
+                  {totalElements}
+                </span>{' '}
+                {t('common.results')}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="h-7 px-2.5 text-xs cursor-pointer"
+                >
+                  <ChevronLeft className="h-3 w-3 mr-1" />
+                  {t('common.previous')}
+                </Button>
+                <span className="px-2 text-xs font-medium">
+                  {t('common.pageOf', {
+                    page: String(page + 1),
+                    totalPages: String(totalPages),
+                  })}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                  disabled={page >= totalPages - 1}
+                  className="h-7 px-2.5 text-xs cursor-pointer"
+                >
+                  {t('common.next')}
+                  <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="h-7 px-2.5 text-xs"
-              >
-                <ChevronLeft className="h-3 w-3 mr-1" />
-                Previous
-              </Button>
-              <span className="px-2 text-xs font-medium">
-                Page {page + 1} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-                className="h-7 px-2.5 text-xs"
-              >
-                Next
-                <ChevronRight className="h-3 w-3 ml-1" />
-              </Button>
-            </div>
-          </div>
-        )}
+          )}
       </div>
     </div>
   )

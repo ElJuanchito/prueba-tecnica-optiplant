@@ -16,7 +16,14 @@ import { Label } from '@/components/ui/label.tsx'
 import { useSetThreshold } from '../hooks/use-inventory.ts'
 import { setThresholdRequestSchema } from '../schemas/stock.schema.ts'
 import type { SetThresholdRequest, StockLineResponse } from '../types/index.ts'
-import { AlertCircle, AlertTriangle, Bell, CheckCircle2, Loader2 } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
+import {
+  AlertCircle,
+  AlertTriangle,
+  Bell,
+  CheckCircle2,
+  Loader2,
+} from 'lucide-react'
 
 interface ThresholdDialogProps {
   product: StockLineResponse | null
@@ -29,6 +36,7 @@ export function ThresholdDialog({
   open,
   onOpenChange,
 }: ThresholdDialogProps) {
+  const { t } = useTranslation()
   const thresholdMutation = useSetThreshold()
   const [serverError, setServerError] = React.useState<string | null>(null)
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
@@ -96,10 +104,10 @@ export function ThresholdDialog({
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Configure Minimum Stock Threshold
+                {t('inventory.thresholdTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Set replenishment safety threshold for this branch (CU-INV-07)
+                {t('inventory.thresholdDesc')}
               </DialogDescription>
             </div>
           </div>
@@ -109,25 +117,25 @@ export function ThresholdDialog({
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Product:</span>
+                <span className="text-slate-500">{t('inventory.product')}:</span>
                 <span className="font-semibold text-slate-900 truncate max-w-[220px]">
                   {product.name}
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">SKU:</span>
+                <span className="text-slate-500">{t('catalog.sku')}:</span>
                 <span className="font-mono text-slate-700">{product.sku}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Current Stock:</span>
+                <span className="text-slate-500">{t('inventory.currentStock')}:</span>
                 <span className="font-bold text-slate-900 font-mono">
-                  {product.currentStock} units
+                  {product.currentStock}
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Current Threshold:</span>
+                <span className="text-slate-500">{t('inventory.minThreshold')}:</span>
                 <span className="font-mono text-slate-700">
-                  {product.minStockThreshold} units
+                  {product.minStockThreshold}
                 </span>
               </div>
             </div>
@@ -135,7 +143,7 @@ export function ThresholdDialog({
             {serverError && (
               <Alert variant="destructive" className="py-2.5">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle className="text-xs font-semibold">Error</AlertTitle>
+                <AlertTitle className="text-xs font-semibold">{t('common.error')}</AlertTitle>
                 <AlertDescription className="text-xs">
                   {serverError}
                 </AlertDescription>
@@ -145,7 +153,9 @@ export function ThresholdDialog({
             {successMsg && (
               <Alert className="py-2.5 bg-emerald-50 border-emerald-200 text-emerald-800">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <AlertTitle className="text-xs font-semibold">Success</AlertTitle>
+                <AlertTitle className="text-xs font-semibold">
+                  {t('common.active')}
+                </AlertTitle>
                 <AlertDescription className="text-xs">
                   {successMsg}
                 </AlertDescription>
@@ -153,8 +163,11 @@ export function ThresholdDialog({
             )}
 
             <div className="space-y-1.5">
-              <Label htmlFor="minStockThreshold" className="text-xs font-semibold text-slate-700">
-                New Minimum Stock Threshold *
+              <Label
+                htmlFor="minStockThreshold"
+                className="text-xs font-semibold text-slate-700"
+              >
+                {t('inventory.newThreshold')} *
               </Label>
               <Input
                 id="minStockThreshold"
@@ -163,7 +176,7 @@ export function ThresholdDialog({
                 min="0"
                 {...register('minStockThreshold', { valueAsNumber: true })}
                 className="text-xs font-mono"
-                placeholder="Enter minimum units threshold"
+                placeholder={t('inventory.newThreshold')}
               />
               {errors.minStockThreshold && (
                 <p className="text-[11px] text-rose-600 font-medium">
@@ -176,7 +189,7 @@ export function ThresholdDialog({
               <div className="p-3 rounded-lg border bg-amber-50 border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
                 <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
                 <p className="text-[11px] leading-relaxed">
-                  <strong>Notice (R-15):</strong> Setting the threshold to {thresholdNum} is above current stock ({currentStock}). An automatic <code className="font-mono bg-amber-100 px-1 py-0.5 rounded text-[10px]">STOCK_MINIMUM</code> alert will be raised.
+                  <strong>Notice:</strong> Setting threshold above current stock ({currentStock}) will trigger low stock alert.
                 </p>
               </div>
             )}
@@ -188,20 +201,20 @@ export function ThresholdDialog({
                 size="sm"
                 onClick={() => onOpenChange(false)}
                 disabled={thresholdMutation.isPending}
-                className="text-xs"
+                className="text-xs cursor-pointer"
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
                 size="sm"
                 disabled={thresholdMutation.isPending || thresholdNum < 0}
-                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
               >
                 {thresholdMutation.isPending && (
                   <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 )}
-                Save Threshold
+                {t('inventory.confirmThreshold')}
               </Button>
             </DialogFooter>
           </form>

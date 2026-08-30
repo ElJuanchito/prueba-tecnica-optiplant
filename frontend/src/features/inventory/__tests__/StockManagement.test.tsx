@@ -70,11 +70,15 @@ describe('Stock Management Component Tests', () => {
   it('renders StockTable in Corporate Network Explorer mode for ADMIN', async () => {
     renderWithProviders(<StockTable currentActorRole="ADMIN" />)
 
-    expect(await screen.findByText('Corporate Network Explorer')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Corporate Network Explorer'),
+    ).toBeInTheDocument()
     expect(await screen.findByText('Urea Granulada 46%')).toBeInTheDocument()
     expect(screen.getByText('FERT-UREA-46')).toBeInTheDocument()
     expect(screen.getByText('Active Master')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Network Availability/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Network Availability/i }),
+    ).toBeInTheDocument()
   })
 
   it('displays low stock badge when currentStock is below or equal to threshold', async () => {
@@ -101,14 +105,16 @@ describe('Stock Management Component Tests', () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
 
-    const adjustSpy = vi.spyOn(inventoryService, 'adjustStock').mockResolvedValueOnce({
-      movementExternalId: VALID_UUID_2,
-      movementType: 'ADJUSTMENT_NEG',
-      quantity: 8,
-      previousStock: 100,
-      resultingStock: 92,
-      createdAt: '2026-08-29T00:00:00Z',
-    })
+    const adjustSpy = vi
+      .spyOn(inventoryService, 'adjustStock')
+      .mockResolvedValueOnce({
+        movementExternalId: VALID_UUID_2,
+        movementType: 'ADJUSTMENT_NEG',
+        quantity: 8,
+        previousStock: 100,
+        resultingStock: 92,
+        createdAt: '2026-08-29T00:00:00Z',
+      })
 
     renderWithProviders(
       <AdjustStockDialog
@@ -118,7 +124,9 @@ describe('Stock Management Component Tests', () => {
       />,
     )
 
-    expect(screen.getByText('Physical Inventory Adjustment')).toBeInTheDocument()
+    expect(
+      screen.getByText('Physical Inventory Adjustment'),
+    ).toBeInTheDocument()
     expect(screen.getByText('Urea Granulada 46%')).toBeInTheDocument()
 
     // Change counted physical count to 92
@@ -134,7 +142,9 @@ describe('Stock Management Component Tests', () => {
     await user.type(reasonInput, 'Annual audit discrepancy')
 
     // Submit
-    const submitBtn = screen.getByRole('button', { name: /Confirm Adjustment/i })
+    const submitBtn = screen.getByRole('button', {
+      name: /Confirm Adjustment/i,
+    })
     await user.click(submitBtn)
 
     await waitFor(() => {
@@ -154,14 +164,16 @@ describe('Stock Management Component Tests', () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
 
-    const writeOffSpy = vi.spyOn(inventoryService, 'writeOffStock').mockResolvedValueOnce({
-      movementExternalId: VALID_UUID_2,
-      movementType: 'DAMAGE_WASTE',
-      quantity: 5,
-      previousStock: 100,
-      resultingStock: 95,
-      createdAt: '2026-08-29T00:00:00Z',
-    })
+    const writeOffSpy = vi
+      .spyOn(inventoryService, 'writeOffStock')
+      .mockResolvedValueOnce({
+        movementExternalId: VALID_UUID_2,
+        movementType: 'DAMAGE_WASTE',
+        quantity: 5,
+        previousStock: 100,
+        resultingStock: 95,
+        createdAt: '2026-08-29T00:00:00Z',
+      })
 
     renderWithProviders(
       <WriteOffDialog
@@ -203,10 +215,12 @@ describe('Stock Management Component Tests', () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
 
-    const thresholdSpy = vi.spyOn(inventoryService, 'setThreshold').mockResolvedValueOnce({
-      productExternalId: VALID_UUID_1,
-      minStockThreshold: 35,
-    })
+    const thresholdSpy = vi
+      .spyOn(inventoryService, 'setThreshold')
+      .mockResolvedValueOnce({
+        productExternalId: VALID_UUID_1,
+        minStockThreshold: 35,
+      })
 
     renderWithProviders(
       <ThresholdDialog
@@ -216,7 +230,9 @@ describe('Stock Management Component Tests', () => {
       />,
     )
 
-    expect(screen.getByText('Configure Minimum Stock Threshold')).toBeInTheDocument()
+    expect(
+      screen.getByText('Configure Minimum Stock Threshold'),
+    ).toBeInTheDocument()
 
     const input = screen.getByLabelText(/New Minimum Stock Threshold/i)
     await user.clear(input)
@@ -272,7 +288,9 @@ describe('Stock Management Component Tests', () => {
       />,
     )
 
-    expect(await screen.findByText('Network Stock Availability')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Network Stock Availability'),
+    ).toBeInTheDocument()
     expect(await screen.findByText('150 units')).toBeInTheDocument()
     expect(screen.getByText('Sucursal Norte')).toBeInTheDocument()
     expect(screen.getByText('Sucursal Sur')).toBeInTheDocument()

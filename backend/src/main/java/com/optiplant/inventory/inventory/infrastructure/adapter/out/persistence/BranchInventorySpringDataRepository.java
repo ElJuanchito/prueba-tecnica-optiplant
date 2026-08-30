@@ -28,6 +28,8 @@ public interface BranchInventorySpringDataRepository extends JpaRepository<Branc
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<BranchInventoryJpaEntity> findByBranchIdAndProductId(Long branchId, Long productId);
 
+	List<BranchInventoryJpaEntity> findByBranchId(Long branchId);
+
 	/** No lock (T-05) — {@code save} re-fetches the already-locked row by its own {@code external_id}. */
 	Optional<BranchInventoryJpaEntity> findByExternalId(UUID externalId);
 

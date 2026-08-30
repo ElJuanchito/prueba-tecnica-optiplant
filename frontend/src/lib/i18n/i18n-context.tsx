@@ -14,20 +14,29 @@ const STORAGE_KEY = 'optiplant_lang'
 
 export function I18nProvider({
   children,
-  initialLanguage = 'es',
+  initialLanguage,
 }: {
   children: React.ReactNode
   initialLanguage?: Language
 }) {
   const [language, setLanguageState] = React.useState<Language>(() => {
+    if (initialLanguage) {
+      return initialLanguage
+    }
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(STORAGE_KEY) as Language | null
       if (saved === 'es' || saved === 'en') {
         return saved
       }
     }
-    return initialLanguage
+    return 'es'
   })
+
+  React.useEffect(() => {
+    if (initialLanguage) {
+      setLanguageState(initialLanguage)
+    }
+  }, [initialLanguage])
 
   const setLanguage = React.useCallback((lang: Language) => {
     setLanguageState(lang)
@@ -57,7 +66,11 @@ export function I18nProvider({
           const fallbackDict = translations.es as Record<string, unknown>
           let fallbackVal: unknown = fallbackDict
           for (const fk of keys) {
-            if (fallbackVal && typeof fallbackVal === 'object' && fk in fallbackVal) {
+            if (
+              fallbackVal &&
+              typeof fallbackVal === 'object' &&
+              fk in fallbackVal
+            ) {
               fallbackVal = (fallbackVal as Record<string, unknown>)[fk]
             } else {
               fallbackVal = null
@@ -76,7 +89,10 @@ export function I18nProvider({
       let result = current
       if (params) {
         Object.entries(params).forEach(([paramKey, val]) => {
-          result = result.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(val))
+          result = result.replace(
+            new RegExp(`\\{${paramKey}\\}`, 'g'),
+            String(val),
+          )
         })
       }
       return result
@@ -100,7 +116,10 @@ export function useTranslation() {
   const context = React.useContext(I18nContext)
   if (!context) {
     // Fallback if rendered without provider
-    const fallbackT = (keyPath: string, params?: Record<string, string | number>) => {
+    const fallbackT = (
+      keyPath: string,
+      params?: Record<string, string | number>,
+    ) => {
       const keys = keyPath.split('.')
       let current: unknown = translations.es
       for (const k of keys) {
@@ -138,7 +157,9 @@ export function LanguageSwitcher({
 
   if (variant === 'full') {
     return (
-      <div className={`flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200 ${className}`}>
+      <div
+        className={`flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200 ${className}`}
+      >
         <Globe className="h-3.5 w-3.5 text-slate-500 ml-1.5 shrink-0" />
         <button
           type="button"

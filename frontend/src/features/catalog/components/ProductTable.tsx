@@ -37,6 +37,7 @@ import type {
 } from '../types/product.types.ts'
 import { ProductFormDialog } from './ProductFormDialog.tsx'
 import { ProductUnitsDialog } from './ProductUnitsDialog.tsx'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   AlertCircle,
   ArrowUpDown,
@@ -59,6 +60,7 @@ interface ProductTableProps {
 export function ProductTable({
   currentActorRole = 'OPERATOR',
 }: ProductTableProps) {
+  const { t } = useTranslation()
   const isAdmin = currentActorRole === 'ADMIN'
 
   const [filters, setFilters] = React.useState<ProductQueryParams>({
@@ -142,7 +144,7 @@ export function ProductTable({
     () => [
       {
         accessorKey: 'sku',
-        header: 'SKU',
+        header: t('catalog.sku'),
         cell: ({ row }) => (
           <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
             {row.original.sku}
@@ -151,7 +153,7 @@ export function ProductTable({
       },
       {
         accessorKey: 'name',
-        header: 'Product Name',
+        header: t('catalog.productName'),
         cell: ({ row }) => (
           <div>
             <div className="font-semibold text-slate-900 text-xs">
@@ -162,7 +164,7 @@ export function ProductTable({
       },
       {
         accessorKey: 'category',
-        header: 'Category',
+        header: t('catalog.category'),
         cell: ({ row }) => {
           const category = row.original.category
           return category ? (
@@ -180,7 +182,7 @@ export function ProductTable({
       },
       {
         accessorKey: 'baseUnit',
-        header: 'Base Unit',
+        header: t('inventory.baseUnit'),
         cell: ({ row }) => (
           <Badge
             variant="outline"
@@ -192,7 +194,7 @@ export function ProductTable({
       },
       {
         accessorKey: 'active',
-        header: 'Status',
+        header: t('common.status'),
         cell: ({ row }) => {
           const isActive = row.original.active
           return (
@@ -204,25 +206,14 @@ export function ProductTable({
                   : 'bg-slate-100 text-slate-600 border-slate-300'
               }`}
             >
-              {isActive ? 'Active' : 'Disabled'}
+              {isActive ? t('common.active') : t('common.disabled')}
             </Badge>
           )
         },
       },
       {
-        accessorKey: 'createdAt',
-        header: 'Created',
-        cell: ({ row }) => (
-          <div className="text-[11px] text-slate-500">
-            {row.original.createdAt
-              ? new Date(row.original.createdAt).toLocaleDateString()
-              : '—'}
-          </div>
-        ),
-      },
-      {
         id: 'actions',
-        header: 'Actions',
+        header: t('common.actions'),
         cell: ({ row }) => {
           const product = row.original
 
@@ -236,7 +227,7 @@ export function ProductTable({
                 title="View & manage units of measure"
               >
                 <Scale className="h-3 w-3 mr-1 text-amber-600" />
-                Units
+                {t('catalog.conversionUnits')}
               </Button>
 
               {isAdmin && (
@@ -248,7 +239,7 @@ export function ProductTable({
                     onClick={() => handleEdit(product)}
                   >
                     <Edit2 className="h-3 w-3 mr-1" />
-                    Edit
+                    {t('common.edit')}
                   </Button>
 
                   {product.active ? (
@@ -260,7 +251,7 @@ export function ProductTable({
                       disabled={disableMutation.isPending}
                     >
                       <PowerOff className="h-3 w-3 mr-1" />
-                      Disable
+                      {t('common.disable')}
                     </Button>
                   ) : (
                     <Button
@@ -271,7 +262,7 @@ export function ProductTable({
                       disabled={enableMutation.isPending}
                     >
                       <Power className="h-3 w-3 mr-1" />
-                      Enable
+                      {t('common.enable')}
                     </Button>
                   )}
                 </>
@@ -380,7 +371,7 @@ export function ProductTable({
           >
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
             <Input
-              placeholder="Search by SKU or name..."
+              placeholder={t('common.search')}
               className="pl-8 text-xs h-9 bg-slate-50 border-slate-200"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -393,11 +384,11 @@ export function ProductTable({
             onValueChange={handleCategoryFilterChange}
           >
             <SelectTrigger className="w-[160px] text-xs h-9 bg-slate-50 border-slate-200">
-              <SelectValue placeholder="All Categories" />
+              <SelectValue placeholder={t('catalog.category')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL" className="text-xs">
-                All Categories
+                {t('common.allCategories')}
               </SelectItem>
               {categoriesQuery.data?.content?.map((cat) => (
                 <SelectItem
@@ -417,17 +408,17 @@ export function ProductTable({
             onValueChange={handleActiveFilterChange}
           >
             <SelectTrigger className="w-[130px] text-xs h-9 bg-slate-50 border-slate-200">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t('common.status')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="true" className="text-xs">
-                Active only
+                {t('common.activeOnly')}
               </SelectItem>
               <SelectItem value="false" className="text-xs">
-                Disabled only
+                {t('common.disabledOnly')}
               </SelectItem>
               <SelectItem value="all" className="text-xs">
-                All status
+                {t('common.allStatus')}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -438,17 +429,14 @@ export function ProductTable({
             onValueChange={handleSortChange}
           >
             <SelectTrigger className="w-[130px] text-xs h-9 bg-slate-50 border-slate-200">
-              <SelectValue placeholder="Sort by" />
+              <SelectValue placeholder={t('catalog.sku')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="sku" className="text-xs">
-                Sort by SKU
+                {t('common.sortBySku')}
               </SelectItem>
               <SelectItem value="name" className="text-xs">
-                Sort by Name
-              </SelectItem>
-              <SelectItem value="createdAt" className="text-xs">
-                Sort by Date
+                {t('common.sortByName')}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -472,7 +460,7 @@ export function ProductTable({
             onClick={handleCreate}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New Product
+            {t('catalog.newProduct')}
           </Button>
         )}
       </div>
@@ -491,11 +479,10 @@ export function ProductTable({
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle className="text-xs font-bold">
-                Error loading product catalog
+                {t('common.error')}
               </AlertTitle>
               <AlertDescription className="text-xs">
-                {productsQuery.error.message ||
-                  'Failed to fetch product list from backend.'}
+                {productsQuery.error.message || t('common.error')}
               </AlertDescription>
             </Alert>
           </div>
@@ -506,12 +493,7 @@ export function ProductTable({
             </div>
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-800">
-                No products found in catalog
-              </p>
-              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                {filters.q || filters.categoryId || filters.active !== 'true'
-                  ? 'No products match the selected filters.'
-                  : 'Start building your inventory catalog by registering products.'}
+                {t('common.noData')}
               </p>
             </div>
             {isAdmin && !filters.q && (
@@ -522,7 +504,7 @@ export function ProductTable({
                 onClick={handleCreate}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                Register First Product
+                {t('catalog.createProduct')}
               </Button>
             )}
           </div>
@@ -571,22 +553,22 @@ export function ProductTable({
         {productsQuery.data && productsQuery.data.totalElements > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-600">
             <div>
-              Showing{' '}
+              {t('common.showing')}{' '}
               <span className="font-semibold text-slate-900">
                 {(filters.page ?? 0) * (filters.size ?? 10) + 1}
               </span>{' '}
-              to{' '}
+              {t('common.to')}{' '}
               <span className="font-semibold text-slate-900">
                 {Math.min(
                   ((filters.page ?? 0) + 1) * (filters.size ?? 10),
                   productsQuery.data.totalElements,
                 )}
               </span>{' '}
-              of{' '}
+              {t('common.of')}{' '}
               <span className="font-semibold text-slate-900">
                 {productsQuery.data.totalElements}
               </span>{' '}
-              products
+              {t('common.results')}
             </div>
 
             <div className="flex items-center space-x-2">
@@ -605,7 +587,10 @@ export function ProductTable({
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
               <span className="text-[11px] font-medium text-slate-700">
-                Page {currentPage} of {totalPages}
+                {t('common.pageOf', {
+                  page: String(currentPage),
+                  totalPages: String(totalPages),
+                })}
               </span>
               <Button
                 variant="outline"

@@ -36,11 +36,15 @@ final class TransferDetailAssembler {
 				.map(item -> toItemView(item, products.get(item.productExternalId())))
 				.toList();
 
+		List<String> enrichedObservations = transfer.notes().observations().stream()
+				.map(obs -> enrichObservation(obs, products))
+				.toList();
+
 		return new TransferDetail(transfer.externalId(), transfer.number(), transfer.status(),
 				transfer.notes().priority(), branchRef(transfer.originBranchExternalId(), branches),
 				branchRef(transfer.destinationBranchExternalId(), branches), transfer.carrierName(),
 				transfer.trackingNumber(), transfer.dispatchedAt(), transfer.estimatedArrivalAt(),
-				transfer.actualArrivalAt(), transfer.deviationHours().orElse(null), transfer.notes().observations(),
+				transfer.actualArrivalAt(), transfer.deviationHours().orElse(null), enrichedObservations,
 				transfer.requestedByUserExternalId(), transfer.dispatchedByUserExternalId(),
 				transfer.receivedByUserExternalId(), transfer.createdAt(), transfer.updatedAt(), itemViews);
 	}
@@ -49,6 +53,23 @@ final class TransferDetailAssembler {
 		return new TransferSummary(raw.externalId(), raw.number(), raw.status(), raw.priority(),
 				branchRef(raw.originBranch().externalId(), branches), branchRef(raw.destinationBranch().externalId(), branches),
 				raw.createdAt(), raw.estimatedArrivalAt());
+	}
+
+	private static String enrichObservation(String observation, Map<UUID, ProductReference> products) {
+		if (observation == null || observation.isBlank()) {
+			return observation;
+		}
+		String enriched = observation;
+		for (Map.Entry<UUID, ProductReference> entry : products.entrySet()) {
+			String uuidStr = entry.getKey().toString();
+			if (enriched.contains(uuidStr)) {
+				ProductReference ref = entry.getValue();
+				String displayName = ref != null && ref.name() != null ? ref.name() : uuidStr;
+				enriched = enriched.replace("Item " + uuidStr, displayName);
+				enriched = enriched.replace(uuidStr, displayName);
+			}
+		}
+		return enriched;
 	}
 
 	private static TransferItemView toItemView(TransferItem item, ProductReference product) {

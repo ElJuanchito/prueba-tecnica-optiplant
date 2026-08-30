@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createTestQueryClient, renderWithProviders } from '@/test/test-utils.tsx'
+import {
+  createTestQueryClient,
+  renderWithProviders,
+} from '@/test/test-utils.tsx'
 import { AppLayout } from '../AppLayout.tsx'
 import { queryKeys } from '@/lib/query-keys.ts'
 
