@@ -144,6 +144,12 @@ export function SaleDetailDialog({
                     ID: {sale.customerTaxId}
                   </p>
                 )}
+                {sale.customer && (
+                  <div className="pt-1 mt-1 border-t border-slate-200 text-[11px] text-teal-700">
+                    <span className="font-semibold">{t('customers.customerLinked')}:</span>{' '}
+                    <span>{sale.customer.name}</span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">

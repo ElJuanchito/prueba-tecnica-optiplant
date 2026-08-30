@@ -38,6 +38,12 @@ export const saleItemResponseSchema = z.object({
   subtotal: z.number(),
 })
 
+export const customerRefResponseSchema = z.object({
+  externalId: uuidSchema,
+  name: z.string(),
+  taxId: z.string().nullable().optional(),
+})
+
 export const saleDetailResponseSchema = z.object({
   externalId: uuidSchema,
   invoiceNumber: z.string(),
@@ -45,6 +51,7 @@ export const saleDetailResponseSchema = z.object({
   branch: branchRefResponseSchema.nullable().optional(),
   soldBy: userRefResponseSchema.nullable().optional(),
   priceList: priceListRefResponseSchema.nullable().optional(),
+  customer: customerRefResponseSchema.nullable().optional(),
   customerName: z.string(),
   customerTaxId: z.string().nullable().optional(),
   subtotal: z.number(),
@@ -64,6 +71,7 @@ export const saleSummaryResponseSchema = z.object({
   branch: branchRefResponseSchema.nullable().optional(),
   soldBy: userRefResponseSchema.nullable().optional(),
   priceList: priceListRefResponseSchema.nullable().optional(),
+  customer: customerRefResponseSchema.nullable().optional(),
   customerName: z.string(),
   totalAmount: z.number(),
   createdAt: z.string(),
@@ -98,6 +106,7 @@ export const registerSaleItemRequestSchema = z.object({
 
 export const registerSaleRequestSchema = z.object({
   priceListExternalId: uuidSchema.nullable().optional(),
+  customerExternalId: uuidSchema.nullable().optional(),
   customerName: z.string().trim().min(1, 'Customer name is required'),
   customerTaxId: z.string().trim().nullable().optional(),
   taxPercent: z

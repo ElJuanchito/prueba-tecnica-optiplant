@@ -135,4 +135,22 @@ export const queryKeys = {
         [...queryKeys.pricing.prices.all, priceListExternalId, filters] as const,
     },
   },
+  customers: {
+    all: ['customers'] as const,
+    lists: () => [...queryKeys.customers.all, 'list'] as const,
+    list: (filters: Record<string, unknown>) =>
+      [...queryKeys.customers.lists(), filters] as const,
+    detail: (externalId: string) =>
+      [...queryKeys.customers.all, 'detail', externalId] as const,
+    salesHistory: (
+      externalId: string,
+      filters: Record<string, unknown>,
+    ) =>
+      [
+        ...queryKeys.customers.all,
+        'sales-history',
+        externalId,
+        filters,
+      ] as const,
+  },
 } as const

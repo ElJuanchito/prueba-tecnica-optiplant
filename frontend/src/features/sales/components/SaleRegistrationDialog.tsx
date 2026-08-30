@@ -28,6 +28,9 @@ import { useSession } from '@/features/iam/hooks/use-auth.ts'
 import { useProducts } from '@/features/catalog/hooks/use-products.ts'
 import { useProductUnits } from '@/features/catalog/hooks/use-product-units.ts'
 import { usePriceLists } from '@/features/pricing/hooks/use-pricing.ts'
+import { useCustomers } from '@/features/customers/hooks/use-customers.ts'
+import { CustomerSearchSelect } from '@/features/customers/components/CustomerSearchSelect.tsx'
+import type { CustomerResponse } from '@/features/customers/types/index.ts'
 import { registerSaleRequestSchema } from '../schemas/sale.schema.ts'
 import type {
   RegisterSaleRequest,
@@ -58,9 +61,10 @@ export function SaleRegistrationDialog({
 
   const [serverError, setServerError] = React.useState<string | null>(null)
 
-  // Products and Price lists for selection
+  // Products, Customers and Price lists for selection
   const productsQuery = useProducts({ active: 'true', size: 100 }, open)
   const priceListsQuery = usePriceLists({ active: true, size: 50 }, open)
+  const customersQuery = useCustomers({ active: true, size: 100 }, open)
 
   const registerMutation = useRegisterSale()
 
@@ -75,6 +79,7 @@ export function SaleRegistrationDialog({
   }, [productsQuery.data])
 
   const priceLists = priceListsQuery.data?.content ?? []
+  const customers = customersQuery.data?.content ?? []
 
   const {
     register,
@@ -87,6 +92,7 @@ export function SaleRegistrationDialog({
   } = useForm<RegisterSaleRequest>({
     resolver: zodResolver(registerSaleRequestSchema),
     defaultValues: {
+      customerExternalId: undefined,
       customerName: '',
       customerTaxId: '',
       priceListExternalId: undefined,
@@ -102,6 +108,7 @@ export function SaleRegistrationDialog({
   })
 
   const watchedPriceListId = watch('priceListExternalId')
+  const watchedCustomerExternalId = watch('customerExternalId')
   const watchedItems = watch('items')
 
   const selectedPriceList = React.useMemo(() => {
@@ -115,6 +122,7 @@ export function SaleRegistrationDialog({
   React.useEffect(() => {
     if (open) {
       reset({
+        customerExternalId: undefined,
         customerName: '',
         customerTaxId: '',
         priceListExternalId: undefined,
@@ -125,6 +133,18 @@ export function SaleRegistrationDialog({
       setServerError(null)
     }
   }, [open, reset])
+
+  const handleSelectCustomer = (customer: CustomerResponse | null) => {
+    if (customer) {
+      setValue('customerExternalId', customer.externalId, {
+        shouldValidate: true,
+      })
+      setValue('customerName', customer.name, { shouldValidate: true })
+      setValue('customerTaxId', customer.taxId ?? '', { shouldValidate: true })
+    } else {
+      setValue('customerExternalId', undefined, { shouldValidate: true })
+    }
+  }
 
   const handleAddProduct = (product: ProductOption) => {
     setServerError(null)
@@ -152,6 +172,7 @@ export function SaleRegistrationDialog({
     // Sanitize payload
     const payload: RegisterSaleRequest = {
       ...data,
+      customerExternalId: data.customerExternalId || null,
       customerTaxId: data.customerTaxId?.trim() || null,
       notes: data.notes?.trim() || null,
       priceListExternalId: data.priceListExternalId || null,
@@ -226,43 +247,58 @@ export function SaleRegistrationDialog({
           )}
 
           {/* Customer & Price List Header */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="space-y-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+            {/* Customer Search / Select Combobox */}
             <div className="space-y-1">
-              <Label htmlFor="customer-name" className="text-xs font-semibold">
-                {t('sales.dialog.customerName')}{' '}
-                <span className="text-rose-500">*</span>
+              <Label className="text-xs font-semibold text-slate-700">
+                {t('customers.selectCustomer')}
               </Label>
-              <Input
-                id="customer-name"
-                {...register('customerName')}
-                placeholder={t('sales.dialog.customerNamePlaceholder')}
-                className="text-xs h-8 bg-white"
-                disabled={isCorporateAdminWithoutBranch}
-              />
-              {errors.customerName && (
-                <p className="text-[11px] font-medium text-rose-600">
-                  {errors.customerName.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="customer-tax-id" className="text-xs font-semibold">
-                {t('sales.dialog.customerTaxId')}
-              </Label>
-              <Input
-                id="customer-tax-id"
-                {...register('customerTaxId')}
-                placeholder={t('sales.dialog.customerTaxIdPlaceholder')}
-                className="text-xs h-8 bg-white font-mono"
+              <CustomerSearchSelect
+                value={watchedCustomerExternalId || undefined}
+                customers={customers}
+                onSelectCustomer={handleSelectCustomer}
+                placeholder={t('customers.searchCustomerPlaceholder')}
                 disabled={isCorporateAdminWithoutBranch}
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="price-list-select" className="text-xs font-semibold">
-                {t('sales.dialog.priceList')}
-              </Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="customer-name" className="text-xs font-semibold">
+                  {t('sales.dialog.customerName')}{' '}
+                  <span className="text-rose-500">*</span>
+                </Label>
+                <Input
+                  id="customer-name"
+                  {...register('customerName')}
+                  placeholder={t('sales.dialog.customerNamePlaceholder')}
+                  className="text-xs h-8 bg-white"
+                  disabled={isCorporateAdminWithoutBranch}
+                />
+                {errors.customerName && (
+                  <p className="text-[11px] font-medium text-rose-600">
+                    {errors.customerName.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="customer-tax-id" className="text-xs font-semibold">
+                  {t('sales.dialog.customerTaxId')}
+                </Label>
+                <Input
+                  id="customer-tax-id"
+                  {...register('customerTaxId')}
+                  placeholder={t('sales.dialog.customerTaxIdPlaceholder')}
+                  className="text-xs h-8 bg-white font-mono"
+                  disabled={isCorporateAdminWithoutBranch}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="price-list-select" className="text-xs font-semibold">
+                  {t('sales.dialog.priceList')}
+                </Label>
               <select
                 id="price-list-select"
                 value={watchedPriceListId || ''}
@@ -283,6 +319,7 @@ export function SaleRegistrationDialog({
                 ))}
               </select>
             </div>
+          </div>
           </div>
 
           {/* Items Section with Central Search Bar */}
