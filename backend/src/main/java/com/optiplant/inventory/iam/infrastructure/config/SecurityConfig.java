@@ -122,6 +122,20 @@ class SecurityConfig {
 						.authenticated()
 						.requestMatchers("/api/sales/*/cancellation").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						.requestMatchers("/api/sales/**").authenticated()
+						// Compras y proveedores (add-purchases-module design §6.4). La lectura de
+						// proveedores es abierta a cualquier rol autenticado (PA-06); la administración
+						// de proveedores es ADMIN exclusivo (§5). La aprobación y cancelación de
+						// órdenes exigen ADMIN/BRANCH_MANAGER (R-12, R-13). El resto de rutas de compras
+						// (crear orden, recepción, consultas) quedan abiertas a cualquier rol autenticado,
+						// validándose la sucursal y el sobre-recibo más adentro (PurchaseAccessPolicy,
+						// PurchaseReceptionPolicy). String literals únicamente para evitar iam -> purchases.
+						.requestMatchers(HttpMethod.GET, "/api/purchases/suppliers", "/api/purchases/suppliers/*")
+						.authenticated()
+						.requestMatchers("/api/purchases/suppliers", "/api/purchases/suppliers/**")
+						.hasAuthority("ADMIN")
+						.requestMatchers("/api/purchases/orders/*/approval", "/api/purchases/orders/*/cancellation")
+						.hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
+						.requestMatchers("/api/purchases/**").authenticated()
 						.anyRequest().authenticated())
 				.build();
 	}

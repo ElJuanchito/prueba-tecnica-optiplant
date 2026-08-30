@@ -18,15 +18,14 @@ import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestrates supplier management (CU-COM-01, RF-COM-06, design §4). Supplier audit entries are
  * corporate — {@code branch_id = null} (T-03) — and use the generic {@link AuditAction} verbs.
- *
- * <p><strong>Ships without {@code @Service}</strong> while {@link SupplierRepositoryPort} has no
- * adapter (S1, design §10 trap 4). S2 task 2.6 restores the stereotype.
  */
+@Service
 @Transactional
 public class ManageSuppliersService implements ManageSuppliersUseCase {
 

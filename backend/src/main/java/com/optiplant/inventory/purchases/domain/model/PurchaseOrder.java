@@ -60,11 +60,25 @@ public record PurchaseOrder(UUID externalId, OrderNumber orderNumber, UUID branc
 		return copy(PurchaseOrderStatus.CANCELLED, notes.withCancellationReason(reason), receivedAt, items, at);
 	}
 
+	/**
+	 * R-10 &rarr; stays {@code PENDING}; updates supplier, payment terms, notes, replaces the item set
+	 * and recomputes total (Deviation #5).
+	 */
+	public PurchaseOrder withEdit(UUID newSupplierExternalId, String newPaymentTerms, PurchaseOrderNotes newNotes,
+			List<PurchaseOrderItem> newItems, Money newTotal, Instant at) {
+		PurchaseOrderStateMachine.require(status, PurchaseOrderTransition.EDIT);
+		if (newSupplierExternalId == null) {
+			throw new IllegalArgumentException("supplierExternalId must not be null");
+		}
+		return new PurchaseOrder(externalId, orderNumber, branchExternalId, newSupplierExternalId,
+				createdByUserExternalId, status, newPaymentTerms, newTotal,
+				newNotes != null ? newNotes : PurchaseOrderNotes.empty(),
+				receivedAt, createdAt, at, List.copyOf(newItems));
+	}
+
 	/** R-10 &rarr; stays {@code PENDING}; replaces the item set and recomputed total. */
 	public PurchaseOrder withItems(List<PurchaseOrderItem> newItems, Money newTotal, Instant at) {
-		PurchaseOrderStateMachine.require(status, PurchaseOrderTransition.EDIT);
-		return new PurchaseOrder(externalId, orderNumber, branchExternalId, supplierExternalId, createdByUserExternalId,
-				status, paymentTerms, newTotal, notes, receivedAt, createdAt, at, List.copyOf(newItems));
+		return withEdit(supplierExternalId, paymentTerms, notes, newItems, newTotal, at);
 	}
 
 	/**

@@ -12,6 +12,7 @@ import com.optiplant.inventory.shared.audit.AuditWritePort;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -19,10 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
  * §7). The {@code purchase_orders} row is locked before its {@code status} is read (F-5, design
  * §10 trap 3); cancellation from {@code PARTIALLY_RECEIVED} reverses no stock and writes no
  * Kardex row (R-13, PA-08).
- *
- * <p><strong>Ships without {@code @Service}</strong> while its out-ports have no adapter (S1,
- * design §10 trap 4). S2 task 2.6 restores the stereotype.
  */
+@Service
 @Transactional
 public class TransitionPurchaseOrderService implements TransitionPurchaseOrderUseCase {
 
