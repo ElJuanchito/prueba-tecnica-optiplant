@@ -9,6 +9,7 @@ import com.optiplant.inventory.shared.alert.AlertType;
 import com.optiplant.inventory.shared.alert.OperationalAlertRaised;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code RequestTransferService}'s class Javadoc ({@code transfers} module) for why S1 ships this
  * unannotated.
  */
+@Service
 public class DetectTransferDelaysService implements DetectTransferDelaysUseCase {
 
 	private final TransferMonitorReadPort monitorReadPort;

@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -41,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>{@code @Service} restored in S2 (task 2.7) — see {@code RequestTransferService}'s class
  * Javadoc.
  */
+@Service
 public class DispatchTransferService implements DispatchTransferUseCase {
 
 	private final TransferRepositoryPort transferRepository;

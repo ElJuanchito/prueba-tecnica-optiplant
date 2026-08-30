@@ -90,6 +90,24 @@ class SecurityConfig {
 						.requestMatchers("/api/inventory/kardex").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						.requestMatchers("/api/notifications/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						.requestMatchers("/api/inventory/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
+						// Transferencias y logística (add-transfers-module design §6.4). Los tres
+						// matchers específicos de aprobación/rechazo/cancelación van ANTES del
+						// general /api/transfers/** — R-06/R-21 exigen ADMIN/BRANCH_MANAGER, y si
+						// el general fuera primero OPERATOR alcanzaría la aprobación (se evalúan
+						// de arriba abajo, mismo motivo que el corte de catálogo más arriba).
+						// Solicitud, despacho y recepción quedan abiertos a cualquier rol
+						// autenticado — RF-TRA-01/03/04/05 no los restringen — la sucursal actuante
+						// y OPERATOR se validan más adentro (TransferAccessPolicy). Rutas de
+						// logística son ADMIN exclusivo (CU-LOG-01); monitor y reporte quedan en
+						// ADMIN/BRANCH_MANAGER (CU-LOG-02/03). String literals únicamente: importar
+						// un tipo de transfers/logistics aquí crearía la arista iam -> transfers (o
+						// -> logistics) y rompería ModuleBoundariesTest. hasAuthority, nunca hasRole.
+						.requestMatchers("/api/transfers/*/approval", "/api/transfers/*/rejection",
+								"/api/transfers/*/cancellation")
+						.hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
+						.requestMatchers("/api/transfers/**").authenticated()
+						.requestMatchers("/api/logistics/routes/**").hasAuthority("ADMIN")
+						.requestMatchers("/api/logistics/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						.anyRequest().authenticated())
 				.build();
 	}

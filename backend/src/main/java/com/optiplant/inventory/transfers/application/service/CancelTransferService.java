@@ -14,6 +14,7 @@ import com.optiplant.inventory.shared.audit.AuditWritePort;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>{@code @Service} restored in S2 (task 2.7) — see {@code RequestTransferService}'s class
  * Javadoc.
  */
+@Service
 public class CancelTransferService implements CancelTransferUseCase {
 
 	private final TransferRepositoryPort transferRepository;
