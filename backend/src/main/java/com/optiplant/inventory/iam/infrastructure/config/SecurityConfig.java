@@ -68,7 +68,6 @@ class SecurityConfig {
 						// BRANCH_MANAGER may only manage OPERATOR users in their own branch —
 						// that scoping is enforced in UserAdminService, not here.
 						.requestMatchers("/api/admin/users/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
-						.requestMatchers(HttpMethod.GET, "/api/admin/branches/**").authenticated()
 						.requestMatchers("/api/admin/branches/**").hasAuthority("ADMIN")
 						.requestMatchers("/api/audit/**").hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						// Catálogo: la superficie de lectura es abierta a cualquier rol
