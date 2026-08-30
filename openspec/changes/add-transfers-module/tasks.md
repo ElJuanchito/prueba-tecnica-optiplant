@@ -90,29 +90,29 @@ SpringDataRepository → PersistenceAdapter → Controller → ExceptionHandler`
 Testcontainers `*IT` only for invariants that can break the system; the rest is S1 units plus one
 smoke assertion per controller group. **Docker-needing classes end in `IT`, never `Test`.**
 
-- [ ] 3.1 `TransferDispatchAtomicityIT` — R-11/R-12/T-01: `TRANSFER_OUT` on origin plus destination
+- [x] 3.1 `TransferDispatchAtomicityIT` — R-11/R-12/T-01: `TRANSFER_OUT` on origin plus destination
       in-transit increment with **no** Kardex row for the shift; a forced mid-dispatch failure leaves
       state, balances and Kardex unchanged. Copy `inventory`'s atomicity fixture pattern.
-- [ ] 3.2 `TransferReceiptDiscrepancyIT` — R-16/R-17/R-18/R-20: 100 dispatched, 90 received ⇒ +90
+- [x] 3.2 `TransferReceiptDiscrepancyIT` — R-16/R-17/R-18/R-20: 100 dispatched, 90 received ⇒ +90
       stock, discrepancy 10, in-transit **0**, `RECEIVED_WITH_DISCREPANCY`, one alert per branch; a
       full receipt gives `RECEIVED` and no alert; `TRANSFER_IN` unit cost equals `TRANSFER_OUT`'s (D-2).
-- [ ] 3.3 `TransferStateMachineIT` — R-01/R-22: dispatch from `REQUESTED` and cancellation from
+- [x] 3.3 `TransferStateMachineIT` — R-01/R-22: dispatch from `REQUESTED` and cancellation from
       `IN_TRANSIT` both `409`, no balance touched.
-- [ ] 3.4 `TransferBranchIsolationIT` (**name it exactly this**; `BranchIsolationIT` and
+- [x] 3.4 `TransferBranchIsolationIT` (**name it exactly this**; `BranchIsolationIT` and
       `InventoryBranchIsolationIT` already exist) — §5: a third branch gets `transfer_not_found`,
       destination cannot dispatch, origin cannot receive, `OPERATOR` denied approval, cancellation,
       monitor and report.
-- [ ] 3.5 `TransferConcurrencyIT` — R-12/T-02: two concurrent dispatches over the same stock, exactly
+- [x] 3.5 `TransferConcurrencyIT` — R-12/T-02: two concurrent dispatches over the same stock, exactly
       one succeeds, stock never negative, no `500`; two simultaneous creations yield two distinct
       `transfer_number` values (D-3).
-- [ ] 3.6 `TransferApiSmokeIT` — one assertion per read endpoint (`GET /api/transfers`, detail,
+- [x] 3.6 `TransferApiSmokeIT` — one assertion per read endpoint (`GET /api/transfers`, detail,
       `/api/logistics/transfers/active`, `/api/logistics/compliance`) and route CRUD: status,
       page-envelope shape, no numeric id, no raw `PRIORITY:` token.
-- [ ] 3.7 Register **DT-11** in `docs/deuda_tecnica.md` (Spanish; DT-01…DT-10 are taken) — no sequence
+- [x] 3.7 Register **DT-11** in `docs/deuda_tecnica.md` (Spanish; DT-01…DT-10 are taken) — no sequence
       behind `transfer_number`, the advisory lock guards it, repayment is `CREATE SEQUENCE
       transfer_number_seq` (§9); add the summary-table row **and** the detail section. Confirm
       `/v3/api-docs` documents all fourteen operations, their statuses and the `{ code, message }`
       envelope (RNF-API-01).
-- [ ] 3.8 Run `python3 scripts/validar_trazabilidad.py` (green; §3 expects no `docs/` edit),
+- [x] 3.8 Run `python3 scripts/validar_trazabilidad.py` (green; §3 expects no `docs/` edit),
       `./scripts/validar_esquema.sh` (green, unchanged) and `cd backend && ./mvnw verify` with
       `ModuleBoundariesTest` included.

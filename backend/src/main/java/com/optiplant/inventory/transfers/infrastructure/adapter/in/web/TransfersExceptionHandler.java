@@ -12,6 +12,9 @@ import com.optiplant.inventory.transfers.domain.exception.TransferItemNotFoundEx
 import com.optiplant.inventory.transfers.domain.exception.TransferNotFoundException;
 import com.optiplant.inventory.transfers.domain.exception.TransferReasonRequiredException;
 import com.optiplant.inventory.shared.stock.StockMutationRejectedException;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,11 +34,21 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * {@code StockMutationAdapter} translates its internal failures into it so R-12's
  * {@code insufficient_stock} is reachable without importing {@code inventory}'s own exception
  * type across the module boundary.
+ *
+ * <p>{@code @ApiResponse} on one representative handler per distinct status is enough:
+ * springdoc merges every documented status this advice's handlers cover into each operation the
+ * advice applies to (RNF-API-01) — the same technique {@code InventoryExceptionHandler} and
+ * {@code CatalogExceptionHandler} already use, so it needs no repetition per handler.
  */
 @RestControllerAdvice(basePackages = "com.optiplant.inventory.transfers.infrastructure.adapter.in.web")
 class TransfersExceptionHandler {
 
+	private static final String ERROR_ENVELOPE_MEDIA_TYPE = "application/json";
+
 	@ExceptionHandler(IllegalArgumentException.class)
+	@ApiResponse(responseCode = "400", description = "Uniform { code, message } error envelope (contract §7)",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onIllegalArgument(IllegalArgumentException ex) {
 		return build(HttpStatus.BAD_REQUEST, "invalid_request", ex.getMessage());
 	}
@@ -71,6 +84,9 @@ class TransfersExceptionHandler {
 	}
 
 	@ExceptionHandler(BranchContextRequiredException.class)
+	@ApiResponse(responseCode = "403", description = "Uniform { code, message } error envelope (contract §7)",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onBranchContextRequired(BranchContextRequiredException ex) {
 		return build(HttpStatus.FORBIDDEN, "branch_context_required", ex.getMessage());
 	}
@@ -81,6 +97,9 @@ class TransfersExceptionHandler {
 	}
 
 	@ExceptionHandler(ProductNotFoundException.class)
+	@ApiResponse(responseCode = "404", description = "Uniform { code, message } error envelope (contract §7)",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onProductNotFound(ProductNotFoundException ex) {
 		return build(HttpStatus.NOT_FOUND, "product_not_found", ex.getMessage());
 	}
@@ -101,12 +120,18 @@ class TransfersExceptionHandler {
 	}
 
 	@ExceptionHandler(InvalidTransferStateException.class)
+	@ApiResponse(responseCode = "409", description = "Uniform { code, message } error envelope (contract §7)",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE,
+					schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onInvalidTransferState(InvalidTransferStateException ex) {
 		return build(HttpStatus.CONFLICT, "invalid_transfer_state", ex.getMessage());
 	}
 
 	/** D-4 — {@code inventory}'s stock port refusal, translated across the module boundary. */
 	@ExceptionHandler(StockMutationRejectedException.class)
+	@ApiResponse(responseCode = "500", description = "Uniform { code, message } error envelope (contract §7) — "
+			+ "UNIT_COST_CONTRACT, never expected in normal operation",
+			content = @Content(mediaType = ERROR_ENVELOPE_MEDIA_TYPE, schema = @Schema(implementation = ErrorResponse.class)))
 	ResponseEntity<ErrorResponse> onStockMutationRejected(StockMutationRejectedException ex) {
 		return switch (ex.reason()) {
 			case INSUFFICIENT_STOCK -> build(HttpStatus.CONFLICT, "insufficient_stock", ex.getMessage());

@@ -47,6 +47,7 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-08** | Búsqueda de productos por texto libre resuelta con recorrido secuencial | Baja | Aceptada | Si el catálogo supera ~50 000 productos o si la prueba de latencia falla |
 | **DT-09** | Deduplicación de alertas operativas sin restricción de unicidad en el esquema | Media | Aceptada | Cuando llegue el próximo cambio de esquema |
 | **DT-10** | El tope de tamaño de página se resuelve distinto en `catalog` que en el resto de los módulos | Baja | Aceptada | Cuando se pueda ajustar el frontend de `catalog` en el mismo cambio |
+| **DT-11** | `transfer_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 
 ---
 
@@ -348,6 +349,31 @@ La inconsistencia además se paga sola con el tiempo. Cada módulo nuevo obliga 
 
 #### Referencias
 RNF-PER-04 · `openspec/changes/archive/2026-08-29-add-inventory-module/verify-report.md` — advertencia 2.
+
+---
+
+### DT-11 — `transfer_number` se asigna sin una secuencia de base de datos
+
+**Severidad:** Baja · **Estado:** Aceptada · **Esfuerzo estimado:** trivial · **Origen:** diseño del módulo `transfers`
+
+#### Situación actual
+`transfers` no tiene ninguna columna de secuencia ni un `SEQUENCE` de PostgreSQL que numere `transfer_number` (`01-init-schema.sql`, §2.5 de `openspec/changes/add-transfers-module/contract.md`). RF-TRA-01 y HU-TRA-01 exigen un número legible con el formato `TRF-<yyyy>-<nnnn>`, ya usado por la fila semilla `TRF-2026-0001`. `TransferPersistenceAdapter.create` lo resuelve sin tocar el esquema: toma un bloqueo consultivo de transacción de PostgreSQL con alcance anual (`pg_advisory_xact_lock(hashtext('transfer_number:' || :year))`) como primera sentencia, calcula `MAX(...) + 1` sobre los números ya asignados ese año y recién entonces inserta — la misma técnica que **DT-09** ya usa para deduplicar alertas.
+
+#### Por qué se aceptó
+El bloqueo consultivo serializa correctamente las creaciones concurrentes dentro de un mismo año sin requerir una migración de esquema (§2.5 prohíbe deliberadamente tocar `01-init-schema.sql` en este cambio). La restricción `UNIQUE` existente sobre `transfer_number` queda como última línea de defensa (T-07): si alguna vez el bloqueo se omitiera, el `INSERT` duplicado fallaría en la base en vez de corromper silenciosamente el número.
+
+#### Por qué es deuda
+La corrección depende enteramente de que **todo** escritor futuro de `transfers` tome el mismo bloqueo consultivo antes de calcular el siguiente número. Un segundo camino de escritura — una migración de datos, un script administrativo, un módulo futuro que inserte directamente en `transfers` — que no respete ese orden puede colisionar con una creación concurrente y, en el peor caso, verse rechazado por la restricción `UNIQUE` en vez de recibir un número válido. No hay una secuencia de base de datos que lo garantice estructuralmente, a diferencia de una columna `SERIAL` o `GENERATED ALWAYS AS IDENTITY`.
+
+#### Plan de pago
+Cuando llegue el próximo cambio de esquema:
+
+1. `CREATE SEQUENCE transfer_number_seq;`.
+2. Retirar `pg_advisory_xact_lock` y la consulta `MAX(...)` de `TransferPersistenceAdapter.create`.
+3. Formatear `transfer_number` a partir de `nextval('transfer_number_seq')` combinado con el año en curso, conservando el formato `TRF-<yyyy>-<nnnn>` que el frontend y los datos semilla ya asumen.
+
+#### Referencias
+RF-TRA-01 · HU-TRA-01 · `openspec/changes/add-transfers-module/design.md` §6.2, §9, D-3.
 
 ---
 
