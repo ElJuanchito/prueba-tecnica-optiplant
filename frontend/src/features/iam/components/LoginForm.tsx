@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label.tsx'
 import { useLogin } from '../hooks/use-auth.ts'
 import { loginRequestSchema } from '../schemas/auth.schema.ts'
 import type { LoginRequest } from '../types/auth.types.ts'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, User } from 'lucide-react'
 
 interface LoginFormProps {
@@ -23,6 +24,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
+  const { t } = useTranslation()
   const loginMutation = useLogin()
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [showPassword, setShowPassword] = React.useState(false)
@@ -64,20 +66,20 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
           <div className="text-left leading-none">
             <CardTitle className="text-2xl font-black tracking-tight text-slate-900">
-              OptiPlant
+              {t('nav.brand')}
             </CardTitle>
             <span className="text-[10px] font-bold tracking-widest text-orange-600 uppercase">
-              CONSULTORES
+              {t('nav.brandSubtitle')}
             </span>
           </div>
         </div>
 
         <div className="pt-2">
           <span className="inline-block text-[11px] font-semibold tracking-wider text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded uppercase">
-            Industry 4.0 Integrator
+            {t('auth.tagline')}
           </span>
           <CardDescription className="text-xs text-slate-500 mt-2">
-            Multi-branch Inventory Management System
+            {t('auth.systemTitle')}
           </CardDescription>
         </div>
       </CardHeader>
@@ -92,7 +94,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             >
               <AlertCircle className="h-4 w-4" />
               <AlertTitle className="text-xs font-semibold">
-                Authentication Failed
+                {t('auth.authFailed')}
               </AlertTitle>
               <AlertDescription className="text-xs">
                 {errorMessage}
@@ -105,7 +107,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               htmlFor="username"
               className="text-xs font-medium text-slate-700"
             >
-              Username
+              {t('auth.username')}
             </Label>
             <div className="relative">
               <Input
@@ -132,7 +134,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                 htmlFor="password"
                 className="text-xs font-medium text-slate-700"
               >
-                Password
+                {t('auth.password')}
               </Label>
             </div>
             <div className="relative">
@@ -179,10 +181,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             {loginMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Iniciando sesión...
+                {t('auth.signingIn')}
               </>
             ) : (
-              'Sign In'
+              t('auth.loginButton')
             )}
           </Button>
 

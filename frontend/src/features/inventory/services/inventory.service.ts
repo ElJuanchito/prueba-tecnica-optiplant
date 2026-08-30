@@ -34,7 +34,10 @@ export const inventoryService = {
         searchParams.set('productExternalId', validatedParams.productExternalId)
       }
       if (validatedParams.belowThreshold !== undefined) {
-        searchParams.set('belowThreshold', String(validatedParams.belowThreshold))
+        searchParams.set(
+          'belowThreshold',
+          String(validatedParams.belowThreshold),
+        )
       }
       if (validatedParams.sort !== undefined) {
         searchParams.set('sort', validatedParams.sort)

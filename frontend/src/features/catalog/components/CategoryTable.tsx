@@ -43,6 +43,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog.tsx'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   AlertCircle,
   AlertTriangle,
@@ -64,6 +65,7 @@ interface CategoryTableProps {
 export function CategoryTable({
   currentActorRole = 'OPERATOR',
 }: CategoryTableProps) {
+  const { t } = useTranslation()
   const isAdmin = currentActorRole === 'ADMIN'
 
   const [filters, setFilters] = React.useState<CategoryQueryParams>({
@@ -124,7 +126,7 @@ export function CategoryTable({
     () => [
       {
         accessorKey: 'name',
-        header: 'Category Name',
+        header: t('catalog.categoryName'),
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
@@ -145,7 +147,7 @@ export function CategoryTable({
       },
       {
         accessorKey: 'active',
-        header: 'Status',
+        header: t('common.status'),
         cell: ({ row }) => {
           const isActive = row.original.active
           return (
@@ -157,14 +159,14 @@ export function CategoryTable({
                   : 'bg-slate-100 text-slate-600 border-slate-300'
               }`}
             >
-              {isActive ? 'Active' : 'Disabled'}
+              {isActive ? t('common.active') : t('common.disabled')}
             </Badge>
           )
         },
       },
       {
         accessorKey: 'activeProductCount',
-        header: 'Active Products',
+        header: t('catalog.totalProducts'),
         cell: ({ row }) => (
           <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
             <Package className="h-3.5 w-3.5 text-slate-400" />
@@ -173,25 +175,14 @@ export function CategoryTable({
         ),
       },
       {
-        accessorKey: 'createdAt',
-        header: 'Created',
-        cell: ({ row }) => (
-          <div className="text-[11px] text-slate-500">
-            {row.original.createdAt
-              ? new Date(row.original.createdAt).toLocaleDateString()
-              : '—'}
-          </div>
-        ),
-      },
-      {
         id: 'actions',
-        header: 'Actions',
+        header: t('common.actions'),
         cell: ({ row }) => {
           const category = row.original
           if (!isAdmin) {
             return (
               <span className="text-[11px] text-slate-400 italic">
-                Read-only
+                {t('common.readOnly')}
               </span>
             )
           }
@@ -205,7 +196,7 @@ export function CategoryTable({
                 onClick={() => handleEdit(category)}
               >
                 <Edit2 className="h-3 w-3 mr-1" />
-                Edit
+                {t('common.edit')}
               </Button>
 
               {category.active ? (
@@ -217,7 +208,7 @@ export function CategoryTable({
                   disabled={disableMutation.isPending}
                 >
                   <PowerOff className="h-3 w-3 mr-1" />
-                  Disable
+                  {t('common.disable')}
                 </Button>
               ) : (
                 <Button
@@ -228,7 +219,7 @@ export function CategoryTable({
                   disabled={enableMutation.isPending}
                 >
                   <Power className="h-3 w-3 mr-1" />
-                  Enable
+                  {t('common.enable')}
                 </Button>
               )}
             </div>
@@ -323,17 +314,17 @@ export function CategoryTable({
             onValueChange={handleActiveFilterChange}
           >
             <SelectTrigger className="w-[140px] text-xs h-9 bg-slate-50 border-slate-200">
-              <SelectValue placeholder="Status filter" />
+              <SelectValue placeholder={t('common.status')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="true" className="text-xs">
-                Active only
+                {t('common.activeOnly')}
               </SelectItem>
               <SelectItem value="false" className="text-xs">
-                Disabled only
+                {t('common.disabledOnly')}
               </SelectItem>
               <SelectItem value="all" className="text-xs">
-                All categories
+                {t('common.allStatus')}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -346,7 +337,7 @@ export function CategoryTable({
             onClick={handleCreate}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New Category
+            {t('catalog.newCategory')}
           </Button>
         )}
       </div>
@@ -365,11 +356,10 @@ export function CategoryTable({
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle className="text-xs font-bold">
-                Error loading categories
+                {t('common.error')}
               </AlertTitle>
               <AlertDescription className="text-xs">
-                {categoriesQuery.error.message ||
-                  'Failed to fetch category catalog from backend.'}
+                {categoriesQuery.error.message || t('common.error')}
               </AlertDescription>
             </Alert>
           </div>
@@ -380,12 +370,7 @@ export function CategoryTable({
             </div>
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-800">
-                No product categories found
-              </p>
-              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                {filters.name || filters.active !== 'true'
-                  ? 'No categories match the active search or status filters.'
-                  : 'Get started by creating corporate product categories.'}
+                {t('common.noData')}
               </p>
             </div>
             {isAdmin && !filters.name && (
@@ -396,7 +381,7 @@ export function CategoryTable({
                 onClick={handleCreate}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                Create First Category
+                {t('catalog.createCategory')}
               </Button>
             )}
           </div>
@@ -445,22 +430,22 @@ export function CategoryTable({
         {categoriesQuery.data && categoriesQuery.data.totalElements > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-600">
             <div>
-              Showing{' '}
+              {t('common.showing')}{' '}
               <span className="font-semibold text-slate-900">
                 {(filters.page ?? 0) * (filters.size ?? 10) + 1}
               </span>{' '}
-              to{' '}
+              {t('common.to')}{' '}
               <span className="font-semibold text-slate-900">
                 {Math.min(
                   ((filters.page ?? 0) + 1) * (filters.size ?? 10),
                   categoriesQuery.data.totalElements,
                 )}
               </span>{' '}
-              of{' '}
+              {t('common.of')}{' '}
               <span className="font-semibold text-slate-900">
                 {categoriesQuery.data.totalElements}
               </span>{' '}
-              categories
+              {t('common.results')}
             </div>
 
             <div className="flex items-center space-x-2">
@@ -479,7 +464,10 @@ export function CategoryTable({
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
               <span className="text-[11px] font-medium text-slate-700">
-                Page {currentPage} of {totalPages}
+                {t('common.pageOf', {
+                  page: String(currentPage),
+                  totalPages: String(totalPages),
+                })}
               </span>
               <Button
                 variant="outline"

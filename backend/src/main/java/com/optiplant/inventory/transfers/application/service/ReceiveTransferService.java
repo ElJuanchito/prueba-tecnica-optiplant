@@ -111,7 +111,7 @@ public class ReceiveTransferService implements ReceiveTransferUseCase {
 	private void applyReceiptLine(ReceiptLine line, TransferItem dispatchedItem, UUID destinationBranchExternalId,
 			UUID transferExternalId, Map<UUID, BigDecimal> unitCosts, UUID actorUserExternalId) {
 		if (line.receivedQuantity().value().signum() > 0) {
-			BigDecimal unitCost = unitCosts.get(line.productExternalId());
+			BigDecimal unitCost = unitCosts.getOrDefault(line.productExternalId(), BigDecimal.ZERO.setScale(4));
 			stockMutationPort.applyMovement(new StockMutationCommand(destinationBranchExternalId,
 					line.productExternalId(), StockMovementType.TRANSFER_IN, line.receivedQuantity().value(),
 					unitCost, "TRANSFER", transferExternalId.toString(), null, actorUserExternalId));

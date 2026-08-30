@@ -41,9 +41,8 @@ export const alertResponseSchema = z.object({
   createdAt: z.string(),
 })
 
-export const alertPageResponseSchema = paginatedResponseSchema(
-  alertResponseSchema,
-)
+export const alertPageResponseSchema =
+  paginatedResponseSchema(alertResponseSchema)
 
 export const alertQuerySchema = z.object({
   resolved: z.boolean().optional(),

@@ -53,7 +53,11 @@ export const queryKeys = {
       list: (filters: Record<string, unknown>) =>
         [...queryKeys.inventory.stock.lists(), filters] as const,
       network: (productExternalId: string) =>
-        [...queryKeys.inventory.stock.all, 'network', productExternalId] as const,
+        [
+          ...queryKeys.inventory.stock.all,
+          'network',
+          productExternalId,
+        ] as const,
     },
     kardex: {
       all: ['inventory', 'kardex'] as const,
@@ -71,6 +75,35 @@ export const queryKeys = {
         [...queryKeys.notifications.alerts.lists(), filters] as const,
       detail: (externalId: string) =>
         [...queryKeys.notifications.alerts.all, 'detail', externalId] as const,
+    },
+  },
+  transfers: {
+    all: ['transfers'] as const,
+    lists: () => [...queryKeys.transfers.all, 'list'] as const,
+    list: (filters: Record<string, unknown>) =>
+      [...queryKeys.transfers.lists(), filters] as const,
+    detail: (externalId: string) =>
+      [...queryKeys.transfers.all, 'detail', externalId] as const,
+  },
+  logistics: {
+    all: ['logistics'] as const,
+    routes: {
+      all: ['logistics', 'routes'] as const,
+      lists: () => [...queryKeys.logistics.routes.all, 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.logistics.routes.lists(), filters] as const,
+    },
+    monitor: {
+      all: ['logistics', 'monitor'] as const,
+      lists: () => [...queryKeys.logistics.monitor.all, 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.logistics.monitor.lists(), filters] as const,
+    },
+    compliance: {
+      all: ['logistics', 'compliance'] as const,
+      lists: () => [...queryKeys.logistics.compliance.all, 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.logistics.compliance.lists(), filters] as const,
     },
   },
 } as const

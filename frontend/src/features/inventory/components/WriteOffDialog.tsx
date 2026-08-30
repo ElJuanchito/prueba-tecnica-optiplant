@@ -16,7 +16,14 @@ import { Label } from '@/components/ui/label.tsx'
 import { useWriteOffStock } from '../hooks/use-inventory.ts'
 import { writeOffRequestSchema } from '../schemas/movement.schema.ts'
 import type { StockLineResponse, WriteOffRequest } from '../types/index.ts'
-import { AlertCircle, CheckCircle2, DollarSign, Loader2, Trash2 } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
+import {
+  AlertCircle,
+  CheckCircle2,
+  DollarSign,
+  Loader2,
+  Trash2,
+} from 'lucide-react'
 
 interface WriteOffDialogProps {
   product: StockLineResponse | null
@@ -29,9 +36,12 @@ export function WriteOffDialog({
   open,
   onOpenChange,
 }: WriteOffDialogProps) {
+  const { t } = useTranslation()
   const writeOffMutation = useWriteOffStock()
   const [serverError, setServerError] = React.useState<string | null>(null)
-  const [successReceipt, setSuccessReceipt] = React.useState<string | null>(null)
+  const [successReceipt, setSuccessReceipt] = React.useState<string | null>(
+    null,
+  )
 
   const {
     register,
@@ -101,10 +111,10 @@ export function WriteOffDialog({
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Register Stock Write-Off
+                {t('inventory.writeOffTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Record shrinkage, waste, damaged, or expired items (CU-INV-06)
+                {t('inventory.writeOffDesc')}
               </DialogDescription>
             </div>
           </div>
@@ -114,25 +124,19 @@ export function WriteOffDialog({
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Product:</span>
+                <span className="text-slate-500">{t('inventory.product')}:</span>
                 <span className="font-semibold text-slate-900 truncate max-w-[220px]">
                   {product.name}
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">SKU:</span>
+                <span className="text-slate-500">{t('catalog.sku')}:</span>
                 <span className="font-mono text-slate-700">{product.sku}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Available Stock:</span>
+                <span className="text-slate-500">{t('inventory.availableStock')}:</span>
                 <span className="font-bold text-emerald-700 font-mono">
-                  {product.availableStock} units
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Current Average Cost:</span>
-                <span className="font-mono text-slate-700">
-                  ${product.averageCost.toFixed(2)}
+                  {product.availableStock}
                 </span>
               </div>
             </div>
@@ -140,7 +144,7 @@ export function WriteOffDialog({
             {serverError && (
               <Alert variant="destructive" className="py-2.5">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle className="text-xs font-semibold">Error</AlertTitle>
+                <AlertTitle className="text-xs font-semibold">{t('common.error')}</AlertTitle>
                 <AlertDescription className="text-xs">
                   {serverError}
                 </AlertDescription>
@@ -150,7 +154,9 @@ export function WriteOffDialog({
             {successReceipt && (
               <Alert className="py-2.5 bg-emerald-50 border-emerald-200 text-emerald-800">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <AlertTitle className="text-xs font-semibold">Success</AlertTitle>
+                <AlertTitle className="text-xs font-semibold">
+                  {t('common.active')}
+                </AlertTitle>
                 <AlertDescription className="text-xs">
                   {successReceipt}
                 </AlertDescription>
@@ -158,8 +164,11 @@ export function WriteOffDialog({
             )}
 
             <div className="space-y-1.5">
-              <Label htmlFor="quantity" className="text-xs font-semibold text-slate-700">
-                Units to Write Off *
+              <Label
+                htmlFor="quantity"
+                className="text-xs font-semibold text-slate-700"
+              >
+                {t('inventory.unitsToWriteOff')} *
               </Label>
               <Input
                 id="quantity"
@@ -169,7 +178,7 @@ export function WriteOffDialog({
                 max={availableStock}
                 {...register('quantity', { valueAsNumber: true })}
                 className="text-xs font-mono"
-                placeholder="Enter quantity"
+                placeholder={t('inventory.unitsToWriteOff')}
               />
               {errors.quantity && (
                 <p className="text-[11px] text-rose-600 font-medium">
@@ -184,10 +193,10 @@ export function WriteOffDialog({
                 <DollarSign className="h-4 w-4 text-rose-600" />
                 <div>
                   <p className="font-semibold text-rose-900">
-                    Estimated Loss Valuation (RN-03)
+                    {t('inventory.stockValuation')}
                   </p>
                   <p className="text-[10px] text-rose-700">
-                    Valued at weighted average cost (${avgCost.toFixed(2)} / unit)
+                    ${avgCost.toFixed(2)} / unit
                   </p>
                 </div>
               </div>
@@ -197,15 +206,18 @@ export function WriteOffDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="reason" className="text-xs font-semibold text-slate-700">
-                Reason for Write-Off (Mandatory) *
+              <Label
+                htmlFor="reason"
+                className="text-xs font-semibold text-slate-700"
+              >
+                {t('inventory.writeOffReason')} *
               </Label>
               <Input
                 id="reason"
                 type="text"
                 {...register('reason')}
                 className="text-xs"
-                placeholder="e.g. Expired batch, broken in transit, water damage"
+                placeholder={t('inventory.writeOffReason')}
               />
               {errors.reason && (
                 <p className="text-[11px] text-rose-600 font-medium">
@@ -221,20 +233,22 @@ export function WriteOffDialog({
                 size="sm"
                 onClick={() => onOpenChange(false)}
                 disabled={writeOffMutation.isPending}
-                className="text-xs"
+                className="text-xs cursor-pointer"
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
                 size="sm"
-                disabled={writeOffMutation.isPending || isOverAvailable || qtyNum <= 0}
-                className="text-xs bg-rose-600 hover:bg-rose-700 text-white"
+                disabled={
+                  writeOffMutation.isPending || isOverAvailable || qtyNum <= 0
+                }
+                className="text-xs bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
               >
                 {writeOffMutation.isPending && (
                   <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 )}
-                Confirm Write-Off
+                {t('inventory.confirmWriteOff')}
               </Button>
             </DialogFooter>
           </form>

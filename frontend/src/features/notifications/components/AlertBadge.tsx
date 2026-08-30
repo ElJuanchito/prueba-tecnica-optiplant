@@ -26,9 +26,7 @@ export function AlertBadge({ className = '' }: AlertBadgeProps) {
       {count > 0 && (
         <Badge
           className={`absolute -top-2 -right-2 text-[9px] font-mono h-4 min-w-4 px-1 flex items-center justify-center rounded-full ${
-            hasCritical
-              ? 'bg-rose-600 text-white'
-              : 'bg-amber-600 text-white'
+            hasCritical ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white'
           }`}
         >
           {count > 99 ? '99+' : count}

@@ -17,12 +17,14 @@ import type {
 
 export function useBranches(
   params?: BranchQueryParams,
+  enabled: boolean = true,
 ): UseQueryResult<BranchPageResponse, Error> {
   return useQuery({
     queryKey: queryKeys.branches.list(
       (params ?? {}) as Record<string, unknown>,
     ),
     queryFn: () => branchService.listBranches(params),
+    enabled,
   })
 }
 

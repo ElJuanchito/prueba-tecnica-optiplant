@@ -25,6 +25,7 @@ import {
   type ProductUnitItemResponse,
   type UnitRequestInput,
 } from '../schemas/product-unit.schema.ts'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   AlertCircle,
   ArrowRight,
@@ -56,6 +57,7 @@ export function ProductUnitsDialog({
   product,
   currentActorRole = 'OPERATOR',
 }: ProductUnitsDialogProps) {
+  const { t } = useTranslation()
   const isAdmin = currentActorRole === 'ADMIN'
   const productExternalId = product?.externalId ?? ''
 
@@ -213,11 +215,10 @@ export function ProductUnitsDialog({
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Units of Measure & Conversions
+                {t('catalog.units')}
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Alternative measurement units and conversion factors for this
-                SKU.
+                {t('catalog.unitsDesc')}
               </DialogDescription>
             </div>
           </div>
@@ -234,7 +235,7 @@ export function ProductUnitsDialog({
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-slate-500 uppercase font-semibold">
-                Base Unit:
+                {t('catalog.baseUnit')}:
               </span>
               <Badge
                 variant="outline"
@@ -257,7 +258,7 @@ export function ProductUnitsDialog({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Configured Alternative Units
+              {t('catalog.units')}
             </h4>
             {isAdmin && !isAdding && !editingUnit && (
               <Button
@@ -276,7 +277,7 @@ export function ProductUnitsDialog({
                 }}
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Add Unit
+                {t('catalog.addUnit')}
               </Button>
             )}
           </div>
@@ -290,11 +291,7 @@ export function ProductUnitsDialog({
             <div className="bg-slate-50 rounded-lg p-6 text-center border border-dashed border-slate-200">
               <Boxes className="h-6 w-6 text-slate-400 mx-auto mb-1.5" />
               <p className="text-xs font-semibold text-slate-700">
-                No alternative units defined
-              </p>
-              <p className="text-[11px] text-slate-500 max-w-xs mx-auto mt-0.5">
-                This product currently operates only in its base unit (
-                {product?.baseUnit}).
+                {t('common.noData')}
               </p>
             </div>
           ) : (
@@ -318,7 +315,7 @@ export function ProductUnitsDialog({
                     </span>
                     {unit.defaultSaleUnit && (
                       <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[10px] py-0 px-1.5 font-bold">
-                        Default Sale
+                        {t('catalog.defaultSale')}
                       </Badge>
                     )}
                   </div>
@@ -359,8 +356,8 @@ export function ProductUnitsDialog({
             <div className="flex items-center justify-between">
               <h5 className="text-xs font-bold text-slate-900">
                 {editingUnit
-                  ? `Edit Unit: ${editingUnit.unitName}`
-                  : 'Define Alternative Unit'}
+                  ? `${t('common.edit')}: ${editingUnit.unitName}`
+                  : t('catalog.units')}
               </h5>
               <Button
                 type="button"
@@ -379,7 +376,7 @@ export function ProductUnitsDialog({
                   htmlFor="unit-name"
                   className="text-[11px] font-semibold"
                 >
-                  Unit Name <span className="text-red-500">*</span>
+                  {t('catalog.unitName')} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="unit-name"
@@ -404,7 +401,7 @@ export function ProductUnitsDialog({
                   htmlFor="conversion-factor"
                   className="text-[11px] font-semibold"
                 >
-                  Factor in {product?.baseUnit}{' '}
+                  {t('catalog.factorIn', { baseUnit: product?.baseUnit ?? '' })}{' '}
                   <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -452,7 +449,7 @@ export function ProductUnitsDialog({
                 onClick={handleCancelForm}
                 disabled={isFormPending}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -465,7 +462,7 @@ export function ProductUnitsDialog({
                 ) : (
                   <Check className="h-3 w-3 mr-1" />
                 )}
-                {editingUnit ? 'Update Unit' : 'Save Unit'}
+                {editingUnit ? t('catalog.updateUnit') : t('catalog.saveUnit')}
               </Button>
             </div>
           </form>

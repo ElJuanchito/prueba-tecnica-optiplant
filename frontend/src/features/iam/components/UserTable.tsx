@@ -29,6 +29,7 @@ import { useBranches } from '../hooks/use-branches.ts'
 import { useDisableUser, useUsers } from '../hooks/use-users.ts'
 import type { Role, UserQueryParams, UserResponse } from '../types/index.ts'
 import { UserFormDialog } from './UserFormDialog.tsx'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   AlertCircle,
   Building2,
@@ -52,6 +53,7 @@ export function UserTable({
   currentActorRole = 'ADMIN',
   currentActorBranchId = null,
 }: UserTableProps) {
+  const { t } = useTranslation()
   const isBranchManager = currentActorRole === 'BRANCH_MANAGER'
   const [filters, setFilters] = React.useState<UserQueryParams>({
     page: 0,
@@ -95,20 +97,20 @@ export function UserTable({
     (user: UserResponse) => {
       if (
         window.confirm(
-          `Are you sure you want to disable user "${user.username}"? Active sessions will be revoked.`,
+          t('iam.confirmDisableUser'),
         )
       ) {
         disableMutation.mutate(user.externalId)
       }
     },
-    [disableMutation],
+    [disableMutation, t],
   )
 
   const columns = React.useMemo<ColumnDef<UserResponse>[]>(
     () => [
       {
         accessorKey: 'username',
-        header: 'User',
+        header: t('iam.username'),
         cell: ({ row }) => {
           const user = row.original
           const initials = user.fullName
@@ -134,7 +136,7 @@ export function UserTable({
       },
       {
         accessorKey: 'fullName',
-        header: 'Full Name',
+        header: t('iam.fullName'),
         cell: ({ row }) => (
           <span className="text-slate-700 text-sm">
             {row.original.fullName}
@@ -143,7 +145,7 @@ export function UserTable({
       },
       {
         accessorKey: 'email',
-        header: 'Email',
+        header: t('iam.email'),
         cell: ({ row }) => (
           <span className="text-slate-600 text-xs font-mono">
             {row.original.email}
@@ -152,14 +154,14 @@ export function UserTable({
       },
       {
         accessorKey: 'role',
-        header: 'Role',
+        header: t('iam.role'),
         cell: ({ row }) => {
           const role = row.original.role
           if (role === 'ADMIN') {
             return (
               <Badge className="bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100 flex items-center gap-1 w-fit text-[11px]">
                 <Shield className="h-3 w-3" />
-                <span>ADMIN</span>
+                <span>{t('iam.adminRole')}</span>
               </Badge>
             )
           }
@@ -170,7 +172,7 @@ export function UserTable({
                 className="bg-slate-100 text-slate-800 border-slate-200 flex items-center gap-1 w-fit text-[11px]"
               >
                 <Building2 className="h-3 w-3" />
-                <span>BRANCH_MANAGER</span>
+                <span>{t('iam.managerRole')}</span>
               </Badge>
             )
           }
@@ -180,21 +182,21 @@ export function UserTable({
               className="bg-white text-slate-600 border-slate-200 flex items-center gap-1 w-fit text-[11px]"
             >
               <User className="h-3 w-3" />
-              <span>OPERATOR</span>
+              <span>{t('iam.operatorRole')}</span>
             </Badge>
           )
         },
       },
       {
         accessorKey: 'branchId',
-        header: 'Branch Assignment',
+        header: t('iam.assignedBranch'),
         cell: ({ row }) => {
           const user = row.original
           const branchId = user.branchId
           if (!branchId) {
             return (
               <span className="inline-flex items-center text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                Corporate
+                {t('nav.corporateScope')}
               </span>
             )
           }
@@ -202,7 +204,7 @@ export function UserTable({
             ? user.branchCode
               ? `${user.branchName} (${user.branchCode})`
               : user.branchName
-            : (branchesMap.get(branchId) ?? 'Assigned Branch')
+            : (branchesMap.get(branchId) ?? t('iam.assignedBranch'))
 
           return (
             <span className="inline-flex items-center text-xs text-slate-700">
@@ -214,7 +216,7 @@ export function UserTable({
       },
       {
         accessorKey: 'active',
-        header: 'Status',
+        header: t('common.status'),
         cell: ({ row }) => {
           const active = row.original.active
           return (
@@ -227,7 +229,7 @@ export function UserTable({
               <span
                 className={`text-xs font-medium ${active ? 'text-emerald-700' : 'text-slate-500'}`}
               >
-                {active ? 'Active' : 'Disabled'}
+                {active ? t('common.active') : t('common.disabled')}
               </span>
             </div>
           )
@@ -235,7 +237,7 @@ export function UserTable({
       },
       {
         id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => <span className="sr-only">{t('common.actions')}</span>,
         cell: ({ row }) => {
           const user = row.original
           return (
@@ -318,10 +320,10 @@ export function UserTable({
         <div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <Users className="h-5 w-5 text-orange-600" />
-            User Accounts
+            {t('iam.usersTab')}
           </h2>
           <p className="text-sm text-slate-500">
-            Manage user credentials, enterprise roles, and branch assignments.
+            {t('iam.subtitle')}
           </p>
         </div>
 
@@ -330,7 +332,7 @@ export function UserTable({
           className="self-start sm:self-auto bg-orange-600 hover:bg-orange-700 text-white shadow-2xs cursor-pointer"
         >
           <Plus className="h-4 w-4 mr-1.5" />
-          Create User
+          {t('iam.createUser')}
         </Button>
       </div>
 
@@ -340,7 +342,7 @@ export function UserTable({
         <div className="relative min-w-[200px] flex-1 sm:flex-initial sm:w-64">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
           <Input
-            placeholder="Search users..."
+            placeholder={t('common.search')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8 h-8 text-xs bg-slate-50/50 border-slate-200 focus-visible:bg-white"
@@ -360,13 +362,13 @@ export function UserTable({
               }
             >
               <SelectTrigger className="h-8 text-xs bg-slate-50/50 border-slate-200">
-                <SelectValue placeholder="All Roles" />
+                <SelectValue placeholder={t('common.all')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Roles</SelectItem>
-                <SelectItem value="ADMIN">ADMIN</SelectItem>
-                <SelectItem value="BRANCH_MANAGER">BRANCH_MANAGER</SelectItem>
-                <SelectItem value="OPERATOR">OPERATOR</SelectItem>
+                <SelectItem value="ALL">{t('common.all')}</SelectItem>
+                <SelectItem value="ADMIN">{t('iam.adminRole')}</SelectItem>
+                <SelectItem value="BRANCH_MANAGER">{t('iam.managerRole')}</SelectItem>
+                <SelectItem value="OPERATOR">{t('iam.operatorRole')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -390,18 +392,18 @@ export function UserTable({
             }
           >
             <SelectTrigger className="h-8 text-xs bg-slate-50/50 border-slate-200">
-              <SelectValue placeholder="All Status" />
+              <SelectValue placeholder={t('common.all')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Status</SelectItem>
-              <SelectItem value="ACTIVE">Active Only</SelectItem>
-              <SelectItem value="DISABLED">Disabled Only</SelectItem>
+              <SelectItem value="ALL">{t('common.all')}</SelectItem>
+              <SelectItem value="ACTIVE">{t('common.active')}</SelectItem>
+              <SelectItem value="DISABLED">{t('common.disabled')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="ml-auto text-xs text-slate-500 font-medium">
-          Showing {filteredUsersData.length} of {totalElements} users
+          {t('common.showing')} {filteredUsersData.length} {t('common.of')} {totalElements} {t('common.results')}
         </div>
       </div>
 
@@ -409,9 +411,9 @@ export function UserTable({
       {usersQuery.isError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Loading Users</AlertTitle>
+          <AlertTitle>{t('common.error')}</AlertTitle>
           <AlertDescription>
-            {usersQuery.error?.message ?? 'Failed to fetch user list.'}
+            {usersQuery.error?.message ?? t('common.error')}
           </AlertDescription>
         </Alert>
       )}
@@ -492,12 +494,7 @@ export function UserTable({
                       <Users className="h-6 w-6" />
                     </div>
                     <p className="font-semibold text-slate-700">
-                      No users found
-                    </p>
-                    <p className="text-xs text-slate-500 max-w-sm">
-                      {searchTerm
-                        ? `No users match "${searchTerm}". Try resetting your search or filter criteria.`
-                        : 'No user accounts available in this view.'}
+                      {t('common.noData')}
                     </p>
                     <Button
                       variant="outline"
@@ -506,7 +503,7 @@ export function UserTable({
                       className="mt-2 text-xs"
                     >
                       <Plus className="h-3.5 w-3.5 mr-1" />
-                      Create New User
+                      {t('iam.createUser')}
                     </Button>
                   </div>
                 </TableCell>
@@ -519,7 +516,10 @@ export function UserTable({
       {/* Pagination Controls */}
       <div className="flex items-center justify-between px-2 text-sm text-slate-600">
         <div className="text-xs font-medium">
-          Page {currentPage + 1} of {Math.max(1, totalPages)}
+          {t('common.pageOf', {
+            page: String(currentPage + 1),
+            totalPages: String(Math.max(1, totalPages)),
+          })}
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -535,7 +535,7 @@ export function UserTable({
             className="cursor-pointer text-xs"
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
+            {t('common.previous')}
           </Button>
           <Button
             variant="outline"
@@ -549,7 +549,7 @@ export function UserTable({
             disabled={currentPage >= totalPages - 1 || usersQuery.isLoading}
             className="cursor-pointer text-xs"
           >
-            Next
+            {t('common.next')}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>

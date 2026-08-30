@@ -7,6 +7,7 @@ import { Permissions } from '@/lib/permissions.ts'
 import { AlertBadge } from '@/features/notifications/components/AlertBadge.tsx'
 import { LanguageSwitcher, useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
+  ArrowLeftRight,
   BellRing,
   Boxes,
   ChevronLeft,
@@ -15,13 +16,21 @@ import {
   MapPin,
   Menu,
   Package,
+  Route as RouteIcon,
   ShieldCheck,
   X,
 } from 'lucide-react'
 
 interface AppLayoutProps {
   children: React.ReactNode
-  activeModule?: 'iam' | 'inventory' | 'notifications' | 'catalog' | undefined
+  activeModule?:
+    | 'iam'
+    | 'inventory'
+    | 'notifications'
+    | 'catalog'
+    | 'transfers'
+    | 'logistics'
+    | undefined
   onLogout?: (() => void) | undefined
 }
 
@@ -33,7 +42,8 @@ export function AppLayout({
   const { t } = useTranslation()
   const sessionQuery = useSession()
   const logoutMutation = useLogout()
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname || '/' : '/'
+  const currentPath =
+    typeof window !== 'undefined' ? window.location.pathname || '/' : '/'
 
   const session = sessionQuery.data
   const role = session?.role ?? 'OPERATOR'
@@ -117,7 +127,9 @@ export function AppLayout({
     },
     {
       id: 'catalog',
-      label: Permissions.canManageCatalog(role) ? t('nav.catalog') : t('nav.catalogBrowser'),
+      label: Permissions.canManageCatalog(role)
+        ? t('nav.catalog')
+        : t('nav.catalogBrowser'),
       shortLabel: 'Catalog',
       path: '/catalog',
       icon: Package,
@@ -125,6 +137,28 @@ export function AppLayout({
       badge: Permissions.canManageCatalog(role) ? 'Master' : 'View',
       color: 'text-indigo-600 group-hover:text-indigo-700',
       activeBg: 'bg-indigo-50 text-indigo-900 border-indigo-200',
+    },
+    {
+      id: 'transfers',
+      label: t('nav.transfers'),
+      shortLabel: 'Transfers',
+      path: '/transfers',
+      icon: ArrowLeftRight,
+      visible: Permissions.canAccessTransfers(role),
+      badge: null,
+      color: 'text-cyan-600 group-hover:text-cyan-700',
+      activeBg: 'bg-cyan-50 text-cyan-900 border-cyan-200',
+    },
+    {
+      id: 'logistics',
+      label: t('nav.logistics'),
+      shortLabel: 'Logistics',
+      path: '/logistics',
+      icon: RouteIcon,
+      visible: Permissions.canAccessLogistics(role),
+      badge: isAdmin ? 'Network' : 'Monitor',
+      color: 'text-emerald-600 group-hover:text-emerald-700',
+      activeBg: 'bg-emerald-50 text-emerald-900 border-emerald-200',
     },
   ].filter((item) => item.visible)
 
@@ -151,7 +185,9 @@ export function AppLayout({
       {/* Sidebar Navigation */}
       <aside
         className={`fixed md:sticky top-0 z-50 h-screen bg-white border-r border-slate-200 transition-all duration-300 flex flex-col justify-between shrink-0 shadow-xs ${
-          isMobileOpen ? 'translate-x-0 w-72' : '-translate-x-full md:translate-x-0'
+          isMobileOpen
+            ? 'translate-x-0 w-72'
+            : '-translate-x-full md:translate-x-0'
         } ${isCollapsed ? 'md:w-20' : 'md:w-64'}`}
       >
         {/* Top Header / Brand Logo */}
@@ -194,8 +230,12 @@ export function AppLayout({
               type="button"
               onClick={toggleCollapse}
               className="hidden md:flex h-7 w-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 items-center justify-center transition-colors"
-              title={isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
-              aria-label={isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
+              title={
+                isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')
+              }
+              aria-label={
+                isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')
+              }
             >
               {isCollapsed ? (
                 <ChevronRight className="h-4 w-4" />
@@ -256,7 +296,9 @@ export function AppLayout({
         {/* Bottom Section: Language & User Profile */}
         <div className="p-3 border-t border-slate-200 bg-slate-50/50 space-y-3">
           {/* Language Switcher */}
-          <div className={`flex items-center ${isCollapsed && !isMobileOpen ? 'justify-center' : 'justify-between px-1'}`}>
+          <div
+            className={`flex items-center ${isCollapsed && !isMobileOpen ? 'justify-center' : 'justify-between px-1'}`}
+          >
             {(!isCollapsed || isMobileOpen) && (
               <span className="text-[11px] font-semibold text-slate-500">
                 {t('nav.language')}

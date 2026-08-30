@@ -4,8 +4,7 @@ export const Permissions = {
   canAccessIam: (role?: UserRole): boolean =>
     role === 'ADMIN' || role === 'BRANCH_MANAGER',
 
-  canManageBranches: (role?: UserRole): boolean =>
-    role === 'ADMIN',
+  canManageBranches: (role?: UserRole): boolean => role === 'ADMIN',
 
   canManageUsers: (role?: UserRole): boolean =>
     role === 'ADMIN' || role === 'BRANCH_MANAGER',
@@ -13,8 +12,7 @@ export const Permissions = {
   canViewAuditLogs: (role?: UserRole): boolean =>
     role === 'ADMIN' || role === 'BRANCH_MANAGER',
 
-  canManageCatalog: (role?: UserRole): boolean =>
-    role === 'ADMIN',
+  canManageCatalog: (role?: UserRole): boolean => role === 'ADMIN',
 
   canAccessInventory: (role?: UserRole): boolean =>
     role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'OPERATOR',
@@ -33,6 +31,31 @@ export const Permissions = {
 
   canAccessAlerts: (role?: UserRole): boolean =>
     role === 'ADMIN' || role === 'BRANCH_MANAGER',
+
+  canAccessTransfers: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canRequestTransfer: (role?: UserRole, hasBranch?: boolean): boolean =>
+    role === 'ADMIN'
+      ? Boolean(hasBranch)
+      : role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canReviewTransfer: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER',
+
+  canDispatchTransfer: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canReceiveTransfer: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canCancelTransfer: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER',
+
+  canAccessLogistics: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER',
+
+  canManageRoutes: (role?: UserRole): boolean => role === 'ADMIN',
 
   getDefaultRoute: (role?: UserRole): string => {
     switch (role) {

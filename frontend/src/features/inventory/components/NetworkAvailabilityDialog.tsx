@@ -18,6 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table.tsx'
 import { useNetworkAvailability } from '../hooks/use-inventory.ts'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import { AlertCircle, Building2, Globe } from 'lucide-react'
 
 export interface NetworkAvailabilityProduct {
@@ -38,7 +39,9 @@ export function NetworkAvailabilityDialog({
   open,
   onOpenChange,
 }: NetworkAvailabilityDialogProps) {
-  const productExternalId = product?.productExternalId ?? product?.externalId ?? ''
+  const { t } = useTranslation()
+  const productExternalId =
+    product?.productExternalId ?? product?.externalId ?? ''
   const networkQuery = useNetworkAvailability(productExternalId, open)
 
   const data = networkQuery.data
@@ -53,10 +56,10 @@ export function NetworkAvailabilityDialog({
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Network Stock Availability
+                {t('inventory.networkStockAvailability')}
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Real-time stock balances across all active branches in the network
+                {t('inventory.networkAvailabilityDesc')}
               </DialogDescription>
             </div>
           </div>
@@ -70,13 +73,13 @@ export function NetworkAvailabilityDialog({
                   {product.name}
                 </p>
                 <p className="text-[11px] text-slate-500 font-mono">
-                  SKU: {product.sku}
+                  {t('catalog.sku')}: {product.sku}
                 </p>
               </div>
               <div className="text-right">
-                <span className="text-xs text-slate-500">Network Total: </span>
+                <span className="text-xs text-slate-500">{t('inventory.networkTotal')}: </span>
                 <span className="text-sm font-bold text-indigo-700">
-                  {data ? data.networkTotal : '...'} units
+                  {data ? `${data.networkTotal} units` : '...'}
                 </span>
               </div>
             </div>
@@ -96,7 +99,7 @@ export function NetworkAvailabilityDialog({
               <span>
                 {networkQuery.error instanceof Error
                   ? networkQuery.error.message
-                  : 'Failed to load network stock availability'}
+                  : t('common.error')}
               </span>
             </div>
           )}
@@ -107,19 +110,19 @@ export function NetworkAvailabilityDialog({
                 <TableHeader className="bg-slate-50">
                   <TableRow>
                     <TableHead className="text-xs font-semibold text-slate-700">
-                      Branch
+                      {t('iam.branchName')}
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-700 text-right">
-                      Current
+                      {t('inventory.currentStock')}
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-700 text-right">
-                      Reserved
+                      {t('inventory.reservedStock')}
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-700 text-right">
-                      In-Transit
+                      {t('inventory.inTransitStock')}
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-700 text-right">
-                      Available
+                      {t('inventory.availableStock')}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -130,7 +133,7 @@ export function NetworkAvailabilityDialog({
                         colSpan={5}
                         className="text-center py-6 text-xs text-slate-500"
                       >
-                        No branch records found for this product.
+                        {t('common.noData')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -154,7 +157,7 @@ export function NetworkAvailabilityDialog({
                                 variant="default"
                                 className="text-[10px] py-0 px-1.5 bg-indigo-600"
                               >
-                                Own Branch
+                                {t('inventory.ownBranch')}
                               </Badge>
                             )}
                           </div>
@@ -186,9 +189,9 @@ export function NetworkAvailabilityDialog({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-xs"
+            className="text-xs cursor-pointer"
           >
-            Close
+            {t('common.cancel')}
           </Button>
         </DialogFooter>
       </DialogContent>

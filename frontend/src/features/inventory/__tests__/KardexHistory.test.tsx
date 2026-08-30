@@ -127,7 +127,9 @@ describe('Kardex History Component Tests', () => {
 
     // Responsible user names & products resolved from lookup
     expect(await screen.findAllByText('john_operator')).toHaveLength(3)
-    expect(screen.getAllByText('Fertilizante NPK 10-20-20').length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText('Fertilizante NPK 10-20-20').length,
+    ).toBeGreaterThan(0)
     expect(screen.queryByText('a0eebc99...')).toBeNull()
 
     // Notes / References

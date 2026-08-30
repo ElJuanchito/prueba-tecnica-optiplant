@@ -202,6 +202,16 @@ INSERT INTO transfer_items (
     0.0000
 );
 
+-- Movimiento Kardex de salida por despacho de la transferencia demostrativa
+INSERT INTO kardex_movements (
+    branch_id, product_id, movement_type, quantity, unit_cost, total_cost,
+    previous_stock, resulting_stock, reference_id, reference_type, notes, user_id
+) VALUES (
+    1, 3, 'TRANSFER_OUT', 30.0000, 380000.0000, 11400000.0000,
+    150.0000, 120.0000, '30000000-0000-0000-0000-000000000001', 'TRANSFER',
+    'Despacho TRF-2026-0001 hacia Cali', 5
+);
+
 -- ----------------------------------------------------------------------------
 -- 9. ALERTAS INTELIGENTES INICIALES (System Alerts RF-VAL-01)
 -- ----------------------------------------------------------------------------

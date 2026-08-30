@@ -31,6 +31,7 @@ import type {
   AuditEntryResponse,
   AuditQueryParams,
 } from '../types/audit.types.ts'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   Activity,
   AlertCircle,
@@ -48,6 +49,7 @@ import {
 } from 'lucide-react'
 
 export function AuditTable() {
+  const { t } = useTranslation()
   const [filters, setFilters] = React.useState<AuditQueryParams>({
     page: 0,
     size: 15,
@@ -104,7 +106,7 @@ export function AuditTable() {
     () => [
       {
         accessorKey: 'createdAt',
-        header: 'Timestamp (UTC)',
+        header: t('iam.auditDate'),
         cell: ({ row }) => {
           const raw = row.original.createdAt
           try {
@@ -124,7 +126,7 @@ export function AuditTable() {
       },
       {
         accessorKey: 'action',
-        header: 'Action',
+        header: t('iam.auditAction'),
         cell: ({ row }) => {
           const action = row.original.action
           const isDanger =
@@ -172,7 +174,7 @@ export function AuditTable() {
       },
       {
         accessorKey: 'entityName',
-        header: 'Entity',
+        header: t('iam.auditResource'),
         cell: ({ row }) => (
           <span className="font-semibold text-slate-900 text-xs px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
             {row.original.entityName}
@@ -181,7 +183,7 @@ export function AuditTable() {
       },
       {
         accessorKey: 'actorUserId',
-        header: 'Actor',
+        header: t('iam.auditActor'),
         cell: ({ row }) => {
           const actorId = row.original.actorUserId
           if (!actorId) {
@@ -196,7 +198,7 @@ export function AuditTable() {
           return (
             <span
               className="inline-flex items-center text-xs text-slate-700 font-medium gap-1"
-              title={actorId}
+              title={`Operador: ${actorName}`}
             >
               <User className="h-3 w-3 text-slate-400" />
               {actorName}
@@ -206,17 +208,17 @@ export function AuditTable() {
       },
       {
         accessorKey: 'branchId',
-        header: 'Branch',
+        header: t('iam.auditBranch'),
         cell: ({ row }) => {
           const bId = row.original.branchId
           if (!bId) {
-            return <span className="text-slate-400 text-xs">Global</span>
+            return <span className="text-slate-400 text-xs">{t('nav.corporateScope')}</span>
           }
-          const branchName = branchesMap.get(bId) ?? 'Assigned Branch'
+          const branchName = branchesMap.get(bId) ?? t('iam.assignedBranch')
           return (
             <span
               className="inline-flex items-center text-xs text-slate-700 font-medium gap-1"
-              title={bId}
+              title={`Sucursal: ${branchName}`}
             >
               <Building2 className="h-3 w-3 text-slate-400" />
               {branchName}
@@ -226,7 +228,7 @@ export function AuditTable() {
       },
       {
         accessorKey: 'ipAddress',
-        header: 'IP Address',
+        header: 'IP',
         cell: ({ row }) => (
           <div className="flex items-center gap-1 text-xs font-mono text-slate-600">
             <Globe className="h-3 w-3 text-slate-400" />
@@ -236,7 +238,7 @@ export function AuditTable() {
       },
       {
         id: 'payloads',
-        header: 'Payload Details',
+        header: t('iam.auditChanges'),
         cell: ({ row }) => {
           const before = row.original.payloadBefore
           const after = row.original.payloadAfter
@@ -301,10 +303,10 @@ export function AuditTable() {
       <div>
         <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
           <Activity className="h-5 w-5 text-orange-600" />
-          Audit Trail
+          {t('iam.auditTab')}
         </h2>
         <p className="text-sm text-slate-500">
-          Immutable, transactional log of all mutations across the system.
+          {t('iam.subtitle')}
         </p>
       </div>
 
@@ -314,12 +316,12 @@ export function AuditTable() {
         className="flex flex-wrap items-center gap-3 p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-xs text-sm"
       >
         <span className="text-slate-600 font-semibold text-xs uppercase tracking-wider">
-          Filter:
+          {t('common.filter')}:
         </span>
 
         <div className="w-48">
           <Input
-            placeholder="Entity name (e.g. USER, BRANCH)"
+            placeholder={t('iam.auditResource')}
             value={entityFilter}
             onChange={(e) => setEntityFilter(e.target.value)}
             className="h-8 text-xs bg-slate-50/50 border-slate-200 focus-visible:bg-white"
@@ -328,7 +330,7 @@ export function AuditTable() {
 
         <div className="w-48">
           <Input
-            placeholder="Action (e.g. CREATE, DISABLE)"
+            placeholder={t('iam.auditAction')}
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
             className="h-8 text-xs bg-slate-50/50 border-slate-200 focus-visible:bg-white"
@@ -342,7 +344,7 @@ export function AuditTable() {
           className="h-8 text-xs cursor-pointer font-medium"
         >
           <Search className="h-3.5 w-3.5 mr-1 text-slate-600" />
-          Apply
+          {t('common.filter')}
         </Button>
 
         {(entityFilter || actionFilter) && (
@@ -354,12 +356,12 @@ export function AuditTable() {
             className="h-8 text-xs text-slate-500 hover:text-slate-900 cursor-pointer"
           >
             <RotateCcw className="h-3.5 w-3.5 mr-1" />
-            Reset
+            {t('common.refresh')}
           </Button>
         )}
 
         <div className="ml-auto text-xs text-slate-500 font-medium">
-          Showing {auditData.length} of {totalElements} log entries
+          {t('common.showing')} {auditData.length} {t('common.of')} {totalElements} {t('common.results')}
         </div>
       </form>
 
@@ -367,9 +369,9 @@ export function AuditTable() {
       {auditQuery.isError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Loading Audit Logs</AlertTitle>
+          <AlertTitle>{t('common.error')}</AlertTitle>
           <AlertDescription>
-            {auditQuery.error?.message ?? 'Failed to fetch audit log entries.'}
+            {auditQuery.error?.message ?? t('common.error')}
           </AlertDescription>
         </Alert>
       )}
@@ -453,11 +455,7 @@ export function AuditTable() {
                       <ClipboardList className="h-6 w-6" />
                     </div>
                     <p className="font-semibold text-slate-700">
-                      No audit entries found
-                    </p>
-                    <p className="text-xs text-slate-500 max-w-sm">
-                      Audit events will record automatically when user and
-                      branch mutations occur.
+                      {t('common.noData')}
                     </p>
                   </div>
                 </TableCell>
@@ -470,7 +468,10 @@ export function AuditTable() {
       {/* Pagination */}
       <div className="flex items-center justify-between px-2 text-sm text-slate-600">
         <div className="text-xs font-medium">
-          Page {currentPage + 1} of {Math.max(1, totalPages)}
+          {t('common.pageOf', {
+            page: String(currentPage + 1),
+            totalPages: String(Math.max(1, totalPages)),
+          })}
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -486,7 +487,7 @@ export function AuditTable() {
             className="cursor-pointer text-xs"
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
+            {t('common.previous')}
           </Button>
           <Button
             variant="outline"
@@ -500,7 +501,7 @@ export function AuditTable() {
             disabled={currentPage >= totalPages - 1 || auditQuery.isLoading}
             className="cursor-pointer text-xs"
           >
-            Next
+            {t('common.next')}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>

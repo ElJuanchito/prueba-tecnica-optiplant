@@ -16,19 +16,15 @@ import { AuditTable } from './AuditTable.tsx'
 import { BranchTable } from './BranchTable.tsx'
 import { UserTable } from './UserTable.tsx'
 import { AppLayout } from '@/components/layout/AppLayout.tsx'
-import {
-  Activity,
-  Boxes,
-  Building2,
-  FileText,
-  Users,
-} from 'lucide-react'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
+import { Activity, Boxes, Building2, FileText, Users } from 'lucide-react'
 
 interface IamDashboardProps {
   onLogout?: (() => void) | undefined
 }
 
 export function IamDashboard({ onLogout }: IamDashboardProps) {
+  const { t } = useTranslation()
   const sessionQuery = useSession()
   const session = sessionQuery.data
 
@@ -71,12 +67,10 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900">
-              {isAdmin ? 'IAM Governance & Security Dashboard' : 'Branch Governance & Operations'}
+              {isAdmin ? t('iam.title') : t('iam.branchTitle')}
             </h1>
             <p className="text-xs text-slate-600 mt-1">
-              {isAdmin
-                ? 'Multi-branch enterprise identity management, role-based access control (RBAC), and immutable audit trail.'
-                : 'Branch operator management and local audit visibility.'}
+              {isAdmin ? t('iam.subtitle') : t('iam.branchSubtitle')}
             </p>
           </div>
         </div>
@@ -87,14 +81,14 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Total Users
+                    {t('iam.totalUsers')}
                   </p>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className="text-2xl font-bold text-slate-900">
                       {usersQuery.isLoading ? '...' : totalUsers}
                     </span>
                     <span className="text-xs text-slate-500">
-                      cuentas registradas
+                      {t('iam.accountsRegistered')}
                     </span>
                   </div>
                 </div>
@@ -108,14 +102,14 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Operator Role
+                    {t('iam.role')}
                   </p>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className="text-lg font-bold text-slate-900">
-                      OPERATOR
+                      {t('iam.operatorRole')}
                     </span>
                     <span className="text-xs text-slate-500">
-                      Plant Station
+                      {t('iam.operatorRoleSubtitle')}
                     </span>
                   </div>
                 </div>
@@ -131,14 +125,14 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Sedes Activas
+                    {t('iam.activeBranches')}
                   </p>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className="text-2xl font-bold text-slate-900">
                       {branchesQuery.isLoading ? '...' : totalBranches}
                     </span>
                     <span className="text-xs text-orange-600 font-medium">
-                      Multi-sede
+                      {t('iam.activeBranchesCount')}
                     </span>
                   </div>
                 </div>
@@ -154,14 +148,14 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Registro de Auditoría
+                    {t('iam.auditLogs')}
                   </p>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className="text-2xl font-bold text-slate-900">
                       {auditQuery.isLoading ? '...' : totalAuditLogs}
                     </span>
                     <span className="text-xs text-slate-500">
-                      eventos registrados
+                      {t('iam.auditEventsCount')}
                     </span>
                   </div>
                 </div>
@@ -177,11 +171,11 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Assigned Location
+                    {t('iam.assignedBranch')}
                   </p>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className="text-sm font-semibold text-slate-900">
-                      {assignedBranchName ?? 'Corporate'}
+                      {assignedBranchName ?? t('nav.corporateScope')}
                     </span>
                   </div>
                 </div>
@@ -201,13 +195,10 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
             </div>
             <div className="max-w-md mx-auto space-y-1.5">
               <h3 className="text-base font-bold text-slate-900">
-                Plant Operator Session
+                {t('iam.operatorSession')}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Your account is configured with Operator permissions for{' '}
-                <strong>{assignedBranchName ?? 'your assigned plant'}</strong>.
-                User directory and administrative governance are managed by
-                Branch Managers and Administrators.
+                {assignedBranchName ?? 'Sede asignada'}
               </p>
               <div className="pt-2">
                 <Link to="/catalog">
@@ -216,7 +207,7 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
                     className="text-xs bg-indigo-700 hover:bg-indigo-800 text-white cursor-pointer"
                   >
                     <Boxes className="h-3.5 w-3.5 mr-1.5" />
-                    Browse Catalog Master Data
+                    {t('catalog.title')}
                   </Button>
                 </Link>
               </div>
@@ -228,29 +219,29 @@ export function IamDashboard({ onLogout }: IamDashboardProps) {
             <TabsList className="bg-white border border-slate-200 p-0.5 rounded-md h-auto">
               <TabsTrigger
                 value="users"
-                className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-colors"
+                className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-colors cursor-pointer"
               >
                 <Users className="h-3.5 w-3.5" />
-                <span>Users</span>
+                <span>{t('iam.usersTab')}</span>
               </TabsTrigger>
 
               {isAdmin && (
                 <TabsTrigger
                   value="branches"
-                  className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-colors"
+                  className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-colors cursor-pointer"
                 >
                   <Building2 className="h-3.5 w-3.5" />
-                  <span>Branches</span>
+                  <span>{t('iam.branchesTab')}</span>
                 </TabsTrigger>
               )}
 
               {(isAdmin || isBranchManager) && (
                 <TabsTrigger
                   value="audit"
-                  className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-colors"
+                  className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-colors cursor-pointer"
                 >
                   <FileText className="h-3.5 w-3.5" />
-                  <span>Audit Log</span>
+                  <span>{t('iam.auditTab')}</span>
                 </TabsTrigger>
               )}
             </TabsList>

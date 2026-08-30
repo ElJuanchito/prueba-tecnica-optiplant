@@ -16,7 +16,15 @@ import { Label } from '@/components/ui/label.tsx'
 import { useAdjustStock } from '../hooks/use-inventory.ts'
 import { adjustStockRequestSchema } from '../schemas/movement.schema.ts'
 import type { AdjustStockRequest, StockLineResponse } from '../types/index.ts'
-import { AlertCircle, ArrowDownRight, ArrowUpRight, CheckCircle2, Loader2, Sliders } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
+import {
+  AlertCircle,
+  ArrowDownRight,
+  ArrowUpRight,
+  CheckCircle2,
+  Loader2,
+  Sliders,
+} from 'lucide-react'
 
 interface AdjustStockDialogProps {
   product: StockLineResponse | null
@@ -29,9 +37,12 @@ export function AdjustStockDialog({
   open,
   onOpenChange,
 }: AdjustStockDialogProps) {
+  const { t } = useTranslation()
   const adjustMutation = useAdjustStock()
   const [serverError, setServerError] = React.useState<string | null>(null)
-  const [successReceipt, setSuccessReceipt] = React.useState<string | null>(null)
+  const [successReceipt, setSuccessReceipt] = React.useState<string | null>(
+    null,
+  )
 
   const {
     register,
@@ -100,10 +111,10 @@ export function AdjustStockDialog({
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Physical Inventory Adjustment
+                {t('inventory.adjustStockTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Reconcile theoretical balance with verified physical count (CU-INV-05)
+                {t('inventory.adjustDesc')}
               </DialogDescription>
             </div>
           </div>
@@ -113,19 +124,21 @@ export function AdjustStockDialog({
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Product:</span>
+                <span className="text-slate-500">{t('inventory.product')}:</span>
                 <span className="font-semibold text-slate-900 truncate max-w-[220px]">
                   {product.name}
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">SKU:</span>
+                <span className="text-slate-500">{t('catalog.sku')}:</span>
                 <span className="font-mono text-slate-700">{product.sku}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Current Theoretical Balance:</span>
+                <span className="text-slate-500">
+                  {t('inventory.currentStock')}:
+                </span>
                 <span className="font-bold text-slate-900 font-mono">
-                  {product.currentStock} units
+                  {product.currentStock}
                 </span>
               </div>
             </div>
@@ -133,7 +146,7 @@ export function AdjustStockDialog({
             {serverError && (
               <Alert variant="destructive" className="py-2.5">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle className="text-xs font-semibold">Error</AlertTitle>
+                <AlertTitle className="text-xs font-semibold">{t('common.error')}</AlertTitle>
                 <AlertDescription className="text-xs">
                   {serverError}
                 </AlertDescription>
@@ -143,7 +156,9 @@ export function AdjustStockDialog({
             {successReceipt && (
               <Alert className="py-2.5 bg-emerald-50 border-emerald-200 text-emerald-800">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <AlertTitle className="text-xs font-semibold">Success</AlertTitle>
+                <AlertTitle className="text-xs font-semibold">
+                  {t('common.active')}
+                </AlertTitle>
                 <AlertDescription className="text-xs">
                   {successReceipt}
                 </AlertDescription>
@@ -151,8 +166,11 @@ export function AdjustStockDialog({
             )}
 
             <div className="space-y-1.5">
-              <Label htmlFor="countedQuantity" className="text-xs font-semibold text-slate-700">
-                Counted Physical Quantity *
+              <Label
+                htmlFor="countedQuantity"
+                className="text-xs font-semibold text-slate-700"
+              >
+                {t('inventory.countedQuantity')} *
               </Label>
               <Input
                 id="countedQuantity"
@@ -161,7 +179,7 @@ export function AdjustStockDialog({
                 min="0"
                 {...register('countedQuantity', { valueAsNumber: true })}
                 className="text-xs font-mono"
-                placeholder="Enter verified physical count"
+                placeholder={t('inventory.countedQuantity')}
               />
               {errors.countedQuantity && (
                 <p className="text-[11px] text-rose-600 font-medium">
@@ -191,17 +209,10 @@ export function AdjustStockDialog({
                 <div>
                   <p className="font-semibold">
                     {isNoDifference
-                      ? 'No difference detected'
+                      ? t('inventory.noDifference')
                       : diff > 0
-                        ? `Positive Adjustment (+${diff})`
-                        : `Negative Adjustment (${diff})`}
-                  </p>
-                  <p className="text-[10px] opacity-80">
-                    {isNoDifference
-                      ? 'Enter a count different from current stock'
-                      : diff > 0
-                        ? 'ADJUSTMENT_POS will increment stock'
-                        : 'ADJUSTMENT_NEG will decrement stock'}
+                        ? t('inventory.positiveAdjustment', { diff: String(diff) })
+                        : t('inventory.negativeAdjustment', { diff: String(diff) })}
                   </p>
                 </div>
               </div>
@@ -211,15 +222,18 @@ export function AdjustStockDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="reason" className="text-xs font-semibold text-slate-700">
-                Justification Reason (Mandatory) *
+              <Label
+                htmlFor="reason"
+                className="text-xs font-semibold text-slate-700"
+              >
+                {t('inventory.adjustmentReason')} *
               </Label>
               <Input
                 id="reason"
                 type="text"
                 {...register('reason')}
                 className="text-xs"
-                placeholder="e.g. Annual physical count variance, missing item found"
+                placeholder={t('inventory.adjustmentReason')}
               />
               {errors.reason && (
                 <p className="text-[11px] text-rose-600 font-medium">
@@ -235,20 +249,20 @@ export function AdjustStockDialog({
                 size="sm"
                 onClick={() => onOpenChange(false)}
                 disabled={adjustMutation.isPending}
-                className="text-xs"
+                className="text-xs cursor-pointer"
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
                 size="sm"
                 disabled={adjustMutation.isPending || isNoDifference}
-                className="text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                className="text-xs bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
               >
                 {adjustMutation.isPending && (
                   <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 )}
-                Confirm Adjustment
+                {t('inventory.confirmAdjustment')}
               </Button>
             </DialogFooter>
           </form>

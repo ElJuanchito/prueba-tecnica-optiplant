@@ -12,6 +12,7 @@ import { useCategories } from '../hooks/use-categories.ts'
 import { useProducts } from '../hooks/use-products.ts'
 import { CategoryTable } from './CategoryTable.tsx'
 import { ProductTable } from './ProductTable.tsx'
+import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import { Boxes, FolderTree, Scale } from 'lucide-react'
 
 interface CatalogDashboardProps {
@@ -19,6 +20,7 @@ interface CatalogDashboardProps {
 }
 
 export function CatalogDashboard({ onLogout }: CatalogDashboardProps) {
+  const { t } = useTranslation()
   const sessionQuery = useSession()
   const session = sessionQuery.data
 
@@ -39,11 +41,13 @@ export function CatalogDashboard({ onLogout }: CatalogDashboardProps) {
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900">
               {Permissions.canManageCatalog(role)
-                ? 'Catalog Master Data Management'
-                : 'Catalog Product & Category Browser'}
+                ? t('catalog.title')
+                : t('catalog.browserTitle')}
             </h1>
             <p className="text-xs text-slate-600 mt-1">
-              Centralized agricultural product definitions, taxonomy hierarchies, and multi-unit conversions.
+              {Permissions.canManageCatalog(role)
+                ? t('catalog.subtitle')
+                : t('catalog.browserSubtitle')}
             </p>
           </div>
         </div>
@@ -53,14 +57,14 @@ export function CatalogDashboard({ onLogout }: CatalogDashboardProps) {
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Total Products
+                  {t('catalog.totalProducts')}
                 </p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-2xl font-bold text-slate-900">
                     {productsQuery.isLoading ? '...' : totalProducts}
                   </span>
                   <span className="text-xs text-slate-500">
-                    SKUs registered
+                    {t('catalog.productsCount')}
                   </span>
                 </div>
               </div>
@@ -74,14 +78,14 @@ export function CatalogDashboard({ onLogout }: CatalogDashboardProps) {
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Product Categories
+                  {t('catalog.totalCategories')}
                 </p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-2xl font-bold text-slate-900">
                     {categoriesQuery.isLoading ? '...' : totalCategories}
                   </span>
                   <span className="text-xs text-emerald-600 font-medium">
-                    Master Groups
+                    {t('catalog.categoriesCount')}
                   </span>
                 </div>
               </div>
@@ -95,15 +99,15 @@ export function CatalogDashboard({ onLogout }: CatalogDashboardProps) {
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Corporate Scope
+                  {t('nav.corporateScope')}
                 </p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-sm font-bold text-slate-900">
-                    Multi-Unit Conversions
+                    {t('catalog.conversionUnits')}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Single source of truth across all branches
+                  {t('catalog.unitsDesc')}
                 </p>
               </div>
               <div className="h-9 w-9 rounded bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200">
@@ -118,18 +122,18 @@ export function CatalogDashboard({ onLogout }: CatalogDashboardProps) {
           <TabsList className="bg-white border border-slate-200 p-0.5 rounded-md h-auto">
             <TabsTrigger
               value="products"
-              className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-indigo-900 data-[state=active]:text-white transition-colors"
+              className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-indigo-900 data-[state=active]:text-white transition-colors cursor-pointer"
             >
               <Boxes className="h-3.5 w-3.5" />
-              <span>Products</span>
+              <span>{t('catalog.productsTab')}</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="categories"
-              className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-indigo-900 data-[state=active]:text-white transition-colors"
+              className="flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded data-[state=active]:bg-indigo-900 data-[state=active]:text-white transition-colors cursor-pointer"
             >
               <FolderTree className="h-3.5 w-3.5" />
-              <span>Categories</span>
+              <span>{t('catalog.categoriesTab')}</span>
             </TabsTrigger>
           </TabsList>
 

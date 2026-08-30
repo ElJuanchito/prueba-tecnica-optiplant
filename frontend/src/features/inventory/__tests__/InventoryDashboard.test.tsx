@@ -105,7 +105,9 @@ describe('InventoryDashboard Component Tests', () => {
 
     renderWithProviders(<InventoryDashboard />, { queryClient })
 
-    expect(await screen.findByText('Total Products in Stock')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Total Products in Stock'),
+    ).toBeInTheDocument()
     expect(screen.getByText('Critical / Low Stock')).toBeInTheDocument()
     expect(screen.getByText('Local Stock Valuation')).toBeInTheDocument()
     expect(screen.getByText('Operational Alerts')).toBeInTheDocument()
@@ -116,9 +118,15 @@ describe('InventoryDashboard Component Tests', () => {
     expect(screen.getByText(/Sucursal Central \(CEN-01\)/i)).toBeInTheDocument()
 
     // Tabs
-    expect(screen.getByRole('tab', { name: /Stock Balances/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Kardex Ledger/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Alerts & Notifications/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: /Stock Balances/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: /Kardex Ledger/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: /Alerts & Notifications/i }),
+    ).toBeInTheDocument()
   })
 
   it('switches to Kardex and Alerts tabs when clicked by authorized manager', async () => {
@@ -158,9 +166,13 @@ describe('InventoryDashboard Component Tests', () => {
     renderWithProviders(<InventoryDashboard />, { queryClient })
 
     // Only stock tab should exist
-    expect(await screen.findByRole('tab', { name: /Stock Balances/i })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('tab', { name: /Stock Balances/i }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: /Kardex Ledger/i })).toBeNull()
-    expect(screen.queryByRole('tab', { name: /Alerts & Notifications/i })).toBeNull()
+    expect(
+      screen.queryByRole('tab', { name: /Alerts & Notifications/i }),
+    ).toBeNull()
 
     // Navbar should NOT have IAM Governance or Alerts links
     expect(screen.queryByText('IAM & Governance')).toBeNull()

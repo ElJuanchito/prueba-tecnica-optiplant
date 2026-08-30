@@ -51,14 +51,18 @@ describe('AlertCenter Component Tests', () => {
       await screen.findByText('Operational Alert Management Center'),
     ).toBeInTheDocument()
     expect(
-      await screen.findByText('Stock fell below minimum threshold (0 remaining)'),
+      await screen.findByText(
+        'Stock fell below minimum threshold (0 remaining)',
+      ),
     ).toBeInTheDocument()
     expect(
       screen.getByText('Transfer from Norte delayed by 48 hours'),
     ).toBeInTheDocument()
     expect(screen.getAllByText('CRITICAL').length).toBeGreaterThan(0)
     expect(screen.getAllByText('WARNING').length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('button', { name: /Mark Resolved/i })).toHaveLength(2)
+    expect(
+      screen.getAllByRole('button', { name: /Mark Resolved/i }),
+    ).toHaveLength(2)
   })
 
   it('allows BRANCH_MANAGER to resolve an alert', async () => {
@@ -71,15 +75,19 @@ describe('AlertCenter Component Tests', () => {
       size: 15,
     })
 
-    const resolveSpy = vi.spyOn(alertService, 'resolveAlert').mockResolvedValueOnce({
-      ...mockAlerts[0]!,
-      isResolved: true,
-      resolvedAt: '2026-08-29T02:00:00Z',
-    })
+    const resolveSpy = vi
+      .spyOn(alertService, 'resolveAlert')
+      .mockResolvedValueOnce({
+        ...mockAlerts[0]!,
+        isResolved: true,
+        resolvedAt: '2026-08-29T02:00:00Z',
+      })
 
     renderWithProviders(<AlertCenter currentActorRole="BRANCH_MANAGER" />)
 
-    const resolveBtn = await screen.findByRole('button', { name: /Mark Resolved/i })
+    const resolveBtn = await screen.findByRole('button', {
+      name: /Mark Resolved/i,
+    })
     await user.click(resolveBtn)
 
     await waitFor(() => {
