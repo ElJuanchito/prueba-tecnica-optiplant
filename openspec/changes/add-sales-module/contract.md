@@ -220,6 +220,7 @@ decimals in the base unit (RN-13); money is decimal, never floating point.
 | `POST` | `/api/pricing/quotes` | CU-VEN-02 preload | `{ priceListExternalId?, items: [{ productExternalId, quantity, discountPercent? }] }` | `200 { priceListExternalId, code, maxDiscountPercent, items: [{ productExternalId, listUnitPrice, unitPrice, subtotal }] }` |
 | `POST` | `/api/pricing/price-lists` | RF-VEN-03 | `{ code, name, description?, maxDiscountPercent }` | `201` price list |
 | `GET` | `/api/pricing/price-lists` | RF-VEN-03 | `active?`, `page`, `size` | page of price lists |
+| `GET` | `/api/pricing/price-lists/{externalId}` | RF-VEN-03 | — | `200` price list |
 | `PUT` | `/api/pricing/price-lists/{externalId}` | RF-VEN-03 | `{ name, description?, maxDiscountPercent }` | `200` price list |
 | `PATCH` | `/api/pricing/price-lists/{externalId}/deactivation` | R-15 | — | `200` price list |
 | `POST` | `/api/pricing/price-lists/{externalId}/prices` | R-16 | `{ productExternalId, branchExternalId?, unitPrice, validFrom? }` | `201` price *(closes the previous current row)* |
@@ -297,7 +298,7 @@ names or JPA exception messages.
 | RNF-SEC-01 | role checks with `hasAuthority()`, no `ROLE_` prefix | §5 matchers plus method-level checks |
 | RNF-SEC-03 | branch isolation on read and write | §5, R-02, R-25; `sale_not_found` over `403` |
 | RNF-SEC-05 | all input validated in the backend | bean validation plus domain value objects before any write; totals recomputed server-side (R-14) |
-| RNF-API-01 | OpenAPI documents each endpoint, its statuses and its error envelope | `/v3/api-docs` contains all fourteen operations |
+| RNF-API-01 | OpenAPI documents each endpoint, its statuses and its error envelope | `/v3/api-docs` contains all fifteen operations |
 | RNF-API-02 | only `external_id` on the wire | §6, asserted on response shape in the smoke tests |
 | RNF-OBS-01 | structured logs carry correlation id, user, branch, operation | alert-publication failures logged, never swallowed; API-key material never logged |
 | RNF-MAN-01 | pricing and void rules covered by automated tests | §10, including `DT-05`'s frozen-price mitigation |

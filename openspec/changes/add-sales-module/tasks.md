@@ -114,7 +114,7 @@ never invent it.
       page-envelope shape, aggregates present, no numeric id, no raw `VOID_REASON` token (RNF-API-02).
 - [x] 3.8 Register **DT-12** in `docs/deuda_tecnica.md` (Spanish; DT-01…DT-11 are taken) — no sequence behind
       `sales.invoice_number`, repayment `CREATE SEQUENCE sale_invoice_number_seq` — with both the summary-table row and
-      the detail section. Update `openspec/PLAN.md` §1–§2 and confirm `/v3/api-docs` documents all fourteen operations
+      the detail section. Update `openspec/PLAN.md` §1–§2 and confirm `/v3/api-docs` documents all fifteen operations
       (RNF-API-01).
 - [x] 3.9 Run `python3 scripts/validar_trazabilidad.py` (green; §3 expects no `docs/` requirement edit),
       `./scripts/validar_esquema.sh` (green, unchanged) and `cd backend && ./mvnw verify`.
