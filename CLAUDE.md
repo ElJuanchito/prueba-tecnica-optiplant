@@ -12,7 +12,7 @@ Toda la documentación está en español. Mantener ese idioma al extenderla.
 
 ```bash
 python3 scripts/validar_trazabilidad.py   # referencias y enlaces entre documentos; sin dependencias
-./scripts/validar_esquema.sh              # 30 invariantes contra PostgreSQL 17 real; requiere Docker
+./scripts/validar_esquema.sh              # 34 invariantes contra PostgreSQL 17 real; requiere Docker
 cd backend && ./mvnw verify               # fronteras de arquitectura + integración con Testcontainers
 ```
 
@@ -21,6 +21,8 @@ Los dos primeros deben pasar antes de dar por terminado cualquier cambio en `doc
 **Regla de trabajo del proyecto: no se afirma nada sin ejecutarlo.** Cada defecto grave de este repositorio apareció al ejecutar, nunca al leer. Un SQL que "se ve bien" no está verificado; un diagrama Mermaid sin renderizar tampoco; una clase de Spring importada de memoria, menos que ninguna.
 
 Al levantar PostgreSQL manualmente, esperar `PostgreSQL init process complete` en los registros antes de consultar: el servidor acepta conexiones **mientras** aún corre los scripts de `init-db`, y una consulta prematura devuelve un esquema a medio crear.
+
+**Tras cualquier cambio en `backend/init-db/`, recrear el volumen con `docker compose down -v`.** PostgreSQL ejecuta los scripts de inicialización sólo cuando el directorio de datos está vacío: sobre un volumen ya inicializado, el esquema nuevo se ignora en silencio y la aplicación arranca contra el viejo. El síntoma es una tabla o columna que existe en el SQL y no en la base.
 
 ## Invariantes que ya rompieron el proyecto
 

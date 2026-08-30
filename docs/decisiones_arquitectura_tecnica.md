@@ -4,6 +4,7 @@
 
 | Versión | Fecha | Cambios |
 | :--- | :--- | :--- |
+| 1.4 | 2026-08-30 | Se actualiza la fila de `sales` en la sección 2.4: el módulo incorporó el sub-dominio de clientes, con lo que suma la administración de clientes y la consulta de su histórico de compras a sus casos de uso. Los clientes no constituyen un módulo aparte; viven dentro de `sales` porque no tienen ciclo de vida propio fuera de la venta. |
 | 1.0 | 2026-08-25 | Decisiones de lenguaje, base de datos, autenticación, sincronización de inventario y patrones. |
 | 1.3 | 2026-08-27 | Se retira Spring Modulith. El estilo arquitectónico no cambia —monolito modular con hexagonal dentro de cada módulo— pero la verificación de fronteras pasa a declararse con reglas explícitas de ArchUnit en lugar de derivarse de la detección automática del framework. Se elimina en consecuencia la justificación de la sección 3.1 que apoyaba la elección del runtime en esa herramienta: ArchUnit no es una razón para elegir Spring Boot. |
 | 1.2 | 2026-08-27 | Se retira de la matriz de la sección 6 la fila del requerimiento de consistencia de estilo, eliminado del SRS en su versión 1.3. Esa fila apuntaba a la sección 3.7, que trata el versionado del esquema con Flyway y no menciona formato ni análisis estático: era una trazabilidad declarada sin respaldo. |
@@ -80,7 +81,7 @@ Definir qué hace cada capa importa; definir qué **no** hace importa más, porq
 | `pricing` | Listas de precios, vigencias y topes de descuento | CU-VEN-02 |
 | `inventory` | Existencias por sucursal, Kardex, ajustes y umbrales | CU-INV-03 … CU-INV-08 |
 | `purchases` | Órdenes de compra, recepción y Costo Promedio Ponderado | CU-COM-01 … CU-COM-05 |
-| `sales` | Ventas, comprobantes y anulaciones | CU-VEN-01, CU-VEN-03, CU-VEN-04 |
+| `sales` | Ventas, comprobantes, anulaciones y el sub-dominio de clientes | CU-VEN-01, CU-VEN-03 … CU-VEN-06 |
 | `transfers` | Máquina de estados de traslados entre sucursales | CU-TRA-01 … CU-TRA-06 |
 | `logistics` | Rutas, tiempos estimados y cumplimiento | CU-LOG-01 … CU-LOG-03 |
 | `notifications` | Motor de alertas y eventos operativos | CU-ALE-01, CU-ALE-02 |
