@@ -75,7 +75,7 @@ for archivo in 01-init-schema.sql 02-seed-data.sql; do
     echo; echo "RESULTADO: la base no se puede inicializar."; exit 1
   fi
 done
-igual "20 tablas creadas" "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'" "20"
+igual "21 tablas creadas" "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'" "21"
 
 echo
 echo "B. Integridad del inventario"
@@ -151,6 +151,17 @@ acepta "dos productos distintos tienen cada uno su unidad predeterminada" \
    VALUES ((SELECT id FROM products WHERE sku='SKU-TEST-G'),'CAJA_G',12.0,TRUE)"
 rechaza "el nombre de una categoría es único sin distinguir mayúsculas" \
   "INSERT INTO categories (name) VALUES ('sistemas de riego e insumos')"
+
+echo
+echo "H. Clientes y ventas"
+igual  "los clientes sembrados activos coinciden con la semilla" \
+  "SELECT count(*) FROM customers WHERE is_active" "2"
+rechaza "no puede haber dos clientes con el mismo tax_id no nulo" \
+  "INSERT INTO customers (name, tax_id) VALUES ('Cliente Duplicado', '900.555.444-1')"
+acepta "dos clientes distintos pueden tener tax_id nulo" \
+  "INSERT INTO customers (name, tax_id) VALUES ('Cliente Sin NIT 1', NULL), ('Cliente Sin NIT 2', NULL)"
+rechaza "RN-12 · no se puede eliminar un cliente con ventas asociadas" \
+  "INSERT INTO sales (invoice_number, branch_id, user_id, price_list_id, customer_id, customer_name, subtotal, total_amount) VALUES ('V-CUST-TEST', 1, 5, 1, 1, 'Cliente Con Venta', 1000, 1000); DELETE FROM customers WHERE id = 1"
 
 echo
 echo "------------------------------------------------------------"

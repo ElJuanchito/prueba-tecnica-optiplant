@@ -302,6 +302,23 @@ CREATE INDEX idx_purchase_items_order ON purchase_order_items(purchase_order_id)
 -- 5. MÓDULO: VENTAS Y SALIDAS COMERCIALES (Sales)
 -- ============================================================================
 
+CREATE TABLE customers (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    external_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+    name VARCHAR(150) NOT NULL,
+    tax_id VARCHAR(30),                       -- NIT / RUC; optional (D-3)
+    email VARCHAR(100),
+    phone VARCHAR(50),
+    address VARCHAR(255),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_customers_external_id ON customers(external_id);
+CREATE INDEX idx_customers_name ON customers(name);
+CREATE UNIQUE INDEX uq_customers_tax_id ON customers(tax_id) WHERE tax_id IS NOT NULL;
+
 CREATE TABLE sales (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     external_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
@@ -309,6 +326,7 @@ CREATE TABLE sales (
     branch_id BIGINT NOT NULL REFERENCES branches(id) ON DELETE RESTRICT,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     price_list_id BIGINT NOT NULL REFERENCES price_lists(id) ON DELETE RESTRICT,
+    customer_id BIGINT REFERENCES customers(id) ON DELETE RESTRICT,
     customer_name VARCHAR(150) NOT NULL,
     customer_tax_id VARCHAR(30),
     status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED' CHECK (status IN ('COMPLETED', 'CANCELLED')),
@@ -323,6 +341,7 @@ CREATE TABLE sales (
 CREATE INDEX idx_sales_external_id ON sales(external_id);
 CREATE INDEX idx_sales_branch_date ON sales(branch_id, created_at);
 CREATE INDEX idx_sales_invoice ON sales(invoice_number);
+CREATE INDEX idx_sales_customer ON sales(customer_id, created_at);
 
 CREATE TABLE sale_items (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

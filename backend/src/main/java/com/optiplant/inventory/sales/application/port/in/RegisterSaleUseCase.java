@@ -21,7 +21,8 @@ public interface RegisterSaleUseCase {
 			BigDecimal taxPercent,
 			String notes,
 			List<RegisterSaleItemCommand> items,
-			String invoiceNumber
+			String invoiceNumber,
+			UUID customerExternalId
 	) {
 	}
 

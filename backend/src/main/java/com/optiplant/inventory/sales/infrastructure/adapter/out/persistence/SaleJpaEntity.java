@@ -54,6 +54,9 @@ public class SaleJpaEntity {
 	@Column(name = "price_list_id", nullable = false)
 	private Long priceListId;
 
+	@Column(name = "customer_id")
+	private Long customerId;
+
 	@Column(name = "customer_name", nullable = false, length = 150)
 	private String customerName;
 

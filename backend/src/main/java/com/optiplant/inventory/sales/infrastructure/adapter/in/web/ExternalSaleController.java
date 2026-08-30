@@ -69,7 +69,8 @@ public class ExternalSaleController {
 				request.taxPercent(),
 				request.notes(),
 				items,
-				invoiceNumber.value()
+				invoiceNumber.value(),
+				request.customerExternalId()
 		);
 
 		SaleDetail detail = registerSaleUseCase.register(actor, command);
@@ -78,7 +79,8 @@ public class ExternalSaleController {
 
 	public record ExternalSaleRequest(
 			UUID priceListExternalId,
-			@NotBlank String customerName,
+			UUID customerExternalId,
+			String customerName,
 			String customerTaxId,
 			BigDecimal taxPercent,
 			String notes,

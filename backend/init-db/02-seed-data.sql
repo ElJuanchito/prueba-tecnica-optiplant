@@ -9,6 +9,7 @@
 --   a = system_alerts   b = branches        c = categories   d = products
 --   e = users           f = suppliers       1 = product_units
 --   2 = logistics_routes  3 = transfers     4 = price_lists  5 = price_list_items
+--   6 = customers
 -- ============================================================================
 
 -- Contraseña estándar para todos los usuarios semilla: 'Password123!' (BCrypt hash)
@@ -224,3 +225,12 @@ INSERT INTO system_alerts (external_id, branch_id, alert_type, severity, title, 
     'La sucursal Cali opera con 5 bolsas en almacén local mientras la transferencia TRF-2026-0001 se encuentra en tránsito.',
     FALSE
 );
+
+-- ----------------------------------------------------------------------------
+-- 10. CLIENTES (Customers)
+-- ----------------------------------------------------------------------------
+INSERT INTO customers (external_id, name, tax_id, email, phone, address, is_active) VALUES
+('60000000-0000-0000-0000-000000000001', 'Agropecuaria El Progreso S.A.S.', '900.555.444-1', 'contacto@elprogreso.com.co', '+57 601 5551234', 'Vereda El Salitre, Finca La Esperanza', TRUE),
+('60000000-0000-0000-0000-000000000002', 'Juan Camilo Morales', NULL, 'juan.morales@gmail.com', '+57 310 9876543', 'Calle 45 #12-34, Bogotá', TRUE),
+('60000000-0000-0000-0000-000000000003', 'Hacienda San José Inactiva Ltda.', '800.777.666-5', 'admin@haciendasanjose.com', '+57 604 7778899', 'Km 10 Vía Llanogrande, Antioquia', FALSE);
+

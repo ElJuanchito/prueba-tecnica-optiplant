@@ -24,7 +24,11 @@ public interface QuerySalesUseCase {
 			Instant to,
 			int page,
 			int size,
-			String sort
+			String sort,
+			UUID customerExternalId
 	) {
+		public SaleListQuery(SaleStatus status, Instant from, Instant to, int page, int size, String sort) {
+			this(status, from, to, page, size, sort, null);
+		}
 	}
 }

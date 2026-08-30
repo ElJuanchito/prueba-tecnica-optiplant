@@ -56,6 +56,7 @@ public interface SaleRepositoryPort {
 			UUID branchExternalId,
 			UUID soldByUserExternalId,
 			UUID priceListExternalId,
+			UUID customerExternalId,
 			CustomerName customerName,
 			CustomerTaxId customerTaxId,
 			SaleTotals totals,
@@ -76,6 +77,7 @@ public interface SaleRepositoryPort {
 
 	record SaleFilter(
 			UUID callerBranchExternalId,
+			UUID customerExternalId,
 			SaleStatus status,
 			Instant from,
 			Instant to,

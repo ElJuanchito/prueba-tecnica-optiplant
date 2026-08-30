@@ -83,12 +83,30 @@ class QuerySalesServiceTest {
 		ArgumentCaptor<SaleFilter> captor = ArgumentCaptor.forClass(SaleFilter.class);
 		verify(saleRepository).list(captor.capture());
 		assertThat(captor.getValue().callerBranchExternalId()).isEqualTo(branchA);
+		assertThat(captor.getValue().customerExternalId()).isNull();
 
 		// Admin query has null callerBranchExternalId
 		AuthenticatedPrincipal admin = new AuthenticatedPrincipal(userId, "admin", Role.ADMIN, null);
 		service.list(admin, query);
 		verify(saleRepository, org.mockito.Mockito.times(2)).list(captor.capture());
 		assertThat(captor.getValue().callerBranchExternalId()).isNull();
+	}
+
+	@Test
+	@DisplayName("R-C12 / R-C13: Listing forwards customerExternalId to SaleFilter")
+	void listSalesForwardsCustomerFilter() {
+		UUID customerId = UUID.randomUUID();
+		AuthenticatedPrincipal operator = new AuthenticatedPrincipal(userId, "seller", Role.OPERATOR, branchA);
+		SaleListQuery query = new SaleListQuery(SaleStatus.COMPLETED, null, null, 0, 20, "createdAt", customerId);
+
+		when(saleRepository.list(any())).thenReturn(new SalePage(List.of(), 0, 0, 20, SaleAggregates.empty()));
+
+		service.list(operator, query);
+
+		ArgumentCaptor<SaleFilter> captor = ArgumentCaptor.forClass(SaleFilter.class);
+		verify(saleRepository).list(captor.capture());
+		assertThat(captor.getValue().callerBranchExternalId()).isEqualTo(branchA);
+		assertThat(captor.getValue().customerExternalId()).isEqualTo(customerId);
 	}
 
 	@Test
@@ -146,6 +164,7 @@ class QuerySalesServiceTest {
 				branchId,
 				userId,
 				UUID.randomUUID(),
+				null,
 				new CustomerName("Customer"),
 				null,
 				new SaleTotals(Money.of("50.0000"), Money.ZERO, Money.ZERO, Money.of("50.0000")),

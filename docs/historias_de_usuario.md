@@ -326,6 +326,23 @@ Toda historia del backlog cumple: **I**ndependiente, **N**egociable, **V**aliosa
 
 ---
 
+### HU-VEN-05 — Gestión de clientes y su histórico de compras
+
+> **Como** operador de inventario, **quiero** registrar y editar los datos de un cliente y consultar su histórico de compras, **para** atribuir las ventas a una parte conocida y dar seguimiento a su relación comercial.
+
+| Prioridad | Estimación | Trazabilidad |
+| :--- | :--- | :--- |
+| **Should** | 3 | RF-VEN-06 · CU-VEN-05 · CU-VEN-06 |
+
+**Criterios de aceptación**
+* **Dado** un cliente nuevo en el mostrador, **cuando** el operador lo registra con su nombre y, opcionalmente, su identificación tributaria y datos de contacto, **entonces** el cliente queda disponible para asociarlo a las ventas.
+* **Dado** un cliente ya registrado, **cuando** se registra una venta indicando su identificador, **entonces** la venta guarda el vínculo y congela el nombre y la identificación tal como estaban en ese momento; una edición posterior del cliente no altera el comprobante.
+* **Dado** un identificador tributario que ya pertenece a otro cliente, **cuando** se intenta registrar o editar, **entonces** el sistema lo rechaza.
+* **Dado** un cliente, **cuando** se consulta su histórico de compras, **entonces** el operador ve solo las ventas de su propia sucursal con ese cliente y sus totales; el Administrador las ve en toda la red.
+* **Dado** un cliente dado de baja, **cuando** se intenta asociarlo a una nueva venta, **entonces** el sistema lo rechaza, pero su histórico sigue siendo consultable. Solo el Administrador puede dar de baja o reactivar un cliente.
+
+---
+
 ## 7. EP-05 — Transferencias entre Sucursales
 
 ### HU-TRA-01 — Solicitud de transferencia con nivel de urgencia

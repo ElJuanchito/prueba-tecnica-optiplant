@@ -8,6 +8,7 @@ import com.optiplant.inventory.sales.application.port.in.RegisterSaleUseCase.Reg
 import com.optiplant.inventory.sales.application.port.in.VoidSaleUseCase;
 import com.optiplant.inventory.sales.application.port.in.VoidSaleUseCase.VoidSaleCommand;
 import com.optiplant.inventory.sales.domain.model.BranchRef;
+import com.optiplant.inventory.sales.domain.model.CustomerRef;
 import com.optiplant.inventory.sales.domain.model.PriceListRef;
 import com.optiplant.inventory.sales.domain.model.SaleDetail;
 import com.optiplant.inventory.sales.domain.model.SaleItemView;
@@ -18,7 +19,6 @@ import com.optiplant.inventory.sales.domain.model.UserRef;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import com.optiplant.inventory.shared.security.PrincipalAccessor;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -81,7 +81,8 @@ public class SaleController {
 				request.taxPercent(),
 				request.notes(),
 				items,
-				null
+				null,
+				request.customerExternalId()
 		);
 
 		SaleDetail detail = registerSaleUseCase.register(actor, command);
@@ -149,6 +150,7 @@ public class SaleController {
 				toBranchRefResponse(detail.branch()),
 				toUserRefResponse(detail.soldBy()),
 				toPriceListRefResponse(detail.priceList()),
+				toCustomerRefResponse(detail.customer()),
 				detail.customerName(),
 				detail.customerTaxId(),
 				detail.subtotal(),
@@ -170,6 +172,7 @@ public class SaleController {
 				toBranchRefResponse(summary.branch()),
 				toUserRefResponse(summary.soldBy()),
 				toPriceListRefResponse(summary.priceList()),
+				toCustomerRefResponse(summary.customer()),
 				summary.customerName(),
 				summary.totalAmount(),
 				summary.createdAt()
@@ -188,6 +191,10 @@ public class SaleController {
 		return ref == null ? null : new PriceListRefResponse(ref.externalId(), ref.code(), ref.maxDiscountPercent());
 	}
 
+	private static CustomerRefResponse toCustomerRefResponse(CustomerRef ref) {
+		return ref == null ? null : new CustomerRefResponse(ref.externalId(), ref.name(), ref.taxId());
+	}
+
 	private static SaleItemResponse toItemResponse(SaleItemView item) {
 		return new SaleItemResponse(
 				item.externalId(),
@@ -204,7 +211,8 @@ public class SaleController {
 
 	public record RegisterSaleRequest(
 			UUID priceListExternalId,
-			@NotBlank String customerName,
+			UUID customerExternalId,
+			String customerName,
 			String customerTaxId,
 			BigDecimal taxPercent,
 			String notes,
@@ -232,6 +240,9 @@ public class SaleController {
 	public record PriceListRefResponse(UUID externalId, String code, BigDecimal maxDiscountPercent) {
 	}
 
+	public record CustomerRefResponse(UUID externalId, String name, String taxId) {
+	}
+
 	public record SaleItemResponse(
 			UUID externalId,
 			UUID productExternalId,
@@ -252,6 +263,7 @@ public class SaleController {
 			BranchRefResponse branch,
 			UserRefResponse soldBy,
 			PriceListRefResponse priceList,
+			CustomerRefResponse customer,
 			String customerName,
 			String customerTaxId,
 			BigDecimal subtotal,
@@ -272,6 +284,7 @@ public class SaleController {
 			BranchRefResponse branch,
 			UserRefResponse soldBy,
 			PriceListRefResponse priceList,
+			CustomerRefResponse customer,
 			String customerName,
 			BigDecimal totalAmount,
 			Instant createdAt

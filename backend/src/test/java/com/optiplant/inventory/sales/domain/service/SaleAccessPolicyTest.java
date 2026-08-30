@@ -135,6 +135,7 @@ class SaleAccessPolicyTest {
 				branchId,
 				UUID.randomUUID(),
 				UUID.randomUUID(),
+				null,
 				new CustomerName("Acme Corp"),
 				null,
 				totals,
