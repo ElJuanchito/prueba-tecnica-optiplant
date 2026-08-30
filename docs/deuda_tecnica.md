@@ -384,7 +384,7 @@ RF-TRA-01 · HU-TRA-01 · `openspec/changes/add-transfers-module/design.md` §6.
 **Severidad:** Baja · **Estado:** Aceptada · **Esfuerzo estimado:** trivial · **Origen:** diseño del módulo `sales`
 
 #### Situación actual
-`sales` no tiene ninguna columna de secuencia ni un `SEQUENCE` de PostgreSQL que numere `invoice_number` (`01-init-schema.sql`, §2.5 de `openspec/changes/add-sales-module/contract.md`). RF-VEN-01 y RF-VEN-02 exigen un número correlativo único legible con el formato `VEN-<yyyy>-<nnnn>`. `SalePersistenceAdapter.create` lo resuelve sin tocar el esquema —únicamente cuando la orden no suministra un número del punto de venta externo—: toma un bloqueo consultivo de transacción de PostgreSQL con alcance anual (`pg_advisory_xact_lock(hashtext('sale_invoice_number:' || :year))`) como primera sentencia, calcula `MAX(...) + 1` sobre los números internos ya asignados ese año y recién entonces inserta —la misma técnica que **DT-11** utiliza para numerar transferencias y **DT-09** para deduplicar alertas—.
+`sales` no tiene ninguna columna de secuencia ni un `SEQUENCE` de PostgreSQL que numere `invoice_number` (`01-init-schema.sql`, §2.5 de `openspec/changes/archive/2026-08-30-add-sales-module/contract.md`). RF-VEN-01 y RF-VEN-02 exigen un número correlativo único legible con el formato `VEN-<yyyy>-<nnnn>`. `SalePersistenceAdapter.create` lo resuelve sin tocar el esquema —únicamente cuando la orden no suministra un número del punto de venta externo—: toma un bloqueo consultivo de transacción de PostgreSQL con alcance anual (`pg_advisory_xact_lock(hashtext('sale_invoice_number:' || :year))`) como primera sentencia, calcula `MAX(...) + 1` sobre los números internos ya asignados ese año y recién entonces inserta —la misma técnica que **DT-11** utiliza para numerar transferencias y **DT-09** para deduplicar alertas—.
 
 #### Por qué se aceptó
 El bloqueo consultivo serializa correctamente las creaciones concurrentes dentro de un mismo año sin requerir una migración de esquema (§2.5 prohíbe deliberadamente tocar `01-init-schema.sql` en este cambio). La restricción `UNIQUE` existente sobre `sales.invoice_number` queda como última línea de defensa (T-07): si alguna vez el bloqueo se omitiera, el `INSERT` duplicado fallaría en la base en vez de corromper silenciosamente la numeración. Además, el adaptador externo de punto de venta (CU-EXT-02) rechaza números con el prefijo reservado `VEN-\d{4}-\d+` para no alterar el cálculo del correlativo interno.
@@ -401,7 +401,7 @@ Cuando llegue el próximo cambio de esquema:
 4. Formatear `invoice_number` a partir de `nextval('sale_invoice_number_seq')` combinado con el año en curso, conservando el formato `VEN-<yyyy>-<nnnn>` que el frontend y los clientes externos ya asumen.
 
 #### Referencias
-RF-VEN-01 · RF-VEN-02 · RF-EXT-02 · `openspec/changes/add-sales-module/design.md` §6.3, §10, D-5.
+RF-VEN-01 · RF-VEN-02 · RF-EXT-02 · `openspec/changes/archive/2026-08-30-add-sales-module/design.md` §6.3, §10, D-5.
 
 ---
 
