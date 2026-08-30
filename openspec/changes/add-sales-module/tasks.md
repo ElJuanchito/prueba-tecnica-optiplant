@@ -54,38 +54,38 @@ never invent it.
 
 ## Phase 2 — S2: infrastructure, web and the P-08 fix (PR2)
 
-- [ ] 2.1 Create `pricing/…/out/persistence/`: `PriceListJpaEntity`, `PriceListItemJpaEntity`, their mappers, the three
+- [x] 2.1 Create `pricing/…/out/persistence/`: `PriceListJpaEntity`, `PriceListItemJpaEntity`, their mappers, the three
       Spring Data repositories (`PriceList`, `PriceListItem`, `PricingReference`) and the three persistence adapters.
       FKs are **plain `Long` columns, no `@ManyToOne`, no `@Entity` over `products`/`branches`** (§6.1).
-- [ ] 2.2 Create `pricing/…/out/price/PriceResolutionAdapter` implementing the `shared` port with §6.2's **superset**
+- [x] 2.2 Create `pricing/…/out/price/PriceResolutionAdapter` implementing the `shared` port with §6.2's **superset**
       query over `idx_price_list_items_lookup` — one round trip per basket (RNF-PER-02), ordering left to the domain.
-- [ ] 2.3 Create `SaleJpaEntity` + `SaleItemJpaEntity` (`@OneToMany(cascade = ALL, orphanRemoval = true)`), `SaleMapper`
+- [x] 2.3 Create `SaleJpaEntity` + `SaleItemJpaEntity` (`@OneToMany(cascade = ALL, orphanRemoval = true)`), `SaleMapper`
       — the only place the F-3 token is written or read — and `SaleSpringDataRepository` with `findByExternalId`
       annotated `@Lock(PESSIMISTIC_WRITE)`, **no `@QueryHints` timeout** (§6.1, F-7). `sales` has no `updated_at`.
-- [ ] 2.4 Create `SalePersistenceAdapter`: `create` takes the year-scoped advisory lock, derives the next
+- [x] 2.4 Create `SalePersistenceAdapter`: `create` takes the year-scoped advisory lock, derives the next
       `VEN-<yyyy>-<nnnn>` and inserts **only when no POS number was supplied** (§6.3, D-5); a supplied number is
       pre-checked for duplication (`duplicate_invoice_number` 409, R-29/T-06); listing returns summaries plus the
       aggregate row (R-24), detail and receipt lookup branch-scoped (R-25). Then `SaleReferenceSpringDataRepository` /
       `SaleReferenceAdapter` with §6.2's native queries: branch/product/user resolution, batched product descriptors,
       `conversion_factor` (D-2) and the external-credential subject for 2.7.
-- [ ] 2.5 **P-08** — edit `inventory/infrastructure/adapter/out/stock/StockMutationAdapter.java` only (design §8):
+- [x] 2.5 **P-08** — edit `inventory/infrastructure/adapter/out/stock/StockMutationAdapter.java` only (design §8):
       inject `AlertEventPublisherPort`, capture `save(...)`'s return, and publish `AlertRaisingPolicy.render(...)` as
       `applyMovement`'s last statement; leave `shiftInTransit` untouched. Then re-read `TransferDispatchAtomicityIT` and
       `TransferReceiptDiscrepancyIT` — a dispatch now raises `STOCK_MINIMUM` where it raised nothing, so their fixtures
       may need adjusting (R-08, T-04).
-- [ ] 2.6 Create `SaleController` (contract §6's five internal endpoints — no branch anywhere (RN-14), oversized page
+- [x] 2.6 Create `SaleController` (contract §6's five internal endpoints — no branch anywhere (RN-14), oversized page
       **rejected** not clamped (R-00), no numeric id, no raw `VOID_REASON` token) and `SalesExceptionHandler` scoped to
       `…sales.infrastructure.adapter.in` — **the whole `in` package**, or 2.7's controller has no handler (§6.4 trap).
-- [ ] 2.7 Create the external path (§6.5, F-6, P-07): `ExternalApiKeyProperties` and `ExternalSalesSecurityConfig` in
+- [x] 2.7 Create the external path (§6.5, F-6, P-07): `ExternalApiKeyProperties` and `ExternalSalesSecurityConfig` in
       `sales/infrastructure/config` (an `@Order(1)` chain with `securityMatcher("/api/external/sales/**")`),
       `ExternalApiKeyAuthenticationFilter` (constant-time compare, writes its own `401 invalid_api_credential` body,
       logs no key material — R-28, RNF-OBS-01) and `ExternalSaleController`, which invokes the **same**
       `RegisterSaleUseCase` and restates no rule; a branch field in the body, or a reserved `VEN-` number, is `400
       invalid_request` (R-27, D-5).
-- [ ] 2.8 Create `PriceListController`, `PriceController` and `PricingQuoteController` (contract §6's seven pricing
+- [x] 2.8 Create `PriceListController`, `PriceController` and `PricingQuoteController` (contract §6's seven pricing
       endpoints) plus `PricingExceptionHandler` mapping `price_list_code_already_exists`, `price_period_conflict`,
       `price_list_not_found` and `price_not_found` (§7). Then restore `@Service` on the six S1 services.
-- [ ] 2.9 Edit `iam/…/config/SecurityConfig` with §6.4's five matchers **in that order** — quotes and `GET /api/pricing`
+- [x] 2.9 Edit `iam/…/config/SecurityConfig` with §6.4's five matchers **in that order** — quotes and `GET /api/pricing`
       before the `ADMIN`-only rule, `/api/sales/*/cancellation` before `/api/sales/**` — **string literals only**, since
       importing a `sales` type there creates `iam → sales`. Then verify every §7 code is reachable from a controller
       path (name the path per code in the PR description — no dead error code), run `./scripts/validar_esquema.sh`
