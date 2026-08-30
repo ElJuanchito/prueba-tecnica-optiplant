@@ -26,6 +26,9 @@ public interface SaleReferenceSpringDataRepository extends Repository<SaleJpaEnt
 	@Query(value = "SELECT id FROM price_lists WHERE external_id = :externalId", nativeQuery = true)
 	Optional<Long> findPriceListIdByExternalId(@Param("externalId") UUID externalId);
 
+	@Query(value = "SELECT id FROM customers WHERE external_id = :externalId", nativeQuery = true)
+	Optional<Long> findCustomerIdByExternalId(@Param("externalId") UUID externalId);
+
 	@Query(value = "SELECT external_id AS externalId, sku AS sku, name AS name FROM products WHERE external_id IN (:externalIds)", nativeQuery = true)
 	List<ProductDescriptorRow> findProductDescriptors(@Param("externalIds") Collection<UUID> externalIds);
 
@@ -34,6 +37,9 @@ public interface SaleReferenceSpringDataRepository extends Repository<SaleJpaEnt
 
 	@Query(value = "SELECT external_id AS externalId, username AS username FROM users WHERE external_id IN (:externalIds)", nativeQuery = true)
 	List<UserDescriptorRow> findUserDescriptors(@Param("externalIds") Collection<UUID> externalIds);
+
+	@Query(value = "SELECT external_id AS externalId, name AS name, tax_id AS taxId FROM customers WHERE external_id IN (:externalIds)", nativeQuery = true)
+	List<CustomerDescriptorRow> findCustomerDescriptors(@Param("externalIds") Collection<UUID> externalIds);
 
 	@Query(value = """
 			SELECT pu.conversion_factor
@@ -62,6 +68,12 @@ public interface SaleReferenceSpringDataRepository extends Repository<SaleJpaEnt
 
 	@Query(value = "SELECT id AS id, external_id AS externalId FROM price_lists WHERE id IN (:ids)", nativeQuery = true)
 	List<IdExternalIdRow> findPriceListExternalIds(@Param("ids") Collection<Long> ids);
+
+	@Query(value = "SELECT id AS id, external_id AS externalId FROM customers WHERE id IN (:ids)", nativeQuery = true)
+	List<IdExternalIdRow> findCustomerExternalIds(@Param("ids") Collection<Long> ids);
+
+	@Query(value = "SELECT id AS id, external_id AS externalId, name AS name, tax_id AS taxId FROM customers WHERE id IN (:ids)", nativeQuery = true)
+	List<CustomerRefRow> findCustomerRefs(@Param("ids") Collection<Long> ids);
 
 	@Query(value = "SELECT id AS id, external_id AS externalId FROM products WHERE external_id IN (:externalIds)", nativeQuery = true)
 	List<IdExternalIdRow> findProductIds(@Param("externalIds") Collection<UUID> externalIds);
@@ -93,6 +105,24 @@ public interface SaleReferenceSpringDataRepository extends Repository<SaleJpaEnt
 		String getCode();
 
 		BigDecimal getMaxDiscountPercent();
+	}
+
+	interface CustomerRefRow {
+		Long getId();
+
+		UUID getExternalId();
+
+		String getName();
+
+		String getTaxId();
+	}
+
+	interface CustomerDescriptorRow {
+		UUID getExternalId();
+
+		String getName();
+
+		String getTaxId();
 	}
 
 	interface ProductDescriptorRow {

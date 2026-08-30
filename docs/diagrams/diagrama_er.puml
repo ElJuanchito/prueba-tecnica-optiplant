@@ -180,6 +180,20 @@ package "Compras & Proveedores" {
 }
 
 package "Ventas" {
+    entity "customers" as customers {
+        * id : BIGINT <<PK>>
+        --
+        * external_id : UUID <<UK>>
+        * name : VARCHAR(150)
+        tax_id : VARCHAR(30) <<UK>>
+        email : VARCHAR(100)
+        phone : VARCHAR(50)
+        address : VARCHAR(255)
+        * is_active : BOOLEAN
+        created_at : TIMESTAMPTZ
+        updated_at : TIMESTAMPTZ
+    }
+
     entity "sales" as sales {
         * id : BIGINT <<PK>>
         --
@@ -188,6 +202,7 @@ package "Ventas" {
         * branch_id : BIGINT <<FK>>
         * user_id : BIGINT <<FK>>
         * price_list_id : BIGINT <<FK>>
+        customer_id : BIGINT <<FK>>
         * customer_name : VARCHAR(150)
         * status : VARCHAR(20)
         * subtotal : NUMERIC(14,4)
@@ -310,6 +325,7 @@ users ||--o{ purchase_orders
 
 sales ||--|{ sale_items
 users ||--o{ sales
+customers |o--o{ sales : "asociado a"
 
 transfers ||--|{ transfer_items
 users ||--o{ transfers : "solicita"

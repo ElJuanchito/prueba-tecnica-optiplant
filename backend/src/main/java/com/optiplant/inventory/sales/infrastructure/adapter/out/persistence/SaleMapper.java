@@ -4,6 +4,7 @@ import com.optiplant.inventory.sales.application.port.out.SaleRepositoryPort.New
 import com.optiplant.inventory.sales.application.port.out.SaleRepositoryPort.NewSaleItem;
 import com.optiplant.inventory.sales.domain.model.BranchRef;
 import com.optiplant.inventory.sales.domain.model.CustomerName;
+import com.optiplant.inventory.sales.domain.model.CustomerRef;
 import com.optiplant.inventory.sales.domain.model.CustomerTaxId;
 import com.optiplant.inventory.sales.domain.model.DiscountPercent;
 import com.optiplant.inventory.sales.domain.model.InvoiceNumber;
@@ -32,7 +33,7 @@ import org.springframework.stereotype.Component;
 public class SaleMapper {
 
 	public Sale toDomain(SaleJpaEntity entity, UUID branchExternalId, UUID soldByUserExternalId,
-			UUID priceListExternalId, Map<Long, UUID> productExternalIdsByProductId) {
+			UUID priceListExternalId, UUID customerExternalId, Map<Long, UUID> productExternalIdsByProductId) {
 		SaleTotals totals = new SaleTotals(
 				new Money(entity.getSubtotal()),
 				new Money(entity.getDiscountAmount()),
@@ -51,6 +52,7 @@ public class SaleMapper {
 				branchExternalId,
 				soldByUserExternalId,
 				priceListExternalId,
+				customerExternalId,
 				new CustomerName(entity.getCustomerName()),
 				CustomerTaxId.of(entity.getCustomerTaxId()),
 				totals,
@@ -62,7 +64,7 @@ public class SaleMapper {
 
 	public SaleSummary toSummary(SaleJpaEntity entity, UUID branchExternalId, String branchName,
 			UUID userExternalId, String username, UUID priceListExternalId, String priceListCode,
-			java.math.BigDecimal maxDiscountPercent) {
+			java.math.BigDecimal maxDiscountPercent, CustomerRef customerRef) {
 		return new SaleSummary(
 				entity.getExternalId(),
 				entity.getInvoiceNumber(),
@@ -70,6 +72,7 @@ public class SaleMapper {
 				new BranchRef(branchExternalId, branchName),
 				new UserRef(userExternalId, username),
 				new PriceListRef(priceListExternalId, priceListCode, maxDiscountPercent),
+				customerRef,
 				entity.getCustomerName(),
 				entity.getTotalAmount(),
 				entity.getCreatedAt()
@@ -77,12 +80,13 @@ public class SaleMapper {
 	}
 
 	public SaleJpaEntity toNewEntity(NewSale newSale, String invoiceNumber, Long branchId, Long userId,
-			Long priceListId, Map<UUID, Long> productIdsByExternalId, Instant now) {
+			Long priceListId, Long customerId, Map<UUID, Long> productIdsByExternalId, Instant now) {
 		SaleJpaEntity entity = new SaleJpaEntity();
 		entity.setInvoiceNumber(invoiceNumber);
 		entity.setBranchId(branchId);
 		entity.setUserId(userId);
 		entity.setPriceListId(priceListId);
+		entity.setCustomerId(customerId);
 		entity.setCustomerName(newSale.customerName().value());
 		entity.setCustomerTaxId(newSale.customerTaxId() != null ? newSale.customerTaxId().value() : null);
 		entity.setStatus(SaleStatus.COMPLETED.name());

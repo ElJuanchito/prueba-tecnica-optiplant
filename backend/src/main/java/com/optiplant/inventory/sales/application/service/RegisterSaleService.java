@@ -1,14 +1,17 @@
 package com.optiplant.inventory.sales.application.service;
 
 import com.optiplant.inventory.sales.application.port.in.RegisterSaleUseCase;
+import com.optiplant.inventory.sales.application.port.out.CustomerRepositoryPort;
 import com.optiplant.inventory.sales.application.port.out.SaleReferencePort;
 import com.optiplant.inventory.sales.application.port.out.SaleRepositoryPort;
 import com.optiplant.inventory.sales.application.port.out.SaleRepositoryPort.NewSale;
 import com.optiplant.inventory.sales.application.port.out.SaleRepositoryPort.NewSaleItem;
+import com.optiplant.inventory.sales.domain.exception.CustomerNotFoundException;
 import com.optiplant.inventory.sales.domain.exception.PriceListNotFoundException;
 import com.optiplant.inventory.sales.domain.exception.PriceListNotResolvableException;
 import com.optiplant.inventory.sales.domain.exception.PriceNotAvailableException;
 import com.optiplant.inventory.sales.domain.exception.UnitConversionUnavailableException;
+import com.optiplant.inventory.sales.domain.model.Customer;
 import com.optiplant.inventory.sales.domain.model.CustomerName;
 import com.optiplant.inventory.sales.domain.model.CustomerTaxId;
 import com.optiplant.inventory.sales.domain.model.DiscountPercent;
@@ -67,6 +70,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RegisterSaleService implements RegisterSaleUseCase {
 
 	private final SaleRepositoryPort saleRepository;
+	private final CustomerRepositoryPort customerRepository;
 	private final SaleReferencePort referencePort;
 	private final PriceResolutionPort priceResolutionPort;
 	private final StockMutationPort stockMutationPort;
@@ -74,12 +78,14 @@ public class RegisterSaleService implements RegisterSaleUseCase {
 
 	public RegisterSaleService(
 			SaleRepositoryPort saleRepository,
+			CustomerRepositoryPort customerRepository,
 			SaleReferencePort referencePort,
 			PriceResolutionPort priceResolutionPort,
 			StockMutationPort stockMutationPort,
 			AuditWritePort auditWritePort
 	) {
 		this.saleRepository = saleRepository;
+		this.customerRepository = customerRepository;
 		this.referencePort = referencePort;
 		this.priceResolutionPort = priceResolutionPort;
 		this.stockMutationPort = stockMutationPort;
@@ -90,6 +96,24 @@ public class RegisterSaleService implements RegisterSaleUseCase {
 	@Transactional
 	public SaleDetail register(AuthenticatedPrincipal actor, RegisterSaleCommand command) {
 		UUID branchExternalId = SaleAccessPolicy.resolveRegistrationBranch(actor);
+
+		CustomerName customerName;
+		CustomerTaxId customerTaxId;
+		UUID customerExternalId = command.customerExternalId();
+
+		if (customerExternalId == null) {
+			if (command.customerName() == null || command.customerName().isBlank()) {
+				throw new IllegalArgumentException("customerName must be provided when customerExternalId is not specified");
+			}
+			customerName = new CustomerName(command.customerName());
+			customerTaxId = CustomerTaxId.of(command.customerTaxId());
+		} else {
+			Customer customer = customerRepository.findByExternalId(customerExternalId)
+					.orElseThrow(() -> new CustomerNotFoundException(customerExternalId));
+			customer.requireActiveForSale();
+			customerName = customer.name();
+			customerTaxId = customer.taxId();
+		}
 
 		List<RegisterSaleItemCommand> commandItems = command.items() == null ? List.of() : command.items();
 		List<RawBasketItem> rawLines = commandItems.stream()
@@ -192,8 +216,9 @@ public class RegisterSaleService implements RegisterSaleUseCase {
 				branchExternalId,
 				actor.userId(),
 				appliedList.externalId(),
-				new CustomerName(command.customerName()),
-				CustomerTaxId.of(command.customerTaxId()),
+				customerExternalId,
+				customerName,
+				customerTaxId,
 				totals,
 				notes,
 				newItems

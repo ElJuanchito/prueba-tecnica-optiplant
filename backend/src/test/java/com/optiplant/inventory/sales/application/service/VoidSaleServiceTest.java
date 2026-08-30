@@ -103,6 +103,7 @@ class VoidSaleServiceTest {
 				branchId,
 				userId,
 				UUID.randomUUID(),
+				null,
 				new CustomerName("Customer"),
 				null,
 				new SaleTotals(Money.of("100.0000"), Money.ZERO, Money.ZERO, Money.of("100.0000")),
@@ -164,7 +165,7 @@ class VoidSaleServiceTest {
 		);
 		Sale cancelledSale = new Sale(
 				saleId, InvoiceNumber.of("VEN-2026-0001"), SaleStatus.CANCELLED,
-				branchId, userId, UUID.randomUUID(), new CustomerName("Customer"), null,
+				branchId, userId, UUID.randomUUID(), null, new CustomerName("Customer"), null,
 				new SaleTotals(Money.of("50.0000"), Money.ZERO, Money.ZERO, Money.of("50.0000")),
 				SaleNotes.empty(), Instant.now(), List.of(item)
 		);

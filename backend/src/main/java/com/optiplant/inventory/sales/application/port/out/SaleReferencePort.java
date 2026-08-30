@@ -33,6 +33,11 @@ public interface SaleReferencePort {
 	Map<UUID, UserDescriptor> findUsers(Collection<UUID> userExternalIds);
 
 	/**
+	 * Looks up customer descriptors for receipt/detail enrichment (design §6).
+	 */
+	Map<UUID, CustomerDescriptor> findCustomers(Collection<UUID> customerExternalIds);
+
+	/**
 	 * Returns the conversion factor from the given unit to the product's base unit (R-07, D-2).
 	 */
 	Optional<BigDecimal> findConversionFactor(UUID productExternalId, UUID unitOfMeasureExternalId);
@@ -49,6 +54,9 @@ public interface SaleReferencePort {
 	}
 
 	record UserDescriptor(UUID externalId, String username) {
+	}
+
+	record CustomerDescriptor(UUID externalId, String name, String taxId) {
 	}
 
 	record ServiceUserSubject(UUID userExternalId, String username, Role role) {

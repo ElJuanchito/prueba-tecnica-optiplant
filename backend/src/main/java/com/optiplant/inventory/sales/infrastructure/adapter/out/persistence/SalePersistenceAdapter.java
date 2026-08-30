@@ -3,10 +3,12 @@ package com.optiplant.inventory.sales.infrastructure.adapter.out.persistence;
 import com.optiplant.inventory.sales.application.port.out.SaleRepositoryPort;
 import com.optiplant.inventory.sales.domain.exception.DuplicateInvoiceNumberException;
 import com.optiplant.inventory.sales.domain.exception.ProductNotFoundException;
+import com.optiplant.inventory.sales.domain.model.CustomerRef;
 import com.optiplant.inventory.sales.domain.model.Sale;
 import com.optiplant.inventory.sales.domain.model.SaleAggregates;
 import com.optiplant.inventory.sales.domain.model.SalePage;
 import com.optiplant.inventory.sales.domain.model.SaleSummary;
+import com.optiplant.inventory.sales.infrastructure.adapter.out.persistence.SaleReferenceSpringDataRepository.CustomerRefRow;
 import com.optiplant.inventory.sales.infrastructure.adapter.out.persistence.SaleReferenceSpringDataRepository.IdExternalIdRow;
 import com.optiplant.inventory.sales.infrastructure.adapter.out.persistence.SaleReferenceSpringDataRepository.IdNameRow;
 import com.optiplant.inventory.sales.infrastructure.adapter.out.persistence.SaleReferenceSpringDataRepository.PriceListSummaryRow;
@@ -50,6 +52,10 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 		Long branchId = requireBranchId(newSale.branchExternalId());
 		Long userId = requireUserId(newSale.soldByUserExternalId());
 		Long priceListId = requirePriceListId(newSale.priceListExternalId());
+		Long customerId = newSale.customerExternalId() != null
+				? referenceRepository.findCustomerIdByExternalId(newSale.customerExternalId())
+						.orElseThrow(() -> new IllegalStateException("No customer found for external id " + newSale.customerExternalId()))
+				: null;
 
 		Map<UUID, Long> productIdsByExternalId = new HashMap<>();
 		for (NewSaleItem item : newSale.items()) {
@@ -72,14 +78,14 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 
 		Instant now = Instant.now();
 		SaleJpaEntity entity = mapper.toNewEntity(newSale, invoiceNumber, branchId, userId, priceListId,
-				productIdsByExternalId, now);
+				customerId, productIdsByExternalId, now);
 		SaleJpaEntity saved = saleRepository.save(entity);
 
 		Map<Long, UUID> productExternalIdsByProductId = new HashMap<>();
 		productIdsByExternalId.forEach((extId, id) -> productExternalIdsByProductId.put(id, extId));
 
 		return mapper.toDomain(saved, newSale.branchExternalId(), newSale.soldByUserExternalId(),
-				newSale.priceListExternalId(), productExternalIdsByProductId);
+				newSale.priceListExternalId(), newSale.customerExternalId(), productExternalIdsByProductId);
 	}
 
 	@Override
@@ -111,14 +117,16 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 	public SalePage list(SaleFilter filter) {
 		Long branchId = filter.callerBranchExternalId() == null ? null
 				: resolveBranchIdOrSentinel(filter.callerBranchExternalId());
+		Long customerId = filter.customerExternalId() == null ? null
+				: resolveCustomerIdOrSentinel(filter.customerExternalId());
 		String status = filter.status() == null ? null : filter.status().name();
 
 		PageRequest pageRequest = PageRequest.of(filter.page(), filter.size());
 		Page<SaleJpaEntity> page = "totalAmount".equals(filter.sort())
-				? saleRepository.searchOrderByTotalAmount(branchId, status, filter.from(), filter.to(), pageRequest)
-				: saleRepository.searchOrderByCreatedAt(branchId, status, filter.from(), filter.to(), pageRequest);
+				? saleRepository.searchOrderByTotalAmount(branchId, customerId, status, filter.from(), filter.to(), pageRequest)
+				: saleRepository.searchOrderByCreatedAt(branchId, customerId, status, filter.from(), filter.to(), pageRequest);
 
-		SaleAggregatesRow aggRow = saleRepository.computeAggregates(branchId, status, filter.from(), filter.to());
+		SaleAggregatesRow aggRow = saleRepository.computeAggregates(branchId, customerId, status, filter.from(), filter.to());
 		SaleAggregates aggregates = new SaleAggregates(
 				aggRow.getSalesCount() == null ? 0L : aggRow.getSalesCount(),
 				aggRow.getTotalAmount() == null ? BigDecimal.ZERO : aggRow.getTotalAmount()
@@ -127,10 +135,14 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 		Set<Long> branchIds = new HashSet<>();
 		Set<Long> userIds = new HashSet<>();
 		Set<Long> priceListIds = new HashSet<>();
+		Set<Long> customerIds = new HashSet<>();
 		for (SaleJpaEntity entity : page.getContent()) {
 			branchIds.add(entity.getBranchId());
 			userIds.add(entity.getUserId());
 			priceListIds.add(entity.getPriceListId());
+			if (entity.getCustomerId() != null) {
+				customerIds.add(entity.getCustomerId());
+			}
 		}
 
 		Map<Long, UUID> branchExtIds = resolveExternalIds(branchIds, referenceRepository::findBranchExternalIds);
@@ -141,6 +153,7 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 
 		Map<Long, UUID> priceListExtIds = resolveExternalIds(priceListIds, referenceRepository::findPriceListExternalIds);
 		Map<Long, PriceListSummaryRow> priceListSummaries = resolvePriceListSummaries(priceListIds);
+		Map<Long, CustomerRef> customerRefs = resolveCustomerRefs(customerIds);
 
 		List<SaleSummary> content = page.getContent().stream().map(entity -> {
 			UUID bExt = branchExtIds.get(entity.getBranchId());
@@ -151,8 +164,9 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 			PriceListSummaryRow plRow = priceListSummaries.get(entity.getPriceListId());
 			String plCode = plRow != null ? plRow.getCode() : null;
 			BigDecimal plCap = plRow != null ? plRow.getMaxDiscountPercent() : null;
+			CustomerRef custRef = entity.getCustomerId() != null ? customerRefs.get(entity.getCustomerId()) : null;
 
-			return mapper.toSummary(entity, bExt, bName, uExt, uName, plExt, plCode, plCap);
+			return mapper.toSummary(entity, bExt, bName, uExt, uName, plExt, plCode, plCap, custRef);
 		}).toList();
 
 		return new SalePage(content, page.getTotalElements(), filter.page(), filter.size(), aggregates);
@@ -165,6 +179,9 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 				referenceRepository::findUserExternalIds);
 		Map<Long, UUID> priceListExtIds = resolveExternalIds(Set.of(entity.getPriceListId()),
 				referenceRepository::findPriceListExternalIds);
+		UUID custExtId = entity.getCustomerId() == null ? null
+				: referenceRepository.findCustomerRefs(Set.of(entity.getCustomerId())).stream().findFirst()
+						.map(CustomerRefRow::getExternalId).orElse(null);
 
 		Set<Long> productIds = entity.getItems().stream()
 				.map(SaleItemJpaEntity::getProductId)
@@ -172,7 +189,18 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 		Map<Long, UUID> productExtIds = resolveExternalIds(productIds, referenceRepository::findProductExternalIds);
 
 		return mapper.toDomain(entity, branchExtIds.get(entity.getBranchId()), userExtIds.get(entity.getUserId()),
-				priceListExtIds.get(entity.getPriceListId()), productExtIds);
+				priceListExtIds.get(entity.getPriceListId()), custExtId, productExtIds);
+	}
+
+	private Map<Long, CustomerRef> resolveCustomerRefs(Collection<Long> ids) {
+		if (ids.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, CustomerRef> result = new HashMap<>();
+		for (CustomerRefRow row : referenceRepository.findCustomerRefs(List.copyOf(ids))) {
+			result.put(row.getId(), new CustomerRef(row.getExternalId(), row.getName(), row.getTaxId()));
+		}
+		return result;
 	}
 
 	private Map<Long, UUID> resolveExternalIds(Collection<Long> ids,
@@ -232,5 +260,9 @@ public class SalePersistenceAdapter implements SaleRepositoryPort {
 
 	private Long resolveBranchIdOrSentinel(UUID externalId) {
 		return referenceRepository.findActiveBranchIdByExternalId(externalId).orElse(-1L);
+	}
+
+	private Long resolveCustomerIdOrSentinel(UUID externalId) {
+		return referenceRepository.findCustomerIdByExternalId(externalId).orElse(-1L);
 	}
 }

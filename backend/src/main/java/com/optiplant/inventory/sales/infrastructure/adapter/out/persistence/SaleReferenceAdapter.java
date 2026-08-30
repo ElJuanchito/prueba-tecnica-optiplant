@@ -69,6 +69,18 @@ public class SaleReferenceAdapter implements SaleReferencePort {
 	}
 
 	@Override
+	public Map<UUID, CustomerDescriptor> findCustomers(Collection<UUID> customerExternalIds) {
+		if (customerExternalIds == null || customerExternalIds.isEmpty()) {
+			return Map.of();
+		}
+		return referenceRepository.findCustomerDescriptors(customerExternalIds).stream()
+				.collect(Collectors.toMap(
+						SaleReferenceSpringDataRepository.CustomerDescriptorRow::getExternalId,
+						row -> new CustomerDescriptor(row.getExternalId(), row.getName(), row.getTaxId())
+				));
+	}
+
+	@Override
 	public Optional<BigDecimal> findConversionFactor(UUID productExternalId, UUID unitOfMeasureExternalId) {
 		return referenceRepository.findConversionFactor(productExternalId, unitOfMeasureExternalId);
 	}

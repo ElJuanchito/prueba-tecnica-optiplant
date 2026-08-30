@@ -2,6 +2,9 @@ package com.optiplant.inventory.sales.infrastructure.adapter.in.web;
 
 import com.optiplant.inventory.sales.domain.exception.BranchContextRequiredException;
 import com.optiplant.inventory.sales.domain.exception.CrossBranchAccessDeniedException;
+import com.optiplant.inventory.sales.domain.exception.CustomerInactiveException;
+import com.optiplant.inventory.sales.domain.exception.CustomerNotFoundException;
+import com.optiplant.inventory.sales.domain.exception.CustomerTaxIdAlreadyExistsException;
 import com.optiplant.inventory.sales.domain.exception.DiscountExceedsCapException;
 import com.optiplant.inventory.sales.domain.exception.DuplicateInvoiceNumberException;
 import com.optiplant.inventory.sales.domain.exception.DuplicateSaleItemException;
@@ -108,6 +111,21 @@ public class SalesExceptionHandler {
 	@ExceptionHandler(SaleNotFoundException.class)
 	ResponseEntity<ErrorResponse> onSaleNotFound(SaleNotFoundException ex) {
 		return build(HttpStatus.NOT_FOUND, "sale_not_found", ex.getMessage());
+	}
+
+	@ExceptionHandler(CustomerNotFoundException.class)
+	ResponseEntity<ErrorResponse> onCustomerNotFound(CustomerNotFoundException ex) {
+		return build(HttpStatus.NOT_FOUND, "customer_not_found", ex.getMessage());
+	}
+
+	@ExceptionHandler(CustomerInactiveException.class)
+	ResponseEntity<ErrorResponse> onCustomerInactive(CustomerInactiveException ex) {
+		return build(HttpStatus.CONFLICT, "customer_inactive", ex.getMessage());
+	}
+
+	@ExceptionHandler(CustomerTaxIdAlreadyExistsException.class)
+	ResponseEntity<ErrorResponse> onCustomerTaxIdAlreadyExists(CustomerTaxIdAlreadyExistsException ex) {
+		return build(HttpStatus.CONFLICT, "customer_tax_id_already_exists", ex.getMessage());
 	}
 
 	@ExceptionHandler(InvalidSaleStateException.class)

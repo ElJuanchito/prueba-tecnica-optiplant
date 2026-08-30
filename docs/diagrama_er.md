@@ -12,6 +12,7 @@ El modelo de datos relacional para **PostgreSQL 17** implementa una arquitectura
 * **Inmutabilidad en Auditoría:** Tablas *append-only* para `kardex_movements` y `audit_logs`.
 * **Precios Versionados por Vigencia:** `price_list_items` conserva el histórico de precios mediante `valid_from` / `valid_to`; el precio vigente no se sobrescribe, se cierra y se sucede.
 * **Sesiones revocables:** `refresh_tokens` guarda únicamente el digest del token; la rotación cierra el anterior y la reutilización de uno ya rotado revoca la familia completa.
+* **Identificación Opcional y Congelamiento de Clientes:** `customers` registra terceros asociados opcionalmente a las ventas (`sales.customer_id` 0..1). La venta preserva `customer_name` y `customer_tax_id` como snapshot inmutable al momento de facturar.
 
 ### 1.1. Resolución del Precio de Venta
 
@@ -60,6 +61,7 @@ erDiagram
 
     SALES ||--|{ SALE_ITEMS : "contiene"
     USERS ||--o{ SALES : "registra"
+    CUSTOMERS |o--o{ SALES : "asociado_a"
 
     TRANSFERS ||--|{ TRANSFER_ITEMS : "contiene"
     USERS ||--o{ TRANSFERS : "solicita"
@@ -204,6 +206,19 @@ erDiagram
         numeric subtotal
     }
 
+    CUSTOMERS {
+        bigint id PK
+        uuid external_id UK
+        varchar name
+        varchar tax_id UK
+        varchar email
+        varchar phone
+        varchar address
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
     SALES {
         bigint id PK
         uuid external_id UK
@@ -211,6 +226,7 @@ erDiagram
         bigint branch_id FK
         bigint user_id FK
         bigint price_list_id FK
+        bigint customer_id FK
         varchar customer_name
         varchar status
         numeric total_amount
@@ -487,6 +503,20 @@ package "Compras & Proveedores" {
 }
 
 package "Ventas" {
+    entity "customers" as customers {
+        * id : BIGINT <<PK>>
+        --
+        * external_id : UUID <<UK>>
+        * name : VARCHAR(150)
+        tax_id : VARCHAR(30) <<UK>>
+        email : VARCHAR(100)
+        phone : VARCHAR(50)
+        address : VARCHAR(255)
+        * is_active : BOOLEAN
+        created_at : TIMESTAMPTZ
+        updated_at : TIMESTAMPTZ
+    }
+
     entity "sales" as sales {
         * id : BIGINT <<PK>>
         --
@@ -495,6 +525,7 @@ package "Ventas" {
         * branch_id : BIGINT <<FK>>
         * user_id : BIGINT <<FK>>
         * price_list_id : BIGINT <<FK>>
+        customer_id : BIGINT <<FK>>
         * customer_name : VARCHAR(150)
         * status : VARCHAR(20)
         * subtotal : NUMERIC(14,4)
@@ -617,6 +648,7 @@ users ||--o{ purchase_orders
 
 sales ||--|{ sale_items
 users ||--o{ sales
+customers |o--o{ sales : "asociado a"
 
 transfers ||--|{ transfer_items
 users ||--o{ transfers : "solicita"

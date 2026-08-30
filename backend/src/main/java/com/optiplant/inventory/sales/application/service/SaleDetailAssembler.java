@@ -2,9 +2,11 @@ package com.optiplant.inventory.sales.application.service;
 
 import com.optiplant.inventory.sales.application.port.out.SaleReferencePort;
 import com.optiplant.inventory.sales.application.port.out.SaleReferencePort.BranchDescriptor;
+import com.optiplant.inventory.sales.application.port.out.SaleReferencePort.CustomerDescriptor;
 import com.optiplant.inventory.sales.application.port.out.SaleReferencePort.ProductDescriptor;
 import com.optiplant.inventory.sales.application.port.out.SaleReferencePort.UserDescriptor;
 import com.optiplant.inventory.sales.domain.model.BranchRef;
+import com.optiplant.inventory.sales.domain.model.CustomerRef;
 import com.optiplant.inventory.sales.domain.model.PriceListRef;
 import com.optiplant.inventory.sales.domain.model.Sale;
 import com.optiplant.inventory.sales.domain.model.SaleDetail;
@@ -79,6 +81,15 @@ final class SaleDetailAssembler {
 				appliedList != null ? appliedList.maxDiscountPercent() : null
 		);
 
+		CustomerRef customerRef = null;
+		if (sale.customerExternalId() != null) {
+			Map<UUID, CustomerDescriptor> customers = referencePort.findCustomers(Set.of(sale.customerExternalId()));
+			CustomerDescriptor custDesc = customers.get(sale.customerExternalId());
+			if (custDesc != null) {
+				customerRef = new CustomerRef(custDesc.externalId(), custDesc.name(), custDesc.taxId());
+			}
+		}
+
 		String humanNotes = sale.notes() != null ? sale.notes().humanNote() : null;
 		String cancellationReason = sale.notes() != null && sale.notes().cancellationReason() != null
 				? sale.notes().cancellationReason().value()
@@ -91,6 +102,7 @@ final class SaleDetailAssembler {
 				branchRef,
 				userRef,
 				priceListRef,
+				customerRef,
 				sale.customerName().value(),
 				sale.customerTaxId() != null ? sale.customerTaxId().value() : null,
 				sale.totals().subtotal().value(),

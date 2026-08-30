@@ -14,6 +14,7 @@ public record SaleSummary(
 		BranchRef branch,
 		UserRef soldBy,
 		PriceListRef priceList,
+		CustomerRef customer,
 		String customerName,
 		BigDecimal totalAmount,
 		Instant createdAt

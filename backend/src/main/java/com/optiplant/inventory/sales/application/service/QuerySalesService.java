@@ -46,6 +46,7 @@ public class QuerySalesService implements QuerySalesUseCase {
 		UUID callerBranch = actor.role() == Role.ADMIN ? null : actor.branchId();
 		return saleRepository.list(new SaleFilter(
 				callerBranch,
+				query.customerExternalId(),
 				query.status(),
 				query.from(),
 				query.to(),

@@ -18,6 +18,7 @@ public record SaleDetail(
 		BranchRef branch,
 		UserRef soldBy,
 		PriceListRef priceList,
+		CustomerRef customer,
 		String customerName,
 		String customerTaxId,
 		BigDecimal subtotal,

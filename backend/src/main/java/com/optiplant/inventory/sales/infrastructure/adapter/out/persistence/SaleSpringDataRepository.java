@@ -39,6 +39,7 @@ public interface SaleSpringDataRepository extends JpaRepository<SaleJpaEntity, L
 	@Query(value = """
 			SELECT * FROM sales
 			WHERE (:branchId IS NULL OR branch_id = :branchId)
+			  AND (:customerId IS NULL OR customer_id = :customerId)
 			  AND (:status IS NULL OR status = :status)
 			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
 			  AND (CAST(:to AS timestamptz) IS NULL OR created_at <= CAST(:to AS timestamptz))
@@ -46,16 +47,19 @@ public interface SaleSpringDataRepository extends JpaRepository<SaleJpaEntity, L
 			""", countQuery = """
 			SELECT count(*) FROM sales
 			WHERE (:branchId IS NULL OR branch_id = :branchId)
+			  AND (:customerId IS NULL OR customer_id = :customerId)
 			  AND (:status IS NULL OR status = :status)
 			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
 			  AND (CAST(:to AS timestamptz) IS NULL OR created_at <= CAST(:to AS timestamptz))
 			""", nativeQuery = true)
 	Page<SaleJpaEntity> searchOrderByCreatedAt(@Param("branchId") Long branchId,
+			@Param("customerId") Long customerId,
 			@Param("status") String status, @Param("from") Instant from, @Param("to") Instant to, Pageable pageable);
 
 	@Query(value = """
 			SELECT * FROM sales
 			WHERE (:branchId IS NULL OR branch_id = :branchId)
+			  AND (:customerId IS NULL OR customer_id = :customerId)
 			  AND (:status IS NULL OR status = :status)
 			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
 			  AND (CAST(:to AS timestamptz) IS NULL OR created_at <= CAST(:to AS timestamptz))
@@ -63,22 +67,26 @@ public interface SaleSpringDataRepository extends JpaRepository<SaleJpaEntity, L
 			""", countQuery = """
 			SELECT count(*) FROM sales
 			WHERE (:branchId IS NULL OR branch_id = :branchId)
+			  AND (:customerId IS NULL OR customer_id = :customerId)
 			  AND (:status IS NULL OR status = :status)
 			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
 			  AND (CAST(:to AS timestamptz) IS NULL OR created_at <= CAST(:to AS timestamptz))
 			""", nativeQuery = true)
 	Page<SaleJpaEntity> searchOrderByTotalAmount(@Param("branchId") Long branchId,
+			@Param("customerId") Long customerId,
 			@Param("status") String status, @Param("from") Instant from, @Param("to") Instant to, Pageable pageable);
 
 	@Query(value = """
 			SELECT COUNT(*) AS salesCount, COALESCE(SUM(total_amount), 0) AS totalAmount
 			FROM sales
 			WHERE (:branchId IS NULL OR branch_id = :branchId)
+			  AND (:customerId IS NULL OR customer_id = :customerId)
 			  AND (:status IS NULL OR status = :status)
 			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
 			  AND (CAST(:to AS timestamptz) IS NULL OR created_at <= CAST(:to AS timestamptz))
 			""", nativeQuery = true)
 	SaleAggregatesRow computeAggregates(@Param("branchId") Long branchId,
+			@Param("customerId") Long customerId,
 			@Param("status") String status, @Param("from") Instant from, @Param("to") Instant to);
 
 	interface SaleAggregatesRow {
