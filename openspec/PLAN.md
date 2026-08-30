@@ -15,8 +15,10 @@ actualiza al cerrar cada cambio SDD.
 | `catalog` | `catalog/` | Archivado | `CU-INV-01`, `CU-INV-02` |
 | `inventory` | `inventory/` | Archivado | `CU-INV-03` … `CU-INV-08` |
 | `notifications` | `notifications/` | Archivado | `CU-ALE-01`, `CU-ALE-02` |
+| `transfers` | `transfers/` | Archivado | `CU-TRA-01` … `CU-TRA-06` |
+| `logistics` | `logistics/` | Archivado | `CU-LOG-01` … `CU-LOG-03` |
 
-**14 de 37 casos de uso entregados.** Cuatro paquetes de módulo de diez.
+**23 de 37 casos de uso entregados.** Seis paquetes de módulo de diez.
 
 Los ciclos SDD cerrados viven en `openspec/changes/archive/`, cada uno con su contrato,
 diseño, tareas, informe de verificación e informe de archivado.
@@ -25,28 +27,21 @@ diseño, tareas, informe de verificación e informe de archivado.
 
 ## 2. Lo que falta
 
-Cuatro cambios SDD que crean los seis paquetes de módulo restantes y cubren los 23
+Tres cambios SDD que crean los cuatro paquetes de módulo restantes y cubren los 14
 casos de uso pendientes.
 
 | Orden | Cambio SDD | Paquetes que crea | Casos de uso |
 | :--- | :--- | :--- | :--- |
-| 1 | `add-transfers-module` | `transfers`, `logistics` | `CU-TRA-01` … `CU-TRA-06`, `CU-LOG-01` … `CU-LOG-03` |
-| 2 | `add-sales-module` | `sales`, `pricing` | `CU-VEN-01` … `CU-VEN-04`, `CU-EXT-02` |
-| 3 | `add-purchases-module` | `purchases` | `CU-COM-01` … `CU-COM-05` |
-| 4 | `add-analytics-module` | `analytics` | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
+| 1 | `add-sales-module` | `sales`, `pricing` | `CU-VEN-01` … `CU-VEN-04`, `CU-EXT-02` |
+| 2 | `add-purchases-module` | `purchases` | `CU-COM-01` … `CU-COM-05` |
+| 3 | `add-analytics-module` | `analytics` | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
 
-### Por qué `transfers` va primero
+### Por qué `sales` va primero
 
-Es el más caro y el único del sistema que no es un CRUD: la máquina de estados de cinco
-pasos con recepción parcial y stock en tránsito es lo que demuestra que se entendió el
-problema multi-sucursal. Se construye mientras queda más tiempo, porque si algo tiene
-que sufrir por falta de margen conviene que sea una consulta de histórico y no esta
-máquina de estados.
-
-Es además el primer consumidor real de `shared/stock/StockMutationPort`. Ese contrato
-lo definió `inventory` y hasta ahora no lo ejerce nadie —`StockMovementService` escribe
-saldo y Kardex en línea—, así que `transfers` es quien va a forzar su implementación y
-quien va a revelar si el puerto estaba bien planteado.
+`transfers` probó que `shared/stock/StockMutationPort` estaba bien planteado y su
+implementación es correcta. `sales` es el segundo consumidor del puerto: crea
+movimientos por venta, y la máquina de transiciones de `transfers` ya validó el flujo
+de puertos y la atomicidad de saldo + Kardex.
 
 ### Por qué `analytics` va último
 
