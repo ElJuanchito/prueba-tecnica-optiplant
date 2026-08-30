@@ -17,6 +17,9 @@ describe('RBAC Permissions Matrix', () => {
       expect(Permissions.canSetThresholds(role)).toBe(true)
       expect(Permissions.canViewKardex(role)).toBe(true)
       expect(Permissions.canAccessAlerts(role)).toBe(true)
+      expect(Permissions.canAccessCustomers(role)).toBe(true)
+      expect(Permissions.canManageCustomers(role)).toBe(true)
+      expect(Permissions.canDeactivateCustomers(role)).toBe(true)
       expect(Permissions.getDefaultRoute(role)).toBe('/')
     })
   })
@@ -36,6 +39,9 @@ describe('RBAC Permissions Matrix', () => {
       expect(Permissions.canSetThresholds(role)).toBe(true)
       expect(Permissions.canViewKardex(role)).toBe(true)
       expect(Permissions.canAccessAlerts(role)).toBe(true)
+      expect(Permissions.canAccessCustomers(role)).toBe(true)
+      expect(Permissions.canManageCustomers(role)).toBe(true) // Create & Edit
+      expect(Permissions.canDeactivateCustomers(role)).toBe(false) // ADMIN only
       expect(Permissions.getDefaultRoute(role)).toBe('/inventory')
     })
   })
@@ -55,6 +61,9 @@ describe('RBAC Permissions Matrix', () => {
       expect(Permissions.canSetThresholds(role)).toBe(false) // Denied CU-INV-07
       expect(Permissions.canViewKardex(role)).toBe(false) // Denied CU-INV-08
       expect(Permissions.canAccessAlerts(role)).toBe(false) // Denied CU-ALE-02
+      expect(Permissions.canAccessCustomers(role)).toBe(true)
+      expect(Permissions.canManageCustomers(role)).toBe(true) // Create & Edit at counter
+      expect(Permissions.canDeactivateCustomers(role)).toBe(false) // ADMIN only
       expect(Permissions.getDefaultRoute(role)).toBe('/inventory')
     })
   })

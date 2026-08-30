@@ -2,6 +2,7 @@ import { z } from 'zod'
 import {
   branchRefResponseSchema,
   cancellationRequestSchema,
+  customerRefResponseSchema,
   priceListRefResponseSchema,
   registerSaleItemRequestSchema,
   registerSaleRequestSchema,
@@ -19,6 +20,7 @@ export type SaleStatus = z.infer<typeof saleStatusSchema>
 export type BranchRefResponse = z.infer<typeof branchRefResponseSchema>
 export type UserRefResponse = z.infer<typeof userRefResponseSchema>
 export type PriceListRefResponse = z.infer<typeof priceListRefResponseSchema>
+export type CustomerRefResponse = z.infer<typeof customerRefResponseSchema>
 export type SaleItemResponse = z.infer<typeof saleItemResponseSchema>
 export type SaleDetailResponse = z.infer<typeof saleDetailResponseSchema>
 export type SaleSummaryResponse = z.infer<typeof saleSummaryResponseSchema>

@@ -20,6 +20,7 @@ import {
   Route as RouteIcon,
   ShieldCheck,
   ShoppingCart,
+  Users,
   X,
 } from 'lucide-react'
 
@@ -34,6 +35,7 @@ interface AppLayoutProps {
     | 'logistics'
     | 'sales'
     | 'pricing'
+    | 'customers'
     | undefined
   onLogout?: (() => void) | undefined
 }
@@ -185,6 +187,17 @@ export function AppLayout({
       badge: isAdmin ? 'Admin' : 'View',
       color: 'text-violet-600 group-hover:text-violet-700',
       activeBg: 'bg-violet-50 text-violet-900 border-violet-200',
+    },
+    {
+      id: 'customers',
+      label: t('nav.customers'),
+      shortLabel: 'Customers',
+      path: '/customers',
+      icon: Users,
+      visible: Permissions.canAccessCustomers(role),
+      badge: null,
+      color: 'text-sky-600 group-hover:text-sky-700',
+      activeBg: 'bg-sky-50 text-sky-900 border-sky-200',
     },
   ].filter((item) => item.visible)
 

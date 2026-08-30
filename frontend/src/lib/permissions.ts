@@ -73,6 +73,14 @@ export const Permissions = {
 
   canManagePricing: (role?: UserRole): boolean => role === 'ADMIN',
 
+  canAccessCustomers: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canManageCustomers: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canDeactivateCustomers: (role?: UserRole): boolean => role === 'ADMIN',
+
   getDefaultRoute: (role?: UserRole): string => {
     switch (role) {
       case 'OPERATOR':
