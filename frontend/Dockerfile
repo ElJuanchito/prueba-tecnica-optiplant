@@ -4,11 +4,10 @@
 # Etapa de construcción — Node + pnpm, se descarta al terminar.
 #
 # La SPA se compila a archivos estáticos; ni Node ni node_modules llegan a la
-# imagen final. NODE_VERSION sigue el piso de `engines` en package.json y la
-# versión del job `frontend` de .github/workflows/ci.yml (el `.nvmrc` local
-# apunta a 24: conviene reconciliar esa diferencia).
+# imagen final. NODE_VERSION coincide con `frontend/.nvmrc` y con el job
+# `frontend` de .github/workflows/ci.yml; `engines` en package.json pide `>=22`.
 # ---------------------------------------------------------------------------
-ARG NODE_VERSION=22
+ARG NODE_VERSION=24
 ARG NGINX_IMAGE=nginxinc/nginx-unprivileged:stable-alpine
 
 FROM node:${NODE_VERSION}-slim AS build
