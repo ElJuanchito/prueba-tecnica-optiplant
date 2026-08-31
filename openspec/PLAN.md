@@ -3,7 +3,7 @@
 Estado del trabajo pendiente y las decisiones de planificación que lo gobiernan. Se
 actualiza al cerrar cada cambio SDD.
 
-**Última actualización:** 2026-08-30
+**Última actualización:** 2026-08-31
 
 ---
 
@@ -20,37 +20,24 @@ actualiza al cerrar cada cambio SDD.
 | `sales` | `sales/` | Archivado | `CU-VEN-01`, `CU-VEN-03`, `CU-VEN-04`, `CU-VEN-05`, `CU-VEN-06`, `CU-EXT-02` |
 | `pricing` | `pricing/` | Archivado | `CU-VEN-02` |
 | `purchases` | `purchases/` | Archivado | `CU-COM-01` … `CU-COM-05` |
+| `analytics` | `analytics/` | Archivado | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
 
-**35 de 39 casos de uso entregados.** Nueve paquetes de módulo de diez. El sub-dominio
+**39 de 39 casos de uso archivados.** Diez paquetes de módulo de diez. El sub-dominio
 de clientes (`CU-VEN-05`, `CU-VEN-06`) se construyó dentro de `sales` en el cambio
 `add-sales-customers`, sin paquete de módulo nuevo.
 
 Los ciclos SDD cerrados viven en `openspec/changes/archive/`, cada uno con su contrato,
-diseño, tareas, informe de verificación e informe de archivado.
+diseño, tareas, informe de verificación e informe de archivado. El backend de OptiPlant
+está completo: `add-analytics-module` cierra el décimo módulo.
 
 ---
 
 ## 2. Lo que falta
 
-Un cambio SDD que crea el último paquete de módulo restante y cubre los 4
-casos de uso pendientes.
-
-| Orden | Cambio SDD | Paquetes que crea | Casos de uso |
-| :--- | :--- | :--- | :--- |
-| 1 | `add-analytics-module` | `analytics` | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
-
-### Por qué `analytics` va último
-
-Es solo lectura sobre las tablas que los módulos anteriores llenaron. Construirlo al final
-lo vuelve barato: son consultas agregadas, sin dominio propio ni mutación.
-
-### Por qué `CU-EXT-01` y `CU-EXT-02` no tienen módulo propio
-
-Son adaptadores de entrada, no funcionalidades. `CU-EXT-01` expone la consulta de
-disponibilidad de red que `CU-INV-04` ya resuelve; `CU-EXT-02` expone el caso de uso de
-registrar venta. Un controlador con autenticación por API key y sus DTOs, sin trabajo de
-dominio. Es el pago de haber construido con puertos: un segundo adaptador primario sobre
-un caso de uso que ya existe.
+Nada. Los 10 módulos backend están entregados, archivados y verificados. Los 39 casos
+de uso del sistema están implementados con sus pruebas de arquitectura (`ArchUnit`),
+pruebas unitarias de dominio (520 `*Test`) y pruebas de integración Testcontainers
+(223 `*IT`). El backend de OptiPlant está listo para producción.
 
 ---
 

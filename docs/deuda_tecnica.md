@@ -11,6 +11,7 @@
 | 1.5 | 2026-08-30 | Se agrega un ítem surgido del diseño del módulo `sales`: la asignación de `invoice_number` sin una secuencia de base de datos. |
 | 1.6 | 2026-08-30 | Se salda el ítem «Cliente sin entidad propia en las ventas»: el sub-dominio de clientes dentro de `sales` incorpora la tabla `customers`, el CRUD, la asociación opcional a la venta con congelado del nombre y la identificación, y el histórico de compras por cliente. La segmentación de listas de precios por cliente se mantiene fuera de alcance. |
 | 1.7 | 2026-08-30 | Se agrega un ítem surgido del contrato del módulo `purchases`: la asignación de `order_number` sin una secuencia de base de datos. |
+| 1.8 | 2026-08-31 | Se agrega un ítem surgido del contrato del módulo `analytics`: el rollup corporativo mensual une `sale_items` sin un índice cubriente. |
 
 ---
 
@@ -53,6 +54,7 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-11** | `transfer_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 | **DT-12** | `sales.invoice_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 | **DT-13** | `purchase_orders.order_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
+| **DT-14** | Rollup corporativo mensual sin índice cubriente sobre `sale_items` | Media | Aceptada | Cuando llegue el próximo cambio de esquema |
 
 ---
 
@@ -430,6 +432,34 @@ Cuando llegue el próximo cambio de esquema:
 
 #### Referencias
 RF-COM-01 · RF-COM-05 · HU-COM-01 · `openspec/changes/add-purchases-module/contract.md` §2.5 F-9, §4 R-05, PA-04.
+
+---
+
+### DT-14 — Rollup corporativo mensual sin índice cubriente sobre `sale_items`
+
+**Severidad:** Media · **Estado:** Aceptada · **Esfuerzo estimado:** medio · **Origen:** contrato del módulo `analytics`
+
+#### Situación actual
+La consulta del tablero corporativo mensual (`CU-DSH-03`, `RF-DSH-05`) agrega las ventas consolidadas por sucursal realizando un `JOIN` con `sale_items` para calcular la suma de unidades vendidas (`units_sold`) y el valor de venta (`sales_amount`). En el esquema actual (`01-init-schema.sql`), `sales` cuenta con el índice compuesto `idx_sales_branch_date ON sales(branch_id, created_at)` y `sale_items` con `idx_sale_items_sale ON sale_items(sale_id)`, pero ninguno incluye las columnas agregadas (`total_amount` en `sales`; `product_id`, `quantity`, `subtotal` en `sale_items`) en el árbol del índice (`COVERING / INCLUDE`). Consecuentemente, el plan de ejecución de PostgreSQL debe acceder al *heap* de `sale_items` para cada fila coincidente durante el agregado mensual.
+
+#### Por qué se aceptó
+La mitigación se implementa a nivel de diseño y arquitectura sin modificar el esquema en este ciclo (§2.5 del contrato prohíbe deliberadamente tocar `backend/init-db/`):
+1. El tablero corporativo es de uso exclusivo del rol `ADMIN` (`RNF-SEC-01`), con una concurrencia estimada baja (un puñado de usuarios corporativos dentro de la carga pico de 50 usuarios concurrentes, §5.1 de requerimientos).
+2. La consulta agrega un solo mes calendario (`from` a `to`), limitando el volumen de filas evaluadas.
+3. El adaptador de persistencia une `sale_items` **una sola vez** por respuesta en un CTE general (`month_sales`), en lugar de ejecutar una consulta por cada sucursal o por cada página.
+
+#### Por qué es deuda
+A medida que el volumen histórico de ventas crezca (con estimaciones de hasta cientos de miles de registros de venta por año en la red), el costo de I/O sobre el *heap* de `sale_items` degradará el tiempo de respuesta del tablero corporativo frente a un recorrido de índice puro (*index-only scan*). Sin índices cubrientes, la base de datos lee páginas de datos adicionales que incrementan el consumo de memoria en el *buffer cache*.
+
+#### Plan de pago
+Cuando llegue el próximo cambio de esquema (la migración de Flyway de **DT-01** es el vehículo natural):
+
+1. `CREATE INDEX idx_sales_branch_date_covering ON sales(branch_id, created_at) INCLUDE (total_amount);`
+2. `CREATE INDEX idx_sale_items_sale_covering ON sale_items(sale_id) INCLUDE (product_id, quantity, subtotal);`
+3. Convertir las consultas A-4, A-5 y A-6 en recorridos exclusivos de índice (*index-only scans*). Si el volumen superase proyecciones de latencia (RNF-PER-01 / RNF-PER-03), evaluar una tabla de agregados periódicos nocturnos (*nightly rollup table*).
+
+#### Referencias
+RF-DSH-05 · RNF-PER-01 · RNF-PER-03 · `openspec/changes/add-analytics-module/contract.md` §9.2, §10 · `openspec/changes/add-analytics-module/design.md` §4 Q-7, §10.
 
 ---
 

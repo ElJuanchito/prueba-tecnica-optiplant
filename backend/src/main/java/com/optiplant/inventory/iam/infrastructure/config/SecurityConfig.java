@@ -38,11 +38,14 @@ class SecurityConfig {
 	private final CorsProperties corsProperties;
 	private final JwtDecoder jwtDecoder;
 	private final IamPrincipalConverter iamPrincipalConverter;
+	private final IamAccessDeniedHandler accessDeniedHandler;
 
-	SecurityConfig(CorsProperties corsProperties, JwtDecoder jwtDecoder, IamPrincipalConverter iamPrincipalConverter) {
+	SecurityConfig(CorsProperties corsProperties, JwtDecoder jwtDecoder,
+			IamPrincipalConverter iamPrincipalConverter, IamAccessDeniedHandler accessDeniedHandler) {
 		this.corsProperties = corsProperties;
 		this.jwtDecoder = jwtDecoder;
 		this.iamPrincipalConverter = iamPrincipalConverter;
+		this.accessDeniedHandler = accessDeniedHandler;
 	}
 
 	@Bean
@@ -54,6 +57,7 @@ class SecurityConfig {
 				.formLogin(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.exceptionHandling(e -> e.accessDeniedHandler(accessDeniedHandler))
 				.oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.decoder(jwtDecoder)
 						.jwtAuthenticationConverter(iamPrincipalConverter)))
 				.authorizeHttpRequests(auth -> auth
@@ -136,6 +140,14 @@ class SecurityConfig {
 						.requestMatchers("/api/purchases/orders/*/approval", "/api/purchases/orders/*/cancellation")
 						.hasAnyAuthority("ADMIN", "BRANCH_MANAGER")
 						.requestMatchers("/api/purchases/**").authenticated()
+						// Analítica y tableros (add-analytics-module design §6, §7).
+						// El tablero corporativo es ADMIN exclusivo (R-19); el resto de analítica
+						// queda abierto a cualquier rol autenticado (§5), validándose la sucursal
+						// más adentro (AnalyticsAccessPolicy). String literals únicamente: importar
+						// un tipo de analytics aquí crearía la arista iam -> analytics y rompería
+						// ModuleBoundariesTest. hasAuthority, nunca hasRole.
+						.requestMatchers("/api/analytics/corporate/**").hasAuthority("ADMIN")
+						.requestMatchers("/api/analytics/**").authenticated()
 						.anyRequest().authenticated())
 				.build();
 	}
