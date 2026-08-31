@@ -84,10 +84,11 @@ jobs:
         with:
           version: 11.24.0
 
-      - name: Preparar Node.js 22
+      - name: Preparar Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          # Única fuente de verdad de la versión: no duplicar el número acá.
+          node-version-file: frontend/.nvmrc
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
 
