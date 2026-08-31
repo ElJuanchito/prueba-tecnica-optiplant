@@ -19,7 +19,7 @@ actualiza al cerrar cada cambio SDD.
 | `logistics` | `logistics/` | Archivado | `CU-LOG-01` … `CU-LOG-03` |
 | `sales` | `sales/` | Archivado | `CU-VEN-01`, `CU-VEN-03`, `CU-VEN-04`, `CU-VEN-05`, `CU-VEN-06`, `CU-EXT-02` |
 | `pricing` | `pricing/` | Archivado | `CU-VEN-02` |
-| `purchases` | `purchases/` | Entregado (pendiente de archivo) | `CU-COM-01` … `CU-COM-05` |
+| `purchases` | `purchases/` | Archivado | `CU-COM-01` … `CU-COM-05` |
 
 **35 de 39 casos de uso entregados.** Nueve paquetes de módulo de diez. El sub-dominio
 de clientes (`CU-VEN-05`, `CU-VEN-06`) se construyó dentro de `sales` en el cambio
