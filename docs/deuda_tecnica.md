@@ -12,6 +12,7 @@
 | 1.6 | 2026-08-30 | Se salda el ítem «Cliente sin entidad propia en las ventas»: el sub-dominio de clientes dentro de `sales` incorpora la tabla `customers`, el CRUD, la asociación opcional a la venta con congelado del nombre y la identificación, y el histórico de compras por cliente. La segmentación de listas de precios por cliente se mantiene fuera de alcance. |
 | 1.7 | 2026-08-30 | Se agrega un ítem surgido del contrato del módulo `purchases`: la asignación de `order_number` sin una secuencia de base de datos. |
 | 1.8 | 2026-08-31 | Se agrega un ítem surgido del contrato del módulo `analytics`: el rollup corporativo mensual une `sale_items` sin un índice cubriente. |
+| 1.9 | 2026-08-31 | Se agrega un ítem surgido de la revisión de entrega: el frontend no está contenedorizado, de modo que `docker compose up` levanta la mitad de servidor de la solución y no su interfaz. |
 
 ---
 
@@ -55,6 +56,7 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-12** | `sales.invoice_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 | **DT-13** | `purchase_orders.order_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 | **DT-14** | Rollup corporativo mensual sin índice cubriente sobre `sale_items` | Media | Aceptada | Cuando llegue el próximo cambio de esquema |
+| **DT-15** | El frontend no está contenedorizado ni entra en `compose.yml` | Media | Aceptada | Antes de cualquier despliegue fuera de una máquina de desarrollo |
 
 ---
 
@@ -460,6 +462,37 @@ Cuando llegue el próximo cambio de esquema (la migración de Flyway de **DT-01*
 
 #### Referencias
 RF-DSH-05 · RNF-PER-01 · RNF-PER-03 · `openspec/changes/add-analytics-module/contract.md` §9.2, §10 · `openspec/changes/add-analytics-module/design.md` §4 Q-7, §10.
+
+---
+
+### DT-15 — El frontend no está contenedorizado ni entra en `compose.yml`
+
+**Severidad:** Media · **Estado:** Aceptada · **Esfuerzo estimado:** pequeño · **Origen:** revisión de entrega
+
+#### Situación actual
+`compose.yml` define dos servicios, `db` y `backend`. La SPA no tiene `Dockerfile` y no aparece en el Compose: se levanta nativa con Vite, a través del objetivo `up` del `Makefile`, que contenedoriza la base y el backend y deja el frontend corriendo en primer plano con recarga en caliente.
+
+En consecuencia, `docker compose up` **no levanta la solución completa**: levanta su mitad de servidor. Quien clone el repositorio y ejecute sólo ese comando obtiene una API funcionando y ninguna interfaz.
+
+#### Por qué se aceptó
+Durante el desarrollo la decisión es correcta y deliberada. Servir la SPA desde un contenedor obliga a reconstruir la imagen en cada cambio de código y destruye la recarga en caliente, que es la herramienta que hace productivo el trabajo de interfaz. El `Makefile` resuelve el caso de uso real —levantar todo con un comando— sin pagar ese costo.
+
+Lo que no se hizo a tiempo fue la otra mitad: la imagen de producción, que es un problema distinto y más simple, porque una SPA compilada es un directorio de archivos estáticos servido por cualquier servidor web.
+
+#### Por qué es deuda
+El enunciado de la prueba pide explícitamente que la solución se levante con Docker Compose, y hoy ese comando entrega un sistema incompleto. La brecha además crece sola: cada variable de entorno del frontend que hoy se resuelve en el entorno de desarrollo es una que nadie definió para producción, y el día que se despliegue aparecerán todas juntas.
+
+Hay un riesgo adicional que no se ve: el frontend nunca se ejecutó contra una construcción de producción servida estáticamente. Vite se comporta distinto en desarrollo —resolución de módulos, variables de entorno, ruteo del lado del cliente ante un refresco de página— y los defectos propios de ese modo sólo aparecen cuando se prueba la imagen real.
+
+#### Plan de pago
+1. Agregar `frontend/Dockerfile` con construcción en dos etapas: `pnpm build` en una imagen de Node, y el resultado servido por Nginx o Caddy.
+2. Configurar el servidor para devolver `index.html` ante cualquier ruta desconocida; sin eso, refrescar la página en una ruta del cliente responde 404.
+3. Agregar el servicio `frontend` a `compose.yml`, dependiente de `backend`, y externalizar la URL de la API por variable de entorno en tiempo de construcción.
+4. Conservar el objetivo `up` del `Makefile` para desarrollo: son dos modos con propósitos distintos, no uno que reemplaza al otro.
+5. Verificar la imagen ejecutándola, no leyéndola: iniciar sesión, navegar, refrescar sobre una ruta profunda.
+
+#### Referencias
+Sección 5 del enunciado (`docs/prueba_tecnica_inventario.md`) · `compose.yml` · `Makefile`
 
 ---
 
