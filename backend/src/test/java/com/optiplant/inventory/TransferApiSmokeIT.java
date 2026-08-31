@@ -121,6 +121,42 @@ class TransferApiSmokeIT {
 		assertNoNumericIdLeak(response.getBody());
 	}
 
+	/**
+	 * RF-LOG-03: {@code priority_desc} MUST rank {@code URGENT} first, never alphabetically. The
+	 * seed (02-seed-data.sql §7) plants exactly one {@code URGENT} route (Bogotá&rarr;Cali) among
+	 * five {@code STANDARD} ones — enough to pin the business rank against the coincidental
+	 * alphabetical order the {@code RouteSort} javadoc warns about ({@code CASE} vs. {@code ORDER
+	 * BY priority_level DESC}).
+	 */
+	@SuppressWarnings("unchecked")
+	@Test
+	void listingRoutesByPriorityDescRanksUrgentFirst() {
+		String token = token("admin.corp");
+
+		Map<String, Object> page = restClient.get().uri("/api/logistics/routes?sort=priority_desc&size=100")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + token).retrieve().body(Map.class);
+
+		assertThat(page).isNotNull();
+		List<Map<String, Object>> content = (List<Map<String, Object>>) page.get("content");
+		assertThat(content).isNotEmpty();
+		assertThat(content.get(0).get("priorityLevel")).isEqualTo("URGENT");
+	}
+
+	/** RF-LOG-03: an unrecognized {@code sort} token is refused, never silently ignored (§7 {@code invalid_request}). */
+	@Test
+	void listingRoutesWithAnUnknownSortTokenIsRejected() {
+		String token = token("admin.corp");
+
+		ResponseEntity<ErrorBody> response = restClient.get().uri("/api/logistics/routes?sort=priority_asc")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + token).retrieve()
+				.onStatus(status -> true, (req, res) -> {
+				}).toEntity(ErrorBody.class);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody()).isNotNull();
+		assertThat(response.getBody().code()).isEqualTo("invalid_request");
+	}
+
 	@Test
 	void creatingARouteForAnAlreadySeededPairIsRejected() {
 		String token = token("admin.corp");

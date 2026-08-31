@@ -4,6 +4,7 @@ import com.optiplant.inventory.logistics.domain.model.LogisticsRoute;
 import com.optiplant.inventory.logistics.domain.model.RouteDuration;
 import com.optiplant.inventory.logistics.domain.model.RoutePage;
 import com.optiplant.inventory.logistics.domain.model.RoutePriority;
+import com.optiplant.inventory.logistics.domain.model.RouteSort;
 import com.optiplant.inventory.logistics.domain.model.RouteSummary;
 import com.optiplant.inventory.logistics.domain.model.TransportCost;
 import java.util.Optional;
@@ -36,6 +37,6 @@ public interface LogisticsRouteRepositoryPort {
 			RouteDuration estimatedDurationHours, TransportCost transportCost, RoutePriority priorityLevel) {
 	}
 
-	record RouteFilter(Boolean activeOnly, int page, int size) {
+	record RouteFilter(Boolean activeOnly, RouteSort sort, int page, int size) {
 	}
 }

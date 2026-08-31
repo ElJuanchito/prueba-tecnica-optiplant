@@ -54,6 +54,8 @@ rectangle "Sistema de Gestión de Inventario Multi-Sucursal" {
         usecase "CU-VEN-02\nAplicar precios y descuentos" as VEN02
         usecase "CU-VEN-03\nAnular venta" as VEN03
         usecase "CU-VEN-04\nConsultar comprobante" as VEN04
+        usecase "CU-VEN-05\nAdministrar clientes" as VEN05
+        usecase "CU-VEN-06\nConsultar histórico de compras de un cliente" as VEN06
     }
 
     package "Transferencias entre Sucursales" {
@@ -123,6 +125,8 @@ OPERATOR --> COM02
 OPERATOR --> COM04
 OPERATOR --> VEN01
 OPERATOR --> VEN04
+OPERATOR --> VEN05
+OPERATOR --> VEN06
 OPERATOR --> TRA01
 OPERATOR --> TRA03
 OPERATOR --> TRA04
