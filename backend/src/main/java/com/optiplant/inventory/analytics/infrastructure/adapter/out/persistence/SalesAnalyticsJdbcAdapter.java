@@ -4,6 +4,7 @@ import com.optiplant.inventory.analytics.application.port.out.SalesAnalyticsPort
 import com.optiplant.inventory.analytics.domain.model.MonthlySales;
 import com.optiplant.inventory.analytics.domain.model.RotationDirection;
 import com.optiplant.inventory.analytics.domain.service.RotationPageAssembler.RawRotationRow;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -57,8 +58,8 @@ public class SalesAnalyticsJdbcAdapter implements SalesAnalyticsPort {
 
 		return jdbcClient.sql(sql)
 				.param("branchExternalId", branchExternalId)
-				.param("from", from)
-				.param("to", to)
+				.param("from", Timestamp.from(from))
+				.param("to", Timestamp.from(to))
 				.query((rs, rowNum) -> new MonthlySales(
 						rs.getInt("sales_year"),
 						rs.getInt("sales_month"),
@@ -105,12 +106,12 @@ public class SalesAnalyticsJdbcAdapter implements SalesAnalyticsPort {
 				        units_sold,
 				        sales_amount,
 				        CASE
-				            WHEN SUM(sales_amount) OVER () = 0 THEN 0
-				            ELSE (sales_amount / SUM(sales_amount) OVER ()) * 100
+				            WHEN SUM(sales_amount) OVER () = 0 THEN 0.00
+				            ELSE ROUND((sales_amount / SUM(sales_amount) OVER ()) * 100, 2)
 				        END AS share_percent,
 				        CASE
-				            WHEN SUM(sales_amount) OVER () = 0 THEN 0
-				            ELSE (SUM(sales_amount) OVER (ORDER BY sales_amount DESC, sku ASC) / SUM(sales_amount) OVER ()) * 100
+				            WHEN SUM(sales_amount) OVER () = 0 THEN 0.00
+				            ELSE ROUND((SUM(sales_amount) OVER (ORDER BY sales_amount DESC, sku ASC) / SUM(sales_amount) OVER ()) * 100, 2)
 				        END AS cumulative_share_percent,
 				        current_stock
 				    FROM product_sales
@@ -134,8 +135,8 @@ public class SalesAnalyticsJdbcAdapter implements SalesAnalyticsPort {
 
 		return jdbcClient.sql(sql)
 				.param("branchExternalId", branchExternalId)
-				.param("from", from)
-				.param("to", to)
+				.param("from", Timestamp.from(from))
+				.param("to", Timestamp.from(to))
 				.param("limit", limit)
 				.param("offset", offset)
 				.query((rs, rowNum) -> new RawRotationRow(
@@ -168,8 +169,8 @@ public class SalesAnalyticsJdbcAdapter implements SalesAnalyticsPort {
 
 		Long count = jdbcClient.sql(sql)
 				.param("branchExternalId", branchExternalId)
-				.param("from", from)
-				.param("to", to)
+				.param("from", Timestamp.from(from))
+				.param("to", Timestamp.from(to))
 				.query(Long.class)
 				.single();
 

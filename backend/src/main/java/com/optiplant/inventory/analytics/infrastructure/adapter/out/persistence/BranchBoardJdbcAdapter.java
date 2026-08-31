@@ -3,6 +3,7 @@ package com.optiplant.inventory.analytics.infrastructure.adapter.out.persistence
 import com.optiplant.inventory.analytics.application.port.out.BranchBoardPort;
 import com.optiplant.inventory.analytics.domain.model.AnalyticsPage;
 import com.optiplant.inventory.analytics.domain.model.BranchPerformance;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
@@ -132,8 +133,8 @@ public class BranchBoardJdbcAdapter implements BranchBoardPort {
 				""";
 
 		List<BranchPerformance> content = jdbcClient.sql(querySql)
-				.param("from", from)
-				.param("to", to)
+				.param("from", Timestamp.from(from))
+				.param("to", Timestamp.from(to))
 				.param("limit", limit)
 				.param("offset", offset)
 				.query((rs, rowNum) -> new BranchPerformance(

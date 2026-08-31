@@ -6,6 +6,7 @@ import com.optiplant.inventory.analytics.domain.model.AnalyticsPage;
 import com.optiplant.inventory.analytics.domain.model.BranchPerformance;
 import java.time.Clock;
 import java.time.YearMonth;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ public class QueryCorporateBoardService implements QueryCorporateBoardUseCase {
 		this.clock = clock;
 	}
 
+	@Autowired
 	public QueryCorporateBoardService(BranchBoardPort branchBoardPort) {
 		this(branchBoardPort, Clock.systemUTC());
 	}

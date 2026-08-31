@@ -16,6 +16,7 @@ import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,7 @@ public class QuerySalesTrendService implements QuerySalesTrendUseCase {
 		this.clock = clock;
 	}
 
+	@Autowired
 	public QuerySalesTrendService(SalesAnalyticsPort salesAnalyticsPort,
 			BranchDirectoryPort branchDirectoryPort) {
 		this(salesAnalyticsPort, branchDirectoryPort, Clock.systemUTC());
