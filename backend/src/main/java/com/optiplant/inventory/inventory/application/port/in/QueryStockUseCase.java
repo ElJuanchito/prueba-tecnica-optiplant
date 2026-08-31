@@ -28,6 +28,15 @@ public interface QueryStockUseCase {
 	 */
 	NetworkAvailability networkAvailability(AuthenticatedPrincipal actor, UUID productExternalId);
 
+	/**
+	 * Read-only, every active branch (RN-08); actor-free overload for network-wide
+	 * queries like CU-EXT-01 (design §2, D-3).
+	 *
+	 * @throws com.optiplant.inventory.inventory.domain.exception.ProductNotFoundException
+	 *     when {@code productExternalId} names no product
+	 */
+	NetworkAvailability networkAvailability(UUID productExternalId);
+
 	record StockQuery(UUID productExternalId, boolean belowThreshold, String sort, int page, int size) {
 	}
 }
