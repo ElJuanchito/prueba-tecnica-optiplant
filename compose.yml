@@ -23,6 +23,11 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-optiplant}
       - BACKEND_PORT=${BACKEND_PORT:-8080}
+      # El navegador manda `Origin: http://localhost:${FRONTEND_PORT}` y el backend
+      # rechaza con 403 «Invalid CORS request» cualquier origen fuera de esta lista.
+      # El default de application-dev.yml apunta al servidor de Vite (5173), no al
+      # Nginx del compose, así que aquí se declara el origen real de esta topología.
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:${FRONTEND_PORT:-8081}}
       # Sin `=`: se propaga sólo si está definida en el entorno. Con un valor por
       # defecto vacío sobrescribiría el de application-dev.yml y @NotBlank fallaría.
       - JWT_SECRET
