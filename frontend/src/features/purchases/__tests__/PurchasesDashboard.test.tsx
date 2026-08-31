@@ -196,7 +196,6 @@ describe('PurchasesDashboard Component Tests', () => {
 
   it('approves purchase order when approve action is confirmed', async () => {
     const user = userEvent.setup()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     vi.spyOn(purchasesService, 'listOrders').mockResolvedValue(mockOrdersPage)
     vi.spyOn(purchasesService, 'listSuppliers').mockResolvedValue(
       mockSuppliersPage,
@@ -222,6 +221,11 @@ describe('PurchasesDashboard Component Tests', () => {
       /Aprobar Orden|Approve Order/i,
     )
     await user.click(approveButton)
+
+    const confirmApproveButton = await screen.findByRole('button', {
+      name: /Aprobar Orden|Approve Order/i,
+    })
+    await user.click(confirmApproveButton)
 
     await waitFor(() => {
       expect(approveSpy).toHaveBeenCalledWith(VALID_UUID_1)

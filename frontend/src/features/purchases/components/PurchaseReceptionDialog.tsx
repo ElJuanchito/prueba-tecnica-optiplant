@@ -78,7 +78,7 @@ function ProductUnitSelect({
     <select
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value || undefined)}
-      className="h-8 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="h-8 max-w-[140px] truncate rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
     >
       <option value="">Base</option>
       {units.map((u) => (
@@ -203,7 +203,7 @@ export function PurchaseReceptionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <div className="flex items-center gap-2 text-emerald-600 mb-1">
@@ -327,7 +327,7 @@ export function PurchaseReceptionDialog({
                       <TableHead className="text-right text-xs font-bold text-slate-700">
                         {t('purchases.receptionDialog.pending')}
                       </TableHead>
-                      <TableHead className="text-right text-xs font-bold text-slate-700 w-44">
+                      <TableHead className="text-right text-xs font-bold text-slate-700 w-60">
                         {t('purchases.receptionDialog.receiveNow')}{' '}
                         <span className="text-rose-500">*</span>
                       </TableHead>

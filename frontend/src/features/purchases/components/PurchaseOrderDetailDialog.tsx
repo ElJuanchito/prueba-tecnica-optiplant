@@ -31,6 +31,7 @@ import {
 import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import { usePurchaseOrderDetail } from '../hooks/use-purchases.ts'
 import type { PurchaseOrderStatus } from '../types/index.ts'
+import { PurchaseOrderPrintDocument } from './PurchaseOrderPrintDocument.tsx'
 
 interface PurchaseOrderDetailDialogProps {
   orderExternalId: string | null
@@ -359,6 +360,9 @@ export function PurchaseOrderDetailDialog({
                 </span>
               </div>
             </div>
+
+            {/* Specialized Print Document (Visible only when printing) */}
+            <PurchaseOrderPrintDocument order={order} />
           </div>
         )}
 

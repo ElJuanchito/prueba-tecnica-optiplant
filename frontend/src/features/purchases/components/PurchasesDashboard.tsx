@@ -30,7 +30,6 @@ import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import { useSession } from '@/features/iam/hooks/use-auth.ts'
 import { Permissions } from '@/lib/permissions.ts'
 import {
-  useApprovePurchaseOrder,
   useDisableSupplier,
   useEnableSupplier,
   usePurchaseOrderDetail,
@@ -48,6 +47,7 @@ import type {
 import { PurchaseOrderTable } from './PurchaseOrderTable.tsx'
 import { PurchaseOrderFormDialog } from './PurchaseOrderFormDialog.tsx'
 import { PurchaseOrderDetailDialog } from './PurchaseOrderDetailDialog.tsx'
+import { PurchaseOrderApproveDialog } from './PurchaseOrderApproveDialog.tsx'
 import { PurchaseOrderCancelDialog } from './PurchaseOrderCancelDialog.tsx'
 import { PurchaseReceptionDialog } from './PurchaseReceptionDialog.tsx'
 import { SupplierTable } from './SupplierTable.tsx'
@@ -148,7 +148,6 @@ export function PurchasesDashboard() {
   const totalSuppliersCount = suppliersPageData?.totalElements ?? 0
 
   // --- Mutations ---
-  const approveMutation = useApprovePurchaseOrder()
   const disableSupplierMutation = useDisableSupplier()
   const enableSupplierMutation = useEnableSupplier()
 
@@ -159,6 +158,8 @@ export function PurchasesDashboard() {
 
   const [selectedDetailExternalId, setSelectedDetailExternalId] =
     React.useState<string | null>(null)
+  const [selectedApproveOrder, setSelectedApproveOrder] =
+    React.useState<PurchaseOrderSummaryResponse | null>(null)
   const [selectedCancelOrder, setSelectedCancelOrder] =
     React.useState<PurchaseOrderSummaryResponse | null>(null)
   const [selectedReceiveExternalId, setSelectedReceiveExternalId] =
@@ -192,9 +193,7 @@ export function PurchasesDashboard() {
   }
 
   const handleApproveOrder = (order: PurchaseOrderSummaryResponse) => {
-    if (window.confirm(t('purchases.orders.confirmApprove'))) {
-      approveMutation.mutate(order.externalId)
-    }
+    setSelectedApproveOrder(order)
   }
 
   const handleReceiveOrder = (order: PurchaseOrderSummaryResponse) => {
@@ -599,6 +598,17 @@ export function PurchasesDashboard() {
           canApprove={canApprove}
           canReceive={canReceive}
           canCancel={canCancel}
+        />
+
+        <PurchaseOrderApproveDialog
+          order={selectedApproveOrder}
+          open={Boolean(selectedApproveOrder)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedApproveOrder(null)
+          }}
+          onSuccess={() => {
+            ordersQuery.refetch()
+          }}
         />
 
         <PurchaseOrderCancelDialog
