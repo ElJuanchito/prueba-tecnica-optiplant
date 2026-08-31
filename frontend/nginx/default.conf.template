@@ -1,0 +1,69 @@
+# Configuración de Nginx para la SPA de presentación.
+# El entrypoint de nginx-unprivileged expande ${BACKEND_URL} con envsubst.
+#
+# Nota sobre add_header: un bloque `location` con su propio `add_header` deja de
+# heredar los del bloque padre. Por eso los encabezados de seguridad se repiten
+# en cada location que agrega los suyos de cache.
+
+server {
+    listen       8080;
+    server_name  _;
+
+    root  /usr/share/nginx/html;
+    index index.html;
+
+    server_tokens off;
+
+    # Compresión de texto; los binarios ya vienen comprimidos.
+    gzip            on;
+    gzip_vary       on;
+    gzip_min_length 1024;
+    gzip_types      text/plain text/css application/javascript application/json
+                    image/svg+xml application/manifest+json;
+
+    # Sonda de salud para el HEALTHCHECK de la imagen y el de Compose.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # DNS_RESOLVER por defecto es el DNS embebido de Docker (127.0.0.11).
+    # Necesario porque el proxy_pass de abajo usa una variable: así el nombre del
+    # backend se resuelve en cada request y no al arrancar — si no, un backend aún
+    # no levantado impediría el arranque de Nginx.
+    resolver ${DNS_RESOLVER} valid=10s;
+
+    # La API va al backend en el mismo origen: evita CORS y deja que el token de
+    # sesión viaje sin configuración cruzada. El cliente llama rutas relativas
+    # `/api/...` (ver vite.config.ts). Con proxy_pass por variable Nginx reenvía
+    # la URI original tal cual, así que `/api/...` llega completo al backend.
+    location /api/ {
+        set $upstream       ${BACKEND_URL};
+        proxy_pass          $upstream;
+        proxy_http_version  1.1;
+        proxy_set_header    Host              $host;
+        proxy_set_header    X-Real-IP         $remote_addr;
+        proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header    X-Forwarded-Proto $scheme;
+    }
+
+    # Los bundles llevan hash en el nombre: son inmutables, cache de un año.
+    location /assets/ {
+        try_files $uri =404;
+        add_header Cache-Control          "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options        "DENY"    always;
+        add_header Referrer-Policy        "same-origin" always;
+    }
+
+    # Enrutamiento del lado del cliente (TanStack Router): toda ruta desconocida
+    # devuelve index.html, que no se cachea para que un deploy nuevo se tome ya.
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control          "no-cache";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options        "DENY"    always;
+        add_header Referrer-Policy        "same-origin" always;
+    }
+}

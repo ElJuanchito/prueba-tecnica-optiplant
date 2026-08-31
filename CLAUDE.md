@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Proyecto
 
-Sistema de inventario multi-sucursal (prueba técnica para OptiPlant). **Estado actual: documentación de ingeniería, capa de datos y esqueleto ejecutable del backend.** El backend arranca, se contenedoriza y responde su sonda de salud, pero no tiene todavía lógica de negocio ni endpoints de dominio. `frontend/` está vacío.
+Sistema de inventario multi-sucursal (prueba técnica para OptiPlant). **Estado actual: backend completo y frontend implementado.** Los diez módulos de dominio del backend están construidos, verificados y archivados vía SDD (39/39 casos de uso; detalle en `openspec/PLAN.md`). El `frontend/` es una SPA de React que cubre esos dominios con enrutamiento, i18n y aislamiento por rol; se contenedoriza y se sirve con Nginx (`frontend/Dockerfile`, servicio `frontend` en `compose.yml`).
 
 Toda la documentación está en español. Mantener ese idioma al extenderla.
 
@@ -81,7 +81,7 @@ Ante la duda sobre el nombre o el paquete de una clase de Spring, confirmarlo co
 ### Levantar el sistema
 
 ```bash
-docker compose up          # servicios db y backend; el frontend todavía no existe
+docker compose up          # db + backend + frontend (Nginx sirve la SPA en :8081)
 docker compose down -v
 ```
 
