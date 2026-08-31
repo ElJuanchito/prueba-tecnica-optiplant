@@ -19,6 +19,7 @@ import {
   Package,
   Route as RouteIcon,
   ShieldCheck,
+  ShoppingBag,
   ShoppingCart,
   Users,
   X,
@@ -36,6 +37,7 @@ interface AppLayoutProps {
     | 'sales'
     | 'pricing'
     | 'customers'
+    | 'purchases'
     | undefined
   onLogout?: (() => void) | undefined
 }
@@ -198,6 +200,17 @@ export function AppLayout({
       badge: null,
       color: 'text-sky-600 group-hover:text-sky-700',
       activeBg: 'bg-sky-50 text-sky-900 border-sky-200',
+    },
+    {
+      id: 'purchases',
+      label: t('nav.purchases'),
+      shortLabel: 'Purchases',
+      path: '/purchases',
+      icon: ShoppingBag,
+      visible: Permissions.canAccessPurchases(role),
+      badge: null,
+      color: 'text-rose-600 group-hover:text-rose-700',
+      activeBg: 'bg-rose-50 text-rose-900 border-rose-200',
     },
   ].filter((item) => item.visible)
 

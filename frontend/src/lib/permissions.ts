@@ -81,6 +81,27 @@ export const Permissions = {
 
   canDeactivateCustomers: (role?: UserRole): boolean => role === 'ADMIN',
 
+  canAccessPurchases: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canCreatePurchaseOrder: (role?: UserRole, hasBranch?: boolean): boolean =>
+    role === 'ADMIN'
+      ? Boolean(hasBranch)
+      : role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canApprovePurchaseOrder: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER',
+
+  canCancelPurchaseOrder: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER',
+
+  canReceivePurchaseOrder: (role?: UserRole, hasBranch?: boolean): boolean =>
+    role === 'ADMIN'
+      ? Boolean(hasBranch)
+      : role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canManageSuppliers: (role?: UserRole): boolean => role === 'ADMIN',
+
   getDefaultRoute: (role?: UserRole): string => {
     switch (role) {
       case 'OPERATOR':

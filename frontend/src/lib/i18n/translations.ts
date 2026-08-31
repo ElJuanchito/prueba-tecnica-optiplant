@@ -17,6 +17,7 @@ export const translations = {
       sales: 'Ventas y Facturación',
       pricing: 'Listas de Precios',
       customers: 'Clientes y Cuentas',
+      purchases: 'Compras y Abastecimiento',
       collapseSidebar: 'Colapsar menú',
       expandSidebar: 'Expandir menú',
       logout: 'Cerrar Sesión',
@@ -110,15 +111,19 @@ export const translations = {
       auditResource: 'Recurso',
       auditChanges: 'Detalles de Cambio',
       createUserTitle: 'Nuevo Usuario',
-      createUserDesc: 'Cree una cuenta de usuario con credenciales y rol asignado.',
+      createUserDesc:
+        'Cree una cuenta de usuario con credenciales y rol asignado.',
       editUserTitle: 'Editar Usuario',
       editUserDesc: 'Actualice los datos o el rol del usuario.',
       createBranchTitle: 'Nueva Sucursal',
       createBranchDesc: 'Registre una nueva sede física en la red operativa.',
       editBranchTitle: 'Editar Sucursal',
-      editBranchDesc: 'Actualice la información de contacto y ubicación de la sede.',
-      confirmDisableUser: '¿Está seguro de que desea deshabilitar a este usuario?',
-      confirmDisableBranch: '¿Está seguro de que desea deshabilitar esta sucursal?',
+      editBranchDesc:
+        'Actualice la información de contacto y ubicación de la sede.',
+      confirmDisableUser:
+        '¿Está seguro de que desea deshabilitar a este usuario?',
+      confirmDisableBranch:
+        '¿Está seguro de que desea deshabilitar esta sucursal?',
       operatorRoleSubtitle: 'Estación de Planta',
       accountsRegistered: 'cuentas registradas',
       activeBranchesCount: 'sedes operativas',
@@ -153,7 +158,8 @@ export const translations = {
       networkAvailability: 'Disponibilidad en Red',
       networkStockAvailability: 'Disponibilidad de Stock en Red',
       networkTotal: 'Total en Red',
-      networkAvailabilityDesc: 'Saldos de stock en tiempo real en todas las sucursales activas',
+      networkAvailabilityDesc:
+        'Saldos de stock en tiempo real en todas las sucursales activas',
       ownBranch: 'Sucursal Propia',
       corporateExplorer: 'Explorador de Red Corporativa',
       corporateScope: 'Alcance Corporativo',
@@ -194,10 +200,12 @@ export const translations = {
       unitsToWriteOff: 'Unidades a Dar de Baja',
       writeOffReason: 'Motivo de la Baja',
       thresholdTitle: 'Configurar Umbral Mínimo de Stock',
-      thresholdDesc: 'Defina el umbral de reposición y seguridad para esta sucursal (CU-INV-07).',
+      thresholdDesc:
+        'Defina el umbral de reposición y seguridad para esta sucursal (CU-INV-07).',
       newThreshold: 'Nuevo Umbral Mínimo de Stock',
       networkTitle: 'Disponibilidad de Stock en Red Corporativa',
-      networkDesc: 'Inspeccione existencias físicas, reservas y tránsitos en toda la red.',
+      networkDesc:
+        'Inspeccione existencias físicas, reservas y tránsitos en toda la red.',
       currentBalance: 'Balance Actual',
       newBalance: 'Nuevo Balance',
       adjustmentReason: 'Motivo del Ajuste',
@@ -220,7 +228,8 @@ export const translations = {
       subtitle:
         'Definición de productos, familias por categoría y factores de conversión de unidades de medida.',
       browserTitle: 'Explorador de Catálogo de Productos',
-      browserSubtitle: 'Consulta de productos, categorías y factores de conversión.',
+      browserSubtitle:
+        'Consulta de productos, categorías y factores de conversión.',
       productsTab: 'Productos',
       categoriesTab: 'Categorías',
       createProduct: 'Crear Producto',
@@ -231,7 +240,8 @@ export const translations = {
       totalCategories: 'Total Categorías',
       conversionUnits: 'Unidades de Medida',
       units: 'Unidades de Medida y Conversiones',
-      unitsDesc: 'Unidades de medida alternativas y factores de conversión para este SKU.',
+      unitsDesc:
+        'Unidades de medida alternativas y factores de conversión para este SKU.',
       addUnit: 'Agregar Unidad',
       saveUnit: 'Guardar Unidad',
       updateUnit: 'Actualizar Unidad',
@@ -258,8 +268,10 @@ export const translations = {
       editCategoryDesc: 'Actualice la información de la categoría.',
       unitsTitle: 'Unidades de Medida y Conversiones',
       factor: 'Factor de Conversión',
-      confirmDisableProduct: '¿Está seguro de que desea deshabilitar este producto?',
-      confirmDisableCategory: '¿Está seguro de que desea deshabilitar esta categoría?',
+      confirmDisableProduct:
+        '¿Está seguro de que desea deshabilitar este producto?',
+      confirmDisableCategory:
+        '¿Está seguro de que desea deshabilitar esta categoría?',
     },
     // Alerts
     alerts: {
@@ -281,7 +293,8 @@ export const translations = {
       noAlerts: 'Sin alertas operativas activas',
       allClear: 'Todo en orden — No hay alertas activas en el sistema.',
       stockAlertTitle: 'Alerta de Stock Mínimo',
-      stockAlertMessage: 'El producto {product} ha alcanzado un nivel crítico en {branch}.',
+      stockAlertMessage:
+        'El producto {product} ha alcanzado un nivel crítico en {branch}.',
     },
     // Transfers
     transfers: {
@@ -505,10 +518,8 @@ export const translations = {
         totalAmount: 'Total a Pagar',
         submitSale: 'Emitir Comprobante',
         submitting: 'Emitiendo Venta...',
-        discountExceedsCap:
-          'El descuento supera el tope permitido ({cap}%)',
-        insufficientStock:
-          'Stock insuficiente para uno o más productos',
+        discountExceedsCap: 'El descuento supera el tope permitido ({cap}%)',
+        insufficientStock: 'Stock insuficiente para uno o más productos',
         priceNotAvailable:
           'Uno de los productos no tiene precio vigente configurado',
         branchRequired:
@@ -664,7 +675,8 @@ export const translations = {
         totalInvoicedDesc: 'Facturación acumulada',
         avgTicket: 'Ticket Promedio',
         avgTicketDesc: 'Promedio por venta',
-        noSalesHistory: 'Este cliente aún no registra compras en esta sucursal.',
+        noSalesHistory:
+          'Este cliente aún no registra compras en esta sucursal.',
         taxId: 'Identificación / NIT',
         contactInfo: 'Contacto',
         registeredAt: 'Registrado el',
@@ -682,6 +694,225 @@ export const translations = {
       walkInCustomer: 'Consumidor Final / Cliente sin registrar',
       walkInNotice: 'Venta de mostrador sin ficha asociada',
       customerLinked: 'Cliente Asociado',
+    },
+    // Purchases & Supply
+    purchases: {
+      title: 'Compras y Abastecimiento',
+      subtitle:
+        'Gestión de órdenes de compra, proveedores, recepción de mercancía y valorización de inventario.',
+      tabs: {
+        orders: 'Órdenes de Compra',
+        suppliers: 'Proveedores',
+        costHistory: 'Historial de Costos',
+      },
+      stats: {
+        totalOrders: 'Órdenes Registradas',
+        totalOrdersDesc: 'Total de órdenes emitidas',
+        pendingOrders: 'Pendientes de Aprobación',
+        pendingOrdersDesc: 'Órdenes en estado borrador',
+        inReception: 'En Recepción',
+        inReceptionDesc: 'Aprobadas o parcialmente recibidas',
+        totalSpent: 'Monto Total Comprado',
+        totalSpentDesc: 'Valor total de órdenes emitidas',
+      },
+      status: {
+        PENDING: 'Pendiente',
+        APPROVED: 'Aprobada',
+        PARTIALLY_RECEIVED: 'Parcialmente Recibida',
+        RECEIVED: 'Recibida',
+        CANCELLED: 'Cancelada',
+      },
+      orders: {
+        newOrder: 'Nueva Orden de Compra',
+        editOrder: 'Editar Orden',
+        approveOrder: 'Aprobar Orden',
+        cancelOrder: 'Cancelar Orden',
+        receiveOrder: 'Registrar Recepción',
+        viewDetail: 'Ver Detalle',
+        orderNumber: 'N° Orden',
+        supplier: 'Proveedor',
+        branch: 'Sucursal',
+        totalAmount: 'Total ($)',
+        createdAt: 'Fecha de Emisión',
+        receivedAt: 'Última Recepción',
+        noOrders: 'Sin órdenes de compra para los filtros seleccionados',
+        filterBySupplier: 'Filtrar por proveedor...',
+        filterByProduct: 'Filtrar por producto...',
+        allSuppliers: 'Todos los proveedores',
+        allProducts: 'Todos los productos',
+        confirmApprove:
+          '¿Está seguro de que desea aprobar esta orden de compra?',
+        approving: 'Aprobando orden...',
+        approveSuccess: 'Orden de compra aprobada exitosamente',
+      },
+      orderDialog: {
+        createTitle: 'Nueva Orden de Compra',
+        createDesc:
+          'Formalice la reposición de stock indicando proveedor, plazos y productos acordados.',
+        editTitle: 'Editar Orden de Compra',
+        editDesc:
+          'Actualice los ítems y condiciones de la orden en estado pendiente.',
+        selectSupplier: 'Seleccionar proveedor...',
+        paymentTerms: 'Condiciones de Pago',
+        paymentTermsPlaceholder:
+          'Ej. 30 días contra entrega, Contado, 50% anticipo',
+        notes: 'Notas / Instrucciones',
+        notesPlaceholder:
+          'Instrucciones especiales de despacho, empaque o entrega...',
+        itemsTitle: 'Ítems de la Orden',
+        addItem: 'Agregar Producto',
+        product: 'Producto',
+        quantity: 'Cantidad',
+        unitOfMeasure: 'Unidad de Medida',
+        baseUnit: 'Unidad Base',
+        unitCost: 'Costo Unitario ($)',
+        discountPercent: 'Desc. (%)',
+        effectiveUnitCost: 'Costo Efectivo ($)',
+        subtotal: 'Subtotal',
+        previewTotal: 'Total Estimado (Vista previa del cliente)',
+        serverCalculatedNotice:
+          'Los subtotales, costo efectivo y total definitivo son liquidados autoritativamente por el servidor conforme a las reglas de negocio.',
+        noItemsAdded: 'No hay productos agregados a la orden',
+        noItemsAddedDesc:
+          'Seleccione y agregue los productos que desea solicitar al proveedor.',
+        submitting: 'Guardando orden...',
+        branchRequired:
+          'Como Administrador Corporativo, debe operar en contexto de sucursal para emitir órdenes de compra.',
+      },
+      detailDialog: {
+        title: 'Detalle de Orden de Compra',
+        orderInfo: 'Información General',
+        supplierInfo: 'Datos del Proveedor',
+        taxId: 'Identificación Tributaria / NIT / RUC',
+        contact: 'Contacto',
+        branch: 'Sucursal Receptora',
+        createdBy: 'Emitida Por',
+        paymentTerms: 'Condiciones Comerciales / Plazo',
+        cancellationReason: 'Motivo de Cancelación',
+        itemsList: 'Detalle de Líneas de Compra',
+        orderedQty: 'Cant. Ordenada',
+        receivedQty: 'Cant. Recibida',
+        pendingQty: 'Saldo Pendiente',
+        unitCost: 'Costo Unitario',
+        discount: 'Descuento',
+        effectiveCost: 'Costo Efectivo',
+        subtotal: 'Subtotal',
+        totalAmount: 'Total de la Orden',
+        cancelBanner: 'ESTA ORDEN DE COMPRA FUE CANCELADA',
+        receivedBanner: 'ORDEN TOTALMENTE RECIBIDA',
+        partiallyReceivedBanner: 'ORDEN PARCIALMENTE RECIBIDA',
+      },
+      cancelDialog: {
+        title: 'Cancelar Orden de Compra',
+        desc: 'Indique el motivo obligatorio de la cancelación. La orden no admitirá recepciones posteriores. Si ya hubo recepciones parciales, el stock recibido se conservará.',
+        reason: 'Motivo de Cancelación',
+        reasonPlaceholder:
+          'Ej. Proveedor sin disponibilidad / Cancelado por cambio de presupuesto',
+        confirm: 'Confirmar Cancelación',
+        cancelling: 'Cancelando...',
+        success: 'Orden cancelada exitosamente',
+      },
+      receptionDialog: {
+        title: 'Registrar Recepción de Mercancía',
+        desc: 'Registre las cantidades físicas efectivamente recibidas. El stock se incrementará y el Costo Promedio Ponderado (CPP) se recalculará automáticamente.',
+        orderSummary: 'Resumen de Orden',
+        itemsTitle: 'Ítems a Recibir',
+        ordered: 'Ordenado',
+        alreadyReceived: 'Ya Recibido',
+        pending: 'Pendiente',
+        receiveNow: 'Recibir Ahora',
+        overReceiptWarning:
+          'La cantidad a recibir ({received}) supera el saldo pendiente ({pending}). Esta operación requiere autorización de Gerente de Sucursal y quedará auditada.',
+        receptionNotes: 'Notas de Recepción / Remisión',
+        receptionNotesPlaceholder:
+          'N° de guía de remisión, observaciones sobre el estado del embalaje...',
+        submit: 'Confirmar Recepción',
+        submitting: 'Procesando recepción y actualizando inventario...',
+        success: 'Recepción registrada exitosamente',
+        resultStatus: 'Nuevo estado de la orden: {status}',
+      },
+      suppliers: {
+        title: 'Directorio de Proveedores',
+        newSupplier: 'Nuevo Proveedor',
+        editSupplier: 'Editar Proveedor',
+        name: 'Razón Social / Nombre',
+        namePlaceholder: 'Ej. Agrícola y Fertilizantes del Norte S.A.',
+        taxId: 'Identificación Tributaria / NIT / RUC',
+        taxIdPlaceholder: 'Ej. 1790012345001',
+        contactName: 'Persona de Contacto',
+        contactNamePlaceholder: 'Ej. Ing. Carlos Mendoza',
+        email: 'Correo Electrónico',
+        emailPlaceholder: 'ventas@proveedor.com',
+        phone: 'Teléfono',
+        phonePlaceholder: '+593 99 123 4567',
+        address: 'Dirección',
+        addressPlaceholder: 'Av. Panamericana Norte Km 12',
+        disable: 'Deshabilitar',
+        enable: 'Habilitar',
+        confirmDisable:
+          '¿Está seguro de que desea deshabilitar al proveedor {name}? No podrá seleccionarse en nuevas órdenes.',
+        confirmEnable:
+          '¿Está seguro de que desea habilitar al proveedor {name}?',
+        createDialogTitle: 'Registrar Nuevo Proveedor',
+        createDialogDesc:
+          'Ingrese los datos de identificación corporativa y contacto del proveedor.',
+        editDialogTitle: 'Editar Proveedor',
+        editDialogDesc: 'Actualice los datos de contacto del proveedor.',
+        noSuppliers:
+          'Sin proveedores registrados para los filtros seleccionados',
+        submitting: 'Guardando proveedor...',
+        adminOnlyNotice:
+          'La administración de proveedores es una capacidad exclusiva de Administrador Corporativo.',
+      },
+      costHistory: {
+        title: 'Historial de Costos Pactados por Producto',
+        subtitle:
+          'Evolución temporal de costos unitarios y descuentos pactados con proveedores (CU-COM-05).',
+        selectProductPrompt:
+          'Seleccione un producto para consultar su evolución de costos pactados',
+        product: 'Producto',
+        supplier: 'Proveedor',
+        orderNumber: 'N° Orden',
+        orderedAt: 'Fecha Orden',
+        receivedAt: 'Fecha Recepción',
+        quantity: 'Cantidad',
+        grossUnitCost: 'Costo Lista ($)',
+        discountPercent: 'Desc. (%)',
+        effectiveUnitCost: 'Costo Efectivo ($)',
+        noHistory:
+          'No se registran compras para este producto con los filtros seleccionados',
+        searchProductPlaceholder: 'Buscar producto por SKU o nombre...',
+      },
+      errors: {
+        invalid_request: 'Solicitud inválida o datos incompletos',
+        invalid_order_quantity: 'La cantidad ordenada o recibida es inválida',
+        invalid_unit_cost: 'El costo unitario es inválido o no fue provisto',
+        duplicate_order_item:
+          'El producto ya está incluido en la orden de compra',
+        discount_out_of_range: 'El descuento debe estar entre 0% y 100%',
+        unit_conversion_unavailable:
+          'No existe factor de conversión para la unidad seleccionada',
+        cancellation_reason_required: 'El motivo de cancelación es obligatorio',
+        branch_context_required:
+          'Como Administrador Corporativo, debe operar en contexto de una sucursal para esta acción',
+        over_receipt_requires_manager:
+          'La recepción que excede el saldo pendiente requiere autorización de un Gerente de Sucursal',
+        supplier_not_found: 'Proveedor no encontrado',
+        product_not_found: 'Producto no encontrado o inactivo',
+        purchase_order_not_found:
+          'Orden de compra no encontrada o pertenece a otra sucursal',
+        purchase_order_item_not_found: 'Ítem de orden de compra no encontrado',
+        supplier_tax_id_already_exists:
+          'Ya existe un proveedor registrado con esta identificación tributaria',
+        supplier_not_active:
+          'El proveedor seleccionado se encuentra deshabilitado',
+        invalid_order_state:
+          'La operación no está permitida en el estado actual de la orden',
+        concurrent_order_update:
+          'La orden está siendo modificada por otra transacción concurrente. Reintente en unos momentos.',
+        duplicate_order_number:
+          'Conflicto en la numeración correlativa de la orden',
+      },
     },
     // Auth & Login
     auth: {
@@ -713,6 +944,7 @@ export const translations = {
       sales: 'Sales & Billing',
       pricing: 'Pricing & Price Lists',
       customers: 'Customers & Accounts',
+      purchases: 'Purchases & Supply',
       collapseSidebar: 'Collapse sidebar',
       expandSidebar: 'Expand sidebar',
       logout: 'Sign Out',
@@ -806,11 +1038,13 @@ export const translations = {
       auditResource: 'Resource',
       auditChanges: 'Change Details',
       createUserTitle: 'New User',
-      createUserDesc: 'Create a new user account with credentials and assigned role.',
+      createUserDesc:
+        'Create a new user account with credentials and assigned role.',
       editUserTitle: 'Edit User',
       editUserDesc: 'Update user account information or assigned role.',
       createBranchTitle: 'New Branch',
-      createBranchDesc: 'Register a new physical branch in the operational network.',
+      createBranchDesc:
+        'Register a new physical branch in the operational network.',
       editBranchTitle: 'Edit Branch',
       editBranchDesc: 'Update branch contact information and location details.',
       confirmDisableUser: 'Are you sure you want to disable this user?',
@@ -849,7 +1083,8 @@ export const translations = {
       networkAvailability: 'Network Availability',
       networkStockAvailability: 'Network Stock Availability',
       networkTotal: 'Network Total',
-      networkAvailabilityDesc: 'Real-time stock balances across all active branches in the network',
+      networkAvailabilityDesc:
+        'Real-time stock balances across all active branches in the network',
       ownBranch: 'Own Branch',
       corporateExplorer: 'Corporate Network Explorer',
       corporateScope: 'Corporate Scope',
@@ -880,7 +1115,8 @@ export const translations = {
       responsibleUser: 'Responsible User',
       timestamp: 'Date & Time',
       adjustStockTitle: 'Physical Inventory Adjustment',
-      adjustStockDesc: 'Record inventory increases or count corrections with unit cost.',
+      adjustStockDesc:
+        'Record inventory increases or count corrections with unit cost.',
       countedQuantity: 'Counted Physical Quantity',
       positiveAdjustment: 'Positive Adjustment (+{diff})',
       negativeAdjustment: 'Negative Adjustment ({diff})',
@@ -890,10 +1126,12 @@ export const translations = {
       unitsToWriteOff: 'Units to Write Off',
       writeOffReason: 'Reason for Write-Off',
       thresholdTitle: 'Configure Minimum Stock Threshold',
-      thresholdDesc: 'Set replenishment safety threshold for this branch (CU-INV-07)',
+      thresholdDesc:
+        'Set replenishment safety threshold for this branch (CU-INV-07)',
       newThreshold: 'New Minimum Stock Threshold',
       networkTitle: 'Corporate Network Stock Availability',
-      networkDesc: 'Inspect physical on-hand, reserved, and in-transit inventory across all branches.',
+      networkDesc:
+        'Inspect physical on-hand, reserved, and in-transit inventory across all branches.',
       currentBalance: 'Current Balance',
       newBalance: 'New Balance',
       adjustmentReason: 'Justification Reason',
@@ -916,7 +1154,8 @@ export const translations = {
       subtitle:
         'Product catalog master data, categorical taxonomy, and unit conversion factors.',
       browserTitle: 'Catalog Product & Category Browser',
-      browserSubtitle: 'Browse master catalog products, categories, and conversion units.',
+      browserSubtitle:
+        'Browse master catalog products, categories, and conversion units.',
       productsTab: 'Products',
       categoriesTab: 'Categories',
       createProduct: 'Create Product',
@@ -927,7 +1166,8 @@ export const translations = {
       totalCategories: 'Total Categories',
       conversionUnits: 'Unit Conversions',
       units: 'Units of Measure & Conversions',
-      unitsDesc: 'Alternative measurement units and conversion factors for this SKU.',
+      unitsDesc:
+        'Alternative measurement units and conversion factors for this SKU.',
       addUnit: 'Add Unit',
       saveUnit: 'Save Unit',
       updateUnit: 'Update Unit',
@@ -945,11 +1185,13 @@ export const translations = {
       productsCount: 'registered SKUs',
       categoriesCount: 'active categories',
       createProductTitle: 'New Product',
-      createProductDesc: 'Register a new product in the corporate master catalog.',
+      createProductDesc:
+        'Register a new product in the corporate master catalog.',
       editProductTitle: 'Edit Product',
       editProductDesc: 'Update product information in master catalog.',
       createCategoryTitle: 'New Product Category',
-      createCategoryDesc: 'Create a taxonomy category for product classification.',
+      createCategoryDesc:
+        'Create a taxonomy category for product classification.',
       editCategoryTitle: 'Edit Category',
       editCategoryDesc: 'Update category information.',
       unitsTitle: 'Unit Conversions & Packaging',
@@ -977,7 +1219,8 @@ export const translations = {
       noAlerts: 'No Active Operational Alerts',
       allClear: 'All Clear — No Active Operational Alerts',
       stockAlertTitle: 'Minimum Stock Alert',
-      stockAlertMessage: 'Product {product} has reached a critical stock level in {branch}.',
+      stockAlertMessage:
+        'Product {product} has reached a critical stock level in {branch}.',
     },
     // Transfers
     transfers: {
@@ -1131,8 +1374,7 @@ export const translations = {
         'Counter & POS sales registration, immutable receipt queries, and stock-reversal voiding.',
       newSale: 'New Sale',
       searchByInvoice: 'Lookup Receipt',
-      searchByInvoicePrompt:
-        'Enter receipt number (e.g. VEN-2026-0001)',
+      searchByInvoicePrompt: 'Enter receipt number (e.g. VEN-2026-0001)',
       lookup: 'Lookup',
       searchNotFound: 'Receipt not found',
       stats: {
@@ -1176,8 +1418,7 @@ export const translations = {
         selectProduct: 'Select product...',
         searchAndAddProduct: 'Search and add product to invoice',
         searchAndAddHelp: 'By SKU, name or category',
-        searchAndAddPlaceholder:
-          'Type to search by SKU or name and add...',
+        searchAndAddPlaceholder: 'Type to search by SKU or name and add...',
         noProductsAdded: 'No products added to this sale',
         noProductsAddedDesc:
           'Use the search bar above to select and add products to invoice.',
@@ -1201,10 +1442,8 @@ export const translations = {
         totalAmount: 'Grand Total',
         submitSale: 'Issue Receipt',
         submitting: 'Issuing Sale...',
-        discountExceedsCap:
-          'Discount exceeds price list cap ({cap}%)',
-        insufficientStock:
-          'Insufficient stock for one or more items',
+        discountExceedsCap: 'Discount exceeds price list cap ({cap}%)',
+        insufficientStock: 'Insufficient stock for one or more items',
         priceNotAvailable:
           'One of the products has no active price in this list',
         branchRequired:
@@ -1225,8 +1464,7 @@ export const translations = {
         title: 'Void Sale Receipt',
         desc: 'Voiding will automatically return the sold quantities to branch inventory via immutable Kardex adjustments.',
         reasonPrompt: 'State the mandatory cancellation reason',
-        reasonPlaceholder:
-          'e.g. Customer return request / Item entry error',
+        reasonPlaceholder: 'e.g. Customer return request / Item entry error',
         confirm: 'Confirm Void',
         confirming: 'Voiding...',
         success: 'Sale successfully voided',
@@ -1258,7 +1496,8 @@ export const translations = {
         dialogTitle: 'Commercial Price List',
         dialogDesc:
           'Configure code, name, and maximum discount cap allowed for sellers.',
-        deactivateConfirm: 'Are you sure you want to deactivate this price list?',
+        deactivateConfirm:
+          'Are you sure you want to deactivate this price list?',
         noLists: 'No price lists configured',
       },
       rates: {
@@ -1273,8 +1512,7 @@ export const translations = {
         scopeHelp:
           'A branch exception takes precedence over the corporate rate.',
         validFromHelp: 'Leave blank for immediate validity starting today.',
-        closeHelp:
-          'Leave blank to close validity immediately to current date.',
+        closeHelp: 'Leave blank to close validity immediately to current date.',
         searchProductPlaceholder: 'Search product to set rate...',
         currentRate: 'Current rate',
         creation: 'Creation',
@@ -1288,8 +1526,7 @@ export const translations = {
         setDialogDesc:
           'Set corporate unit price or branch exception. This will supersede any current price for this scope.',
         closeDialogTitle: 'Close Price Validity',
-        closeDialogDesc:
-          'Set expiration date for this price record.',
+        closeDialogDesc: 'Set expiration date for this price record.',
         noPrices: 'No prices recorded for this list',
       },
       quote: {
@@ -1360,8 +1597,7 @@ export const translations = {
         totalInvoicedDesc: 'Cumulative invoiced revenue',
         avgTicket: 'Average Ticket',
         avgTicketDesc: 'Average per sale',
-        noSalesHistory:
-          'This customer has no purchase history in this branch.',
+        noSalesHistory: 'This customer has no purchase history in this branch.',
         taxId: 'Tax ID / NIT',
         contactInfo: 'Contact',
         registeredAt: 'Registered on',
@@ -1379,6 +1615,217 @@ export const translations = {
       walkInCustomer: 'Walk-in / Anonymous Customer',
       walkInNotice: 'Counter sale without stored customer profile',
       customerLinked: 'Linked Customer Record',
+    },
+    // Purchases & Supply
+    purchases: {
+      title: 'Purchases & Supply',
+      subtitle:
+        'Purchase order lifecycle, supplier master directory, goods reception, and inventory valuation.',
+      tabs: {
+        orders: 'Purchase Orders',
+        suppliers: 'Suppliers',
+        costHistory: 'Cost History',
+      },
+      stats: {
+        totalOrders: 'Registered Orders',
+        totalOrdersDesc: 'Total purchase orders issued',
+        pendingOrders: 'Pending Approval',
+        pendingOrdersDesc: 'Draft orders awaiting approval',
+        inReception: 'In Reception',
+        inReceptionDesc: 'Approved or partially received',
+        totalSpent: 'Total Amount Purchased',
+        totalSpentDesc: 'Total value of purchase orders',
+      },
+      status: {
+        PENDING: 'Pending',
+        APPROVED: 'Approved',
+        PARTIALLY_RECEIVED: 'Partially Received',
+        RECEIVED: 'Received',
+        CANCELLED: 'Cancelled',
+      },
+      orders: {
+        newOrder: 'New Purchase Order',
+        editOrder: 'Edit Order',
+        approveOrder: 'Approve Order',
+        cancelOrder: 'Cancel Order',
+        receiveOrder: 'Register Reception',
+        viewDetail: 'View Details',
+        orderNumber: 'Order Number',
+        supplier: 'Supplier',
+        branch: 'Branch',
+        totalAmount: 'Total ($)',
+        createdAt: 'Order Date',
+        receivedAt: 'Last Reception',
+        noOrders: 'No purchase orders found matching selected filters',
+        filterBySupplier: 'Filter by supplier...',
+        filterByProduct: 'Filter by product...',
+        allSuppliers: 'All suppliers',
+        allProducts: 'All products',
+        confirmApprove: 'Are you sure you want to approve this purchase order?',
+        approving: 'Approving order...',
+        approveSuccess: 'Purchase order approved successfully',
+      },
+      orderDialog: {
+        createTitle: 'New Purchase Order',
+        createDesc:
+          'Create a new purchase order with supplier, payment terms, and ordered items.',
+        editTitle: 'Edit Purchase Order',
+        editDesc:
+          'Update line items and commercial terms of this pending purchase order.',
+        selectSupplier: 'Select supplier...',
+        paymentTerms: 'Payment Terms',
+        paymentTermsPlaceholder: 'e.g. Net 30, Cash on Delivery, 50% advance',
+        notes: 'Notes / Instructions',
+        notesPlaceholder:
+          'Special shipping, packing, or delivery instructions...',
+        itemsTitle: 'Order Line Items',
+        addItem: 'Add Product',
+        product: 'Product',
+        quantity: 'Quantity',
+        unitOfMeasure: 'Unit of Measure',
+        baseUnit: 'Base Unit',
+        unitCost: 'Unit Cost ($)',
+        discountPercent: 'Discount (%)',
+        effectiveUnitCost: 'Effective Cost ($)',
+        subtotal: 'Subtotal',
+        previewTotal: 'Estimated Total (Client Preview)',
+        serverCalculatedNotice:
+          'Subtotals, effective unit costs, and authoritative total amount are computed server-side according to business rules.',
+        noItemsAdded: 'No items added to this purchase order',
+        noItemsAddedDesc:
+          'Select and add products you wish to purchase from the supplier.',
+        submitting: 'Saving order...',
+        branchRequired:
+          'As Corporate Admin, branch context is required to create purchase orders.',
+      },
+      detailDialog: {
+        title: 'Purchase Order Details',
+        orderInfo: 'General Information',
+        supplierInfo: 'Supplier Details',
+        taxId: 'Tax ID / NIT / RUC',
+        contact: 'Contact',
+        branch: 'Receiving Branch',
+        createdBy: 'Issued By',
+        paymentTerms: 'Commercial Terms / Payment',
+        cancellationReason: 'Cancellation Reason',
+        itemsList: 'Purchase Line Items',
+        orderedQty: 'Ordered Qty',
+        receivedQty: 'Received Qty',
+        pendingQty: 'Pending Balance',
+        unitCost: 'Unit Cost',
+        discount: 'Discount',
+        effectiveCost: 'Effective Cost',
+        subtotal: 'Subtotal',
+        totalAmount: 'Total Order Amount',
+        cancelBanner: 'THIS PURCHASE ORDER HAS BEEN CANCELLED',
+        receivedBanner: 'ORDER FULLY RECEIVED',
+        partiallyReceivedBanner: 'ORDER PARTIALLY RECEIVED',
+      },
+      cancelDialog: {
+        title: 'Cancel Purchase Order',
+        desc: 'Provide a mandatory reason for cancellation. The order will accept no further receptions. Any previously received stock remains intact in branch inventory.',
+        reason: 'Cancellation Reason',
+        reasonPlaceholder:
+          'e.g. Supplier out of stock / Budget reallocated / Order duplicated',
+        confirm: 'Confirm Cancellation',
+        cancelling: 'Cancelling...',
+        success: 'Purchase order cancelled successfully',
+      },
+      receptionDialog: {
+        title: 'Register Goods Reception',
+        desc: 'Record physical quantities received. Branch stock will increment and the Weighted Average Cost (WAC) will recalculate automatically.',
+        orderSummary: 'Order Summary',
+        itemsTitle: 'Items to Receive',
+        ordered: 'Ordered',
+        alreadyReceived: 'Already Received',
+        pending: 'Pending',
+        receiveNow: 'Receive Now',
+        overReceiptWarning:
+          'Received quantity ({received}) exceeds pending balance ({pending}). This requires Branch Manager authorization and will be logged.',
+        receptionNotes: 'Reception / Delivery Notes',
+        receptionNotesPlaceholder:
+          'Packing slip number, container or packaging observations...',
+        submit: 'Confirm Reception',
+        submitting: 'Processing reception and updating stock...',
+        success: 'Goods reception registered successfully',
+        resultStatus: 'Updated order status: {status}',
+      },
+      suppliers: {
+        title: 'Supplier Master Directory',
+        newSupplier: 'New Supplier',
+        editSupplier: 'Edit Supplier',
+        name: 'Company / Supplier Name',
+        namePlaceholder: 'e.g. Acme Agriculture & Fertilizers Corp.',
+        taxId: 'Tax ID / NIT / RUC',
+        taxIdPlaceholder: 'e.g. 1790012345001',
+        contactName: 'Contact Person',
+        contactNamePlaceholder: 'e.g. John Doe',
+        email: 'Email Address',
+        emailPlaceholder: 'sales@supplier.com',
+        phone: 'Phone Number',
+        phonePlaceholder: '+1 555 123 4567',
+        address: 'Physical Address',
+        addressPlaceholder: '123 Industrial Parkway',
+        disable: 'Disable',
+        enable: 'Enable',
+        confirmDisable:
+          'Are you sure you want to disable supplier {name}? It cannot be selected for new purchase orders.',
+        confirmEnable: 'Are you sure you want to enable supplier {name}?',
+        createDialogTitle: 'Register New Supplier',
+        createDialogDesc:
+          'Enter corporate tax and contact information for the supplier.',
+        editDialogTitle: 'Edit Supplier Record',
+        editDialogDesc: 'Update supplier contact details.',
+        noSuppliers: 'No suppliers found matching selected filters',
+        submitting: 'Saving supplier...',
+        adminOnlyNotice:
+          'Supplier administration is restricted to Corporate Administrators.',
+      },
+      costHistory: {
+        title: 'Agreed Purchase Cost History by Product',
+        subtitle:
+          'Historical evolution of unit costs and discounts negotiated with suppliers (CU-COM-05).',
+        selectProductPrompt:
+          'Select a product to view its agreed purchase cost history',
+        product: 'Product',
+        supplier: 'Supplier',
+        orderNumber: 'Order Number',
+        orderedAt: 'Order Date',
+        receivedAt: 'Reception Date',
+        quantity: 'Quantity',
+        grossUnitCost: 'List Cost ($)',
+        discountPercent: 'Discount (%)',
+        effectiveUnitCost: 'Effective Cost ($)',
+        noHistory:
+          'No purchase history found for this product with selected filters',
+        searchProductPlaceholder: 'Search product by SKU or name...',
+      },
+      errors: {
+        invalid_request: 'Invalid request or incomplete data',
+        invalid_order_quantity: 'Invalid ordered or received quantity',
+        invalid_unit_cost: 'Invalid or missing unit cost',
+        duplicate_order_item: 'Duplicate product in purchase order',
+        discount_out_of_range: 'Discount percent must be between 0% and 100%',
+        unit_conversion_unavailable:
+          'Unit conversion not available for selected unit',
+        cancellation_reason_required: 'Cancellation reason is required',
+        branch_context_required:
+          'Branch context is required for Corporate Administrators to execute this action',
+        over_receipt_requires_manager:
+          'Over-receipt requires Branch Manager authorization',
+        supplier_not_found: 'Supplier not found',
+        product_not_found: 'Product not found or inactive',
+        purchase_order_not_found:
+          'Purchase order not found or belongs to another branch',
+        purchase_order_item_not_found: 'Purchase order line item not found',
+        supplier_tax_id_already_exists:
+          'A supplier with this Tax ID already exists',
+        supplier_not_active: 'The selected supplier is disabled',
+        invalid_order_state: 'Operation not permitted in current order state',
+        concurrent_order_update:
+          'Concurrent update on purchase order. Please try again.',
+        duplicate_order_number: 'Duplicate order number conflict',
+      },
     },
     // Auth & Login
     auth: {

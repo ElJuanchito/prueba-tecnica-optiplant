@@ -132,7 +132,11 @@ export const queryKeys = {
         priceListExternalId: string,
         filters: Record<string, unknown>,
       ) =>
-        [...queryKeys.pricing.prices.all, priceListExternalId, filters] as const,
+        [
+          ...queryKeys.pricing.prices.all,
+          priceListExternalId,
+          filters,
+        ] as const,
     },
   },
   customers: {
@@ -142,15 +146,36 @@ export const queryKeys = {
       [...queryKeys.customers.lists(), filters] as const,
     detail: (externalId: string) =>
       [...queryKeys.customers.all, 'detail', externalId] as const,
-    salesHistory: (
-      externalId: string,
-      filters: Record<string, unknown>,
-    ) =>
+    salesHistory: (externalId: string, filters: Record<string, unknown>) =>
       [
         ...queryKeys.customers.all,
         'sales-history',
         externalId,
         filters,
       ] as const,
+  },
+  purchases: {
+    all: ['purchases'] as const,
+    suppliers: {
+      all: ['purchases', 'suppliers'] as const,
+      lists: () => [...queryKeys.purchases.suppliers.all, 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.purchases.suppliers.lists(), filters] as const,
+      detail: (externalId: string) =>
+        [...queryKeys.purchases.suppliers.all, 'detail', externalId] as const,
+    },
+    orders: {
+      all: ['purchases', 'orders'] as const,
+      lists: () => [...queryKeys.purchases.orders.all, 'list'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.purchases.orders.lists(), filters] as const,
+      detail: (externalId: string) =>
+        [...queryKeys.purchases.orders.all, 'detail', externalId] as const,
+    },
+    costHistory: {
+      all: ['purchases', 'costHistory'] as const,
+      list: (filters: Record<string, unknown>) =>
+        [...queryKeys.purchases.costHistory.all, 'list', filters] as const,
+    },
   },
 } as const
