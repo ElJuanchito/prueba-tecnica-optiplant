@@ -56,9 +56,9 @@ class ReplenishmentPanelIT {
 		UUID cleanBranchId = UUID.randomUUID();
 		long branchPk = jdbcTemplate.queryForObject("""
 				INSERT INTO branches (external_id, code, name, address, city, phone, is_active)
-				VALUES (?, 'SUC-CLEAN', 'Sucursal Limpia', 'Calle 100', 'Tunja', '+57 608 1234567', TRUE)
+				VALUES (?, ?, 'Sucursal Limpia', 'Calle 100', 'Tunja', '+57 608 1234567', TRUE)
 				RETURNING id
-				""", Long.class, cleanBranchId);
+				""", Long.class, cleanBranchId, "SUC-CLEAN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
 
 		// Insert stock well above threshold
 		jdbcTemplate.update("""
@@ -84,20 +84,44 @@ class ReplenishmentPanelIT {
 
 	@Test
 	void replenishmentReturnsExactRowsWithSeverityOrderingAndCoverage() {
-		String medellinToken = token("gerente.medellin");
+		UUID branchExternalId = UUID.randomUUID();
+		String branchCode = "SUC-REPL-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+		long branchPk = jdbcTemplate.queryForObject("""
+				INSERT INTO branches (external_id, code, name, address, city, phone, is_active)
+				VALUES (?, ?, 'Sucursal Reposicion Test', 'Autopista Norte km 12', 'Medellín', '+57 604 4482310', TRUE)
+				RETURNING id
+				""", Long.class, branchExternalId, branchCode);
 
-		// In seed data: Medellín has MAIZ with stock 12 <= 25 (CRITICAL)
-		// Set Medellín FUNG to stock 0 <= 30 (OUT_OF_STOCK) to test severity ordering
+		String managerUsername = "gerente.repl." + UUID.randomUUID().toString().substring(0, 8);
 		jdbcTemplate.update("""
-				UPDATE branch_inventories
-				SET current_stock = 0.0000
-				WHERE branch_id = 2 AND product_id = 4
-				""");
+				INSERT INTO users (external_id, branch_id, username, email, password_hash, full_name, role, is_active)
+				VALUES (?, ?, ?, ?, '$2a$10$0F5tK3tdxcZ1UPXOWbQybOJdttNDQ2hWgr4GCEgnNyoFCeOo6vY.q', 'Gerente Reposicion', 'BRANCH_MANAGER', TRUE)
+				""", UUID.randomUUID(), branchPk, managerUsername, managerUsername + "@optiplant.com");
+
+		// Seed product 4 (FUNG): OUT_OF_STOCK (current_stock = 0 <= 30)
+		jdbcTemplate.update("""
+				INSERT INTO branch_inventories (branch_id, product_id, current_stock, reserved_stock, in_transit_stock, min_stock_threshold, average_cost)
+				VALUES (?, 4, 0.0000, 0.0000, 0.0000, 30.0000, 66000.0000)
+				""", branchPk);
+
+		// Seed product 3 (MAIZ): CRITICAL (current_stock = 12 <= 25)
+		jdbcTemplate.update("""
+				INSERT INTO branch_inventories (branch_id, product_id, current_stock, reserved_stock, in_transit_stock, min_stock_threshold, average_cost)
+				VALUES (?, 3, 12.0000, 0.0000, 0.0000, 25.0000, 385000.0000)
+				""", branchPk);
+
+		// Seed product 1 (NPK): HEALTHY (current_stock = 1000 > 10) - must NOT appear in results
+		jdbcTemplate.update("""
+				INSERT INTO branch_inventories (branch_id, product_id, current_stock, reserved_stock, in_transit_stock, min_stock_threshold, average_cost)
+				VALUES (?, 1, 1000.0000, 0.0000, 0.0000, 10.0000, 3200.0000)
+				""", branchPk);
+
+		String managerToken = token(managerUsername);
 
 		// Default sort: OUT_OF_STOCK first, then CRITICAL
 		ResponseEntity<Map> response = restClient.get()
 				.uri("/api/analytics/replenishment")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + medellinToken)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
 				.retrieve()
 				.toEntity(Map.class);
 
@@ -130,7 +154,7 @@ class ReplenishmentPanelIT {
 		// Filter severity=OUT_OF_STOCK
 		ResponseEntity<Map> outOfStockOnly = restClient.get()
 				.uri("/api/analytics/replenishment?severity=OUT_OF_STOCK")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + medellinToken)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
 				.retrieve()
 				.toEntity(Map.class);
 		@SuppressWarnings("unchecked")
@@ -141,7 +165,7 @@ class ReplenishmentPanelIT {
 		// Filter severity=CRITICAL
 		ResponseEntity<Map> criticalOnly = restClient.get()
 				.uri("/api/analytics/replenishment?severity=CRITICAL")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + medellinToken)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
 				.retrieve()
 				.toEntity(Map.class);
 		@SuppressWarnings("unchecked")
@@ -152,7 +176,7 @@ class ReplenishmentPanelIT {
 		// Sort by product name
 		ResponseEntity<Map> sortProduct = restClient.get()
 				.uri("/api/analytics/replenishment?sort=product")
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + medellinToken)
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
 				.retrieve()
 				.toEntity(Map.class);
 		@SuppressWarnings("unchecked")
