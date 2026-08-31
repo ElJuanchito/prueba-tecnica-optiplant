@@ -96,5 +96,5 @@ registrados antes de escribir la primera línea.
 | Requerimientos y reglas de negocio | `docs/especificacion_requerimientos.md` |
 | Casos de uso y matriz de trazabilidad | `docs/casos_de_uso.md` |
 | Justificación de una decisión técnica | `docs/decisiones_arquitectura_tecnica.md` |
-| Trabajo postergado y su plan de pago | `docs/deuda_tecnica.md` |
+| Trabajo postergado y su plan de pago | `docs/decisiones_arquitectura_tecnica.md` (sección 7) |
 | Contrato y diseño de un módulo ya construido | `openspec/changes/archive/` |

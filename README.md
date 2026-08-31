@@ -126,7 +126,7 @@ Los scripts de `backend/init-db/` se ejecutan automáticamente al inicializar el
 
 ### Lo que `docker compose up` no hace
 
-No ejecuta migraciones. Flyway está **declarado y explícitamente desactivado**: mientras el volumen se inicialice con `backend/init-db/`, Flyway encontraría tablas que no creó y fallaría. El procedimiento de sustitución está en `DT-01` de [`docs/deuda_tecnica.md`](./docs/deuda_tecnica.md).
+No ejecuta migraciones. Flyway está **declarado y explícitamente desactivado**: mientras el volumen se inicialice con `backend/init-db/`, Flyway encontraría tablas que no creó y fallaría. El procedimiento de sustitución está en `DT-01`, en la sección 7 de [`docs/decisiones_arquitectura_tecnica.md`](./docs/decisiones_arquitectura_tecnica.md).
 
 **Tras cualquier cambio en `backend/init-db/`, recreá el volumen con `docker compose down -v`.** PostgreSQL ejecuta los scripts de inicialización sólo cuando el directorio de datos está vacío: sobre un volumen ya inicializado el esquema nuevo se ignora en silencio y la aplicación arranca contra el viejo, sin ningún error que lo delate.
 
@@ -137,6 +137,7 @@ No ejecuta migraciones. Flyway está **declarado y explícitamente desactivado**
 ```
 .
 ├── README.md                  Este documento
+├── prueba_tecnica_inventario.md   Enunciado original de la prueba
 ├── compose.yml                Servicios db y backend
 ├── .env.example               Plantilla de configuración; ningún secreto real
 ├── backend/
@@ -156,16 +157,15 @@ No ejecuta migraciones. Flyway está **declarado y explícitamente desactivado**
 │   ├── Dockerfile              Multi-etapa: Node + pnpm construye, Nginx sirve los estáticos
 │   ├── nginx/default.conf.template   Proxy `/api`, ruteo de la SPA y caché diferenciada
 │   └── src/                    Código de la SPA
-├── docs/                      Documentación de ingeniería
-│   ├── especificacion_requerimientos.md
-│   ├── casos_de_uso.md
-│   ├── historias_de_usuario.md
-│   ├── modelado_sistema.md
-│   ├── diagrama_er.md
-│   ├── decisiones_arquitectura_tecnica.md
-│   ├── deuda_tecnica.md
-│   ├── uso_de_ia.md
-│   └── diagrams/              16 archivos Excalidraw + 2 PlantUML
+├── docs/                      Documentación de ingeniería — 7 documentos
+│   ├── README.md                           Índice de la documentación
+│   ├── especificacion_requerimientos.md    Requerimientos (§6.1)
+│   ├── casos_de_uso.md                     Casos de uso y trazabilidad (§6.2)
+│   ├── historias_de_usuario.md             Historias de usuario y backlog (§6.3)
+│   ├── modelado_sistema.md                 Diagramas de ingeniería y modelo E-R (§7)
+│   ├── decisiones_arquitectura_tecnica.md  Decisiones técnicas y deuda técnica (§8)
+│   ├── uso_de_ia.md                        Uso de IA en el desarrollo (§9)
+│   └── diagrams/                           16 archivos Excalidraw + 2 PlantUML
 └── scripts/                   Validación ejecutable
     ├── validar_trazabilidad.py
     └── validar_esquema.sh
@@ -242,17 +242,17 @@ La auditoría se resuelve al revés, y a propósito: el registro de auditoría s
 
 ## Documentación
 
+La carpeta [`docs/`](docs/) contiene siete documentos; [`docs/README.md`](docs/README.md) es su índice y orden de lectura.
+
 | Documento | Contenido | Sección del enunciado |
 | :--- | :--- | :--- |
 | [Funcionalidad adicional — alertas inteligentes y auditoría](#funcionalidad-adicional-4--alertas-inteligentes-y-auditoría) | Motor de alertas con deduplicación, eventos post-commit y auditoría síncrona | 4 |
 | [Especificación de requerimientos](docs/especificacion_requerimientos.md) | 43 RF, 34 RNF, 17 reglas de negocio, restricciones, supuestos, glosario y alcance excluido | 6.1 |
 | [Casos de uso](docs/casos_de_uso.md) | 5 actores, matriz RBAC, 39 casos de uso, 7 especificaciones extendidas, matriz de trazabilidad | 6.2 |
 | [Historias de usuario](docs/historias_de_usuario.md) | 31 historias en 8 épicas con criterios de aceptación en Gherkin, MoSCoW y definición de terminado | 6.3 |
-| [Modelado del sistema](docs/modelado_sistema.md) | Índice de los diagramas obligatorios, flujos de actividad y vistas de arquitectura | 7.1 |
-| [Diagrama entidad-relación](docs/diagrama_er.md) | Modelo de datos completo en Mermaid, PlantUML y Excalidraw | 7.1 |
-| [Decisiones de arquitectura](docs/decisiones_arquitectura_tecnica.md) | Separación de responsabilidades y las decisiones técnicas justificadas | 8.1 y 8.2 |
+| [Modelado del sistema](docs/modelado_sistema.md) | Los cuatro diagramas obligatorios (casos de uso, actividad, arquitectura) y el modelo entidad-relación en Mermaid, PlantUML y Excalidraw | 7.1 |
+| [Decisiones de arquitectura](docs/decisiones_arquitectura_tecnica.md) | Separación de responsabilidades, las decisiones técnicas justificadas y el registro de deuda técnica (§7: 15 ítems con disparador y plan de pago) | 8.1 y 8.2 |
 | [Uso de inteligencia artificial](docs/uso_de_ia.md) | Herramientas, prompts reales, evaluación crítica y estimación de asistencia | 9 |
-| [Deuda técnica](docs/deuda_tecnica.md) | 15 ítems con plan de pago y condición que lo dispara | — |
 
 ### Diagramas
 
@@ -284,7 +284,7 @@ Los 9 bloques Mermaid y los 2 archivos PlantUML se verificaron renderizándolos 
 
 ## Deuda Técnica
 
-Las decisiones de postergar trabajo están registradas en [`deuda_tecnica.md`](docs/deuda_tecnica.md), cada una con su justificación, su plan de pago y la condición que lo dispara. La más relevante:
+Las decisiones de postergar trabajo están registradas en la sección 7 de [`decisiones_arquitectura_tecnica.md`](docs/decisiones_arquitectura_tecnica.md), cada una con su justificación, su plan de pago y la condición que lo dispara. La más relevante:
 
 **DT-01 — versionado del esquema con Flyway.** Hoy el esquema se carga con el mecanismo de inicialización de la imagen de PostgreSQL, que sólo actúa sobre un volumen vacío: sirve para reconstruir desde cero y es inservible en cuanto exista un dato que preservar. Es la deuda de mayor severidad del registro y la primera que se pagaría en un despliegue real.
 
