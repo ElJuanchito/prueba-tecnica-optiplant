@@ -12,6 +12,7 @@ import com.optiplant.inventory.purchases.domain.exception.SupplierNotActiveExcep
 import com.optiplant.inventory.purchases.domain.exception.SupplierNotFoundException;
 import com.optiplant.inventory.purchases.domain.model.PurchaseOrder;
 import com.optiplant.inventory.purchases.domain.model.PurchaseOrderDetail;
+import com.optiplant.inventory.purchases.domain.model.PurchaseOrderItem;
 import com.optiplant.inventory.purchases.domain.model.PurchaseOrderNotes;
 import com.optiplant.inventory.purchases.domain.model.PurchaseOrderTransition;
 import com.optiplant.inventory.purchases.domain.model.Supplier;
@@ -25,18 +26,18 @@ import com.optiplant.inventory.shared.audit.AuditEntryCommand;
 import com.optiplant.inventory.shared.audit.AuditWritePort;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestrates purchase order creation and editing (CU-COM-02, RF-COM-01, design §4, §7). The
  * acting branch is derived from the session (RN-14); totals are computed server-side (R-06).
- *
- * <p><strong>Ships without {@code @Service}</strong> while its out-ports have no adapter (S1,
- * design §10 trap 4). S2 task 2.6 restores the stereotype.
  */
+@Service
 @Transactional
 public class ManagePurchaseOrdersService implements ManagePurchaseOrdersUseCase {
 
@@ -86,8 +87,21 @@ public class ManagePurchaseOrdersService implements ManagePurchaseOrdersUseCase 
 		PurchaseAccessPolicy.assertVisible(actor, locked);
 		PurchaseOrderStateMachine.require(locked.status(), PurchaseOrderTransition.EDIT);
 
+		Supplier supplier = supplierRepository.findByExternalId(command.supplierExternalId())
+				.orElseThrow(() -> new SupplierNotFoundException(command.supplierExternalId()));
+		if (!supplier.active()) {
+			throw new SupplierNotActiveException(supplier.externalId());
+		}
+
 		PricedBasket basket = priceBasket(command.items());
-		PurchaseOrder saved = orderRepository.replaceItems(locked, toNewItems(basket), basket.totalAmount());
+		PurchaseOrderNotes notes = command.notes() != null
+				? PurchaseOrderNotes.fromHumanNote(command.notes())
+				: PurchaseOrderNotes.empty();
+
+		Instant now = Instant.now();
+		PurchaseOrder updated = locked.withEdit(supplier.externalId(), command.paymentTerms(), notes,
+				toDomainItems(basket), basket.totalAmount(), now);
+		PurchaseOrder saved = orderRepository.replaceItems(updated, toNewItems(basket), basket.totalAmount());
 
 		audit(actor, "UPDATE_PURCHASE_ORDER", saved);
 		return PurchaseOrderDetailAssembler.toDetail(saved, referencePort);
@@ -112,6 +126,14 @@ public class ManagePurchaseOrdersService implements ManagePurchaseOrdersUseCase 
 						item.unitCost(), item.discountPercent()))
 				.toList();
 		return PurchaseOrderBasketPolicy.validateAndPrice(rawLines, factors);
+	}
+
+	private static List<PurchaseOrderItem> toDomainItems(PricedBasket basket) {
+		return basket.lines().stream()
+				.map(line -> new PurchaseOrderItem(UUID.randomUUID(), line.productExternalId(),
+						line.orderedQuantity(), BigDecimal.ZERO, line.unitCost(), line.discountPercent(),
+						line.subtotal()))
+				.toList();
 	}
 
 	private static List<NewPurchaseOrderItem> toNewItems(PricedBasket basket) {

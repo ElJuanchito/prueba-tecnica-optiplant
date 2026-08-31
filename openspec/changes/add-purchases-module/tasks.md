@@ -62,34 +62,34 @@ adapter change, since `BranchInventoryPersistenceAdapter.save:88` already persis
 
 ## Phase 2 — S2: infrastructure and web (PR2)
 
-- [ ] 2.1 Create `.../out/persistence/supplier/`: `SupplierJpaEntity`, `SupplierMapper`,
+- [x] 2.1 Create `.../out/persistence/supplier/`: `SupplierJpaEntity`, `SupplierMapper`,
       `SupplierSpringDataRepository` (paged native search over `name`/`tax_id` plus `is_active`, with its
       `countQuery`), `SupplierPersistenceAdapter` (`saveAndFlush` + `DataIntegrityViolationException` →
       `SupplierTaxIdAlreadyExistsException`, R-01; the flush is not optional — design §6.1).
-- [ ] 2.2 Create `PurchaseOrderJpaEntity` + `PurchaseOrderItemJpaEntity` (`@OneToMany(cascade = ALL,
+- [x] 2.2 Create `PurchaseOrderJpaEntity` + `PurchaseOrderItemJpaEntity` (`@OneToMany(cascade = ALL,
       orphanRemoval = true)`), `PurchaseOrderMapper` — the only place the F-3 token is written or read —
       and `PurchaseOrderSpringDataRepository` with `findByExternalId` annotated `@Lock(PESSIMISTIC_WRITE)`,
       **no `@QueryHints` timeout** (design §6.1, F-5). FKs are plain `Long`, never `@ManyToOne`.
-- [ ] 2.3 Add to `PurchaseOrderSpringDataRepository` the `allocateAdvisoryLock` / `nextSequenceNumber`
+- [x] 2.3 Add to `PurchaseOrderSpringDataRepository` the `allocateAdvisoryLock` / `nextSequenceNumber`
       pair of design §6.2 — key `purchase_order_number:<yyyy>`, `SUBSTRING(order_number FROM 9)`
       (**offset 9, not 10** — design §10 trap 1) — plus the paged order listing with every §6 filter and
       the cost-history query of §6.3, which **never mentions `branch_inventories`**.
-- [ ] 2.4 Create `PurchaseOrderPersistenceAdapter` — `OC-<yyyy>-<nnnn>` allocation (F-9/DT-13), branch-
+- [x] 2.4 Create `PurchaseOrderPersistenceAdapter` — `OC-<yyyy>-<nnnn>` allocation (F-9/DT-13), branch-
       scoped detail and listing (R-25), `replaceItems` for the R-10 edit, `lockForUpdate` mapping
       `PessimisticLockingFailureException` → `concurrent_order_update` and the `order_number UNIQUE`
       violation → `duplicate_order_number` (T-07).
-- [ ] 2.5 Create `PurchaseReferenceSpringDataRepository` and `PurchaseReferenceAdapter` (design §4) —
+- [x] 2.5 Create `PurchaseReferenceSpringDataRepository` and `PurchaseReferenceAdapter` (design §4) —
       native `external_id → id` resolution for products, branches, users and suppliers, batched
       descriptors for the read side, and `conversion_factor` lookup. One query per request, no N+1.
-- [ ] 2.6 Create `SupplierController` and `PurchaseOrderController` (contract §6's fourteen operations —
+- [x] 2.6 Create `SupplierController` and `PurchaseOrderController` (contract §6's fourteen operations —
       no branch anywhere (RN-14), oversized page **rejected** not clamped (R-00), no numeric id, no raw
       `CANCEL_REASON` token, no `DELETE` mapping) and `PurchasesExceptionHandler` scoped to
       `…purchases.infrastructure.adapter.in` — **the whole `in` package** (design §6.4) — mapping every §7
       code plus design §5's `StockMutationRejectedException` reasons. Restore `@Service` on the S1 services.
-- [ ] 2.7 Edit `iam/.../config/SecurityConfig` with design §6.4's four matchers **in that order** — `GET`
+- [x] 2.7 Edit `iam/.../config/SecurityConfig` with design §6.4's four matchers **in that order** — `GET`
       suppliers before the `ADMIN` supplier rule, both before `/api/purchases/**` — **string literals
       only**, `hasAuthority` never `hasRole`. R-16's over-receipt gate is **not** a matcher.
-- [ ] 2.8 Verify every §7 code is reachable from a controller path (name the path per code in the PR
+- [x] 2.8 Verify every §7 code is reachable from a controller path (name the path per code in the PR
       description — no dead error code), run `./scripts/validar_esquema.sh` (green **and unaffected**,
       §2.5 — if it must change, stop and report) and `cd backend && ./mvnw verify`.
 

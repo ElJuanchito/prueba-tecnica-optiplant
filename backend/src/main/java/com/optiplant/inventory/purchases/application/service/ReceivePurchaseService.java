@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -48,10 +49,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>{@code save(order.withReception(plan, now))} (R-19);</li>
  *   <li>one {@code audit_logs} entry on the order's branch (T-01, T-03).</li>
  * </ol>
- *
- * <p><strong>Ships without {@code @Service}</strong> while its out-ports have no adapter (S1,
- * design §10 trap 4). S2 task 2.6 restores the stereotype.
  */
+@Service
 @Transactional
 public class ReceivePurchaseService implements ReceivePurchaseUseCase {
 
