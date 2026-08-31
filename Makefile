@@ -57,8 +57,12 @@ up: frontend-install ## DB + backend en contenedores; frontend nativo en primer 
 	$(PNPM) --dir $(FRONTEND_DIR) dev
 
 .PHONY: up-containers
-up-containers: ## Solo lo contenerizado: DB + backend (segundo plano)
+up-containers: ## DB + backend en contenedores (segundo plano); para dev con frontend nativo
 	$(COMPOSE) up -d --build db backend
+
+.PHONY: up-full
+up-full: ## Stack completo en contenedores: DB + backend + frontend (Nginx) en segundo plano
+	$(COMPOSE) up -d --build
 
 # ---------------------------------------------------------------------------
 # Ciclo de vida de los contenedores
