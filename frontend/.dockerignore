@@ -1,0 +1,28 @@
+# Artefactos y dependencias: se regeneran dentro de la etapa de build.
+node_modules
+dist
+dist-ssr
+coverage
+
+# Control de versiones y metadatos.
+.git
+.gitignore
+.github
+
+# Entorno local y editores.
+.env
+.env.*
+!.env.example
+*.local
+.vscode
+.idea
+.DS_Store
+
+# Registros.
+*.log
+logs
+
+# No aportan a la imagen.
+Dockerfile
+.dockerignore
+README.md

@@ -81,7 +81,7 @@ Ante la duda sobre el nombre o el paquete de una clase de Spring, confirmarlo co
 ### Levantar el sistema
 
 ```bash
-docker compose up          # servicios db y backend; el frontend todavía no existe
+docker compose up          # db + backend + frontend (Nginx sirve la SPA en :8081)
 docker compose down -v
 ```
 
