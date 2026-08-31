@@ -19,8 +19,9 @@ actualiza al cerrar cada cambio SDD.
 | `logistics` | `logistics/` | Archivado | `CU-LOG-01` … `CU-LOG-03` |
 | `sales` | `sales/` | Archivado | `CU-VEN-01`, `CU-VEN-03`, `CU-VEN-04`, `CU-VEN-05`, `CU-VEN-06`, `CU-EXT-02` |
 | `pricing` | `pricing/` | Archivado | `CU-VEN-02` |
+| `purchases` | `purchases/` | Entregado (pendiente de archivo) | `CU-COM-01` … `CU-COM-05` |
 
-**30 de 39 casos de uso entregados.** Ocho paquetes de módulo de diez. El sub-dominio
+**35 de 39 casos de uso entregados.** Nueve paquetes de módulo de diez. El sub-dominio
 de clientes (`CU-VEN-05`, `CU-VEN-06`) se construyó dentro de `sales` en el cambio
 `add-sales-customers`, sin paquete de módulo nuevo.
 
@@ -31,23 +32,16 @@ diseño, tareas, informe de verificación e informe de archivado.
 
 ## 2. Lo que falta
 
-Dos cambios SDD que crean los dos paquetes de módulo restantes y cubren los 9
+Un cambio SDD que crea el último paquete de módulo restante y cubre los 4
 casos de uso pendientes.
 
 | Orden | Cambio SDD | Paquetes que crea | Casos de uso |
 | :--- | :--- | :--- | :--- |
-| 1 | `add-purchases-module` | `purchases` | `CU-COM-01` … `CU-COM-05` |
-| 2 | `add-analytics-module` | `analytics` | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
-
-### Por qué `purchases` va primero
-
-`purchases` completa el circuito de abastecimiento y la valoración por costo promedio
-ponderado (RN-10). Con él, las tablas del sistema quedan con datos de ventas y de compras
-reales para el tablero analítico.
+| 1 | `add-analytics-module` | `analytics` | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
 
 ### Por qué `analytics` va último
 
-Es solo lectura sobre las tablas que los tres anteriores llenaron. Construirlo al final
+Es solo lectura sobre las tablas que los módulos anteriores llenaron. Construirlo al final
 lo vuelve barato: son consultas agregadas, sin dominio propio ni mutación.
 
 ### Por qué `CU-EXT-01` y `CU-EXT-02` no tienen módulo propio

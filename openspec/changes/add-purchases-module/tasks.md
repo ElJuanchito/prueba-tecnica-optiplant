@@ -97,24 +97,24 @@ adapter change, since `BranchInventoryPersistenceAdapter.save:88` already persis
 
 **Docker-needing classes end in `IT`, never `Test`.** The list is fixed by §10 PR 3: add none, drop none.
 
-- [ ] 3.1 `PurchaseReceptionAtomicityIT` — R-15/R-18/R-20/T-01: stock incremented, `average_cost`
+- [x] 3.1 `PurchaseReceptionAtomicityIT` — R-15/R-18/R-20/T-01: stock incremented, `average_cost`
       recalculated to the RN-10 value, one `PURCHASE_RECEIPT` Kardex row per line with
       `reference_type = 'PURCHASE_ORDER'` and `reference_id` = the order's `external_id`; a forced
       mid-reception failure leaves order, `received_quantity`, balances, average cost and Kardex untouched.
-- [ ] 3.2 `PartialReceptionIT` — R-19/HU-COM-04: 100 ordered, 60 received ⇒ `PARTIALLY_RECEIVED`, pending
+- [x] 3.2 `PartialReceptionIT` — R-19/HU-COM-04: 100 ordered, 60 received ⇒ `PARTIALLY_RECEIVED`, pending
       40; the remaining 40 ⇒ `RECEIVED`; a third reception refused with `invalid_order_state`.
-- [ ] 3.3 `PurchaseOrderStateMachineIT` — R-11/R-12/R-14: reception refused from `PENDING`, `RECEIVED` and
+- [x] 3.3 `PurchaseOrderStateMachineIT` — R-11/R-12/R-14: reception refused from `PENDING`, `RECEIVED` and
       `CANCELLED` (RN-15); an `OPERATOR` refused the approval; cancellation from `PARTIALLY_RECEIVED`
       keeps the received stock and writes no reversal row (PA-08, RNF-INT-02).
-- [ ] 3.4 `PurchaseConcurrencyIT` — R-21/T-02: two concurrent receptions on one order, no double count, no
+- [x] 3.4 `PurchaseConcurrencyIT` — R-21/T-02: two concurrent receptions on one order, no double count, no
       `500`; two simultaneous creations yield two distinct `order_number` values (F-9).
-- [ ] 3.5 `PurchaseBranchIsolationIT` — R-23/R-25/§5: branch A gets `purchase_order_not_found` for branch
+- [x] 3.5 `PurchaseBranchIsolationIT` — R-23/R-25/§5: branch A gets `purchase_order_not_found` for branch
       B's order, `ADMIN` reads it, a corporate `ADMIN` creating or receiving gets `branch_context_required`.
-- [ ] 3.6 `PurchasesApiSmokeIT` — supplier CRUD incl. disable/enable (R-03), order listing with every §6
+- [x] 3.6 `PurchasesApiSmokeIT` — supplier CRUD incl. disable/enable (R-03), order listing with every §6
       filter, and the cost history: status, page-envelope shape, no numeric id, no raw `CANCEL_REASON`
       token, **`average_cost` never exposed** (R-26, RNF-API-02).
-- [ ] 3.7 Verify `docs/deuda_tecnica.md` already carries the **`DT-13`** fiche, registry row and changelog
+- [x] 3.7 Verify `docs/deuda_tecnica.md` already carries the **`DT-13`** fiche, registry row and changelog
       entry (written in the contract phase — check only, do not write). Update `openspec/PLAN.md` §1–§2 and
       confirm `/v3/api-docs` documents all fourteen operations (RNF-API-01).
-- [ ] 3.8 Run `python3 scripts/validar_trazabilidad.py` (green — **13 DT declared, 13 with fiche**, RF/RNF/
+- [x] 3.8 Run `python3 scripts/validar_trazabilidad.py` (green — **13 DT declared, 13 with fiche**, RF/RNF/
       RN/CU unchanged), `./scripts/validar_esquema.sh` (green, unchanged) and `cd backend && ./mvnw verify`.
