@@ -11,6 +11,10 @@
 # Uso: `make` o `make help` para ver los objetivos.
 
 COMPOSE      ?= docker compose
+# Superposicion de desarrollo: reabre en el anfitrion los puertos de db y
+# backend que compose.yml mantiene cerrados. Solo la usan los objetivos con
+# frontend o backend nativo; `up-full` levanta la topologia de entrega.
+COMPOSE_DEV  ?= $(COMPOSE) -f compose.yml -f compose.dev.yml
 PNPM         ?= pnpm
 MVNW         ?= ./mvnw
 FRONTEND_DIR := frontend
@@ -33,7 +37,7 @@ help: ## Muestra esta ayuda
 
 .PHONY: db
 db: ## Levanta solo PostgreSQL (unico objetivo que usa Docker por si solo)
-	$(COMPOSE) up -d db
+	$(COMPOSE_DEV) up -d db
 
 .PHONY: backend
 backend: ## Levanta el backend nativo con Maven (requiere `make db` corriendo)
@@ -53,12 +57,12 @@ frontend-install: ## Instala dependencias del frontend si faltan
 
 .PHONY: up
 up: frontend-install ## DB + backend en contenedores; frontend nativo en primer plano
-	$(COMPOSE) up -d --build db backend
+	$(COMPOSE_DEV) up -d --build db backend
 	$(PNPM) --dir $(FRONTEND_DIR) dev
 
 .PHONY: up-containers
 up-containers: ## DB + backend en contenedores (segundo plano); para dev con frontend nativo
-	$(COMPOSE) up -d --build db backend
+	$(COMPOSE_DEV) up -d --build db backend
 
 .PHONY: up-full
 up-full: ## Stack completo en contenedores: DB + backend + frontend (Nginx) en segundo plano
