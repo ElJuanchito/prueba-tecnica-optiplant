@@ -77,9 +77,15 @@ Ninguna prueba unitaria podía verlo.
 
 ### Ningún caso de uso se difiere
 
-Los 37 casos de uso del SRS se entregan. La velocidad se busca en la estrategia de
+Los 39 casos de uso del SRS se entregan —los 37 originales más `CU-VEN-05` y
+`CU-VEN-06`, que el sub-dominio de clientes incorporó y que se dieron de alta en el SRS
+con su trazabilidad antes de implementarlos—. La velocidad se busca en la estrategia de
 construcción —reutilizar el patrón ya establecido, acotar la ceremonia, concentrar las
 pruebas— nunca recortando el alcance comprometido.
+
+Esta regla se sostuvo de punta a punta: el alcance no se recortó en ningún momento, y
+la única vez que creció fue para sumar clientes, con su requerimiento y sus casos de uso
+registrados antes de escribir la primera línea.
 
 ---
 
