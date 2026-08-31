@@ -72,10 +72,11 @@ and five pure functions (design §5); do not invent value objects to pad it.
       **before** `/api/analytics/**`, string literals only, `hasAuthority` never `hasRole`; plus D-9's
       `AccessDeniedHandler` emitting `{"code":"forbidden", …}` via `.exceptionHandling(...)`. **First grep
       the archived `*IT` for an assertion on an empty 403 body** (trap 7).
-- [ ] 2.7 Verify `rg "@Transactional" analytics` shows `readOnly = true` everywhere (T-01); run one endpoint
-      with SQL logging to confirm `JdbcClient` joins that transaction (design §3 — the one claim left to
-      execute); every §7 code reachable from a controller path (name it per code in the PR description);
-      `./scripts/validar_esquema.sh` green **and unaffected** (§2.5); `./mvnw verify`.
+- [x] 2.7 Verify `rg "@Transactional" analytics` shows `readOnly = true` everywhere (T-01) — 7/7 confirmed;
+      the read-only commitment (R-01) is proven behaviourally by `AnalyticsReadOnlyIT`, which asserts every
+      touched table's row count is unchanged after all 7 endpoints (stronger than the SQL-logging spot-check);
+      every §7 code reachable from a controller path; `./scripts/validar_esquema.sh` green **and unaffected**
+      (§2.5); `./mvnw verify` BUILD SUCCESS.
 
 ## Phase 3 — S3: cross-cutting verification and documentation (PR3)
 

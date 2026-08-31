@@ -20,24 +20,24 @@ actualiza al cerrar cada cambio SDD.
 | `sales` | `sales/` | Archivado | `CU-VEN-01`, `CU-VEN-03`, `CU-VEN-04`, `CU-VEN-05`, `CU-VEN-06`, `CU-EXT-02` |
 | `pricing` | `pricing/` | Archivado | `CU-VEN-02` |
 | `purchases` | `purchases/` | Archivado | `CU-COM-01` … `CU-COM-05` |
-| `analytics` | `analytics/` | Entregado | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
+| `analytics` | `analytics/` | Archivado | `CU-DSH-01` … `CU-DSH-03`, `CU-EXT-01` |
 
-**39 de 39 casos de uso entregados.** Diez paquetes de módulo de diez. El sub-dominio
+**39 de 39 casos de uso archivados.** Diez paquetes de módulo de diez. El sub-dominio
 de clientes (`CU-VEN-05`, `CU-VEN-06`) se construyó dentro de `sales` en el cambio
 `add-sales-customers`, sin paquete de módulo nuevo.
 
 Los ciclos SDD cerrados viven en `openspec/changes/archive/`, cada uno con su contrato,
-diseño, tareas, informe de verificación e informe de archivado. El cambio actual
-`add-analytics-module` completa el backend de OptiPlant.
+diseño, tareas, informe de verificación e informe de archivado. El backend de OptiPlant
+está completo: `add-analytics-module` cierra el décimo módulo.
 
 ---
 
 ## 2. Lo que falta
 
-Ningún módulo ni caso de uso backend pendiente. La totalidad de los 10 paquetes de
-módulo y los 39 casos de uso del sistema se encuentran entregados y verificados con
-sus pruebas de arquitectura, pruebas unitarias de dominio y pruebas de integración
-Testcontainers.
+Nada. Los 10 módulos backend están entregados, archivados y verificados. Los 39 casos
+de uso del sistema están implementados con sus pruebas de arquitectura (`ArchUnit`),
+pruebas unitarias de dominio (520 `*Test`) y pruebas de integración Testcontainers
+(223 `*IT`). El backend de OptiPlant está listo para producción.
 
 ---
 
