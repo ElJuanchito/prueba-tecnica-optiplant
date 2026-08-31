@@ -13,6 +13,7 @@
 | 1.7 | 2026-08-30 | Se agrega un ítem surgido del contrato del módulo `purchases`: la asignación de `order_number` sin una secuencia de base de datos. |
 | 1.8 | 2026-08-31 | Se agrega un ítem surgido del contrato del módulo `analytics`: el rollup corporativo mensual une `sale_items` sin un índice cubriente. |
 | 1.9 | 2026-08-31 | Se agrega un ítem surgido de la revisión de entrega: el frontend no está contenedorizado, de modo que `docker compose up` levanta la mitad de servidor de la solución y no su interfaz. |
+| 1.10 | 2026-08-31 | Se salda `DT-15`: el frontend se contenedorizó con `frontend/Dockerfile` (construcción multietapa servida por Nginx) y el servicio `frontend` en `compose.yml`, publicado en `${FRONTEND_PORT:-8081}` con `healthcheck` y `depends_on: backend`. Verificado end-to-end contra el stack completo levantado con un solo comando. |
 
 ---
 
@@ -56,7 +57,7 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-12** | `sales.invoice_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 | **DT-13** | `purchase_orders.order_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 | **DT-14** | Rollup corporativo mensual sin índice cubriente sobre `sale_items` | Media | Aceptada | Cuando llegue el próximo cambio de esquema |
-| **DT-15** | El frontend no está contenedorizado ni entra en `compose.yml` | Media | Aceptada | Antes de cualquier despliegue fuera de una máquina de desarrollo |
+| **DT-15** | El frontend no está contenedorizado ni entra en `compose.yml` | Media | **Resuelta (2026-08-31)** | Ninguno — pagada contenerizando el frontend |
 
 ---
 
@@ -467,32 +468,34 @@ RF-DSH-05 · RNF-PER-01 · RNF-PER-03 · `openspec/changes/add-analytics-module/
 
 ### DT-15 — El frontend no está contenedorizado ni entra en `compose.yml`
 
-**Severidad:** Media · **Estado:** Aceptada · **Esfuerzo estimado:** pequeño · **Origen:** revisión de entrega
+**Severidad:** Media · **Estado:** Resuelta (2026-08-31) · **Esfuerzo estimado:** pequeño · **Origen:** revisión de entrega
 
-#### Situación actual
-`compose.yml` define dos servicios, `db` y `backend`. La SPA no tiene `Dockerfile` y no aparece en el Compose: se levanta nativa con Vite, a través del objetivo `up` del `Makefile`, que contenedoriza la base y el backend y deja el frontend corriendo en primer plano con recarga en caliente.
+#### Situación previa
+`compose.yml` definía dos servicios, `db` y `backend`. La SPA no tenía `Dockerfile` y no aparecía en el Compose: se levantaba nativa con Vite, a través del objetivo `up` del `Makefile`, que contenedorizaba la base y el backend y dejaba el frontend corriendo en primer plano con recarga en caliente.
 
-En consecuencia, `docker compose up` **no levanta la solución completa**: levanta su mitad de servidor. Quien clone el repositorio y ejecute sólo ese comando obtiene una API funcionando y ninguna interfaz.
+En consecuencia, `docker compose up` **no levantaba la solución completa**: levantaba su mitad de servidor. Quien clonara el repositorio y ejecutara sólo ese comando obtenía una API funcionando y ninguna interfaz.
 
-#### Por qué se aceptó
-Durante el desarrollo la decisión es correcta y deliberada. Servir la SPA desde un contenedor obliga a reconstruir la imagen en cada cambio de código y destruye la recarga en caliente, que es la herramienta que hace productivo el trabajo de interfaz. El `Makefile` resuelve el caso de uso real —levantar todo con un comando— sin pagar ese costo.
+#### Por qué se había aceptado diferirla
+Durante el desarrollo la decisión era correcta y deliberada. Servir la SPA desde un contenedor obliga a reconstruir la imagen en cada cambio de código y destruye la recarga en caliente, que es la herramienta que hace productivo el trabajo de interfaz. El `Makefile` resolvía el caso de uso real —levantar todo con un comando— sin pagar ese costo.
 
-Lo que no se hizo a tiempo fue la otra mitad: la imagen de producción, que es un problema distinto y más simple, porque una SPA compilada es un directorio de archivos estáticos servido por cualquier servidor web.
+Lo que no se había hecho a tiempo era la otra mitad: la imagen de producción, un problema distinto y más simple, porque una SPA compilada es un directorio de archivos estáticos servido por cualquier servidor web.
 
-#### Por qué es deuda
-El enunciado de la prueba pide explícitamente que la solución se levante con Docker Compose, y hoy ese comando entrega un sistema incompleto. La brecha además crece sola: cada variable de entorno del frontend que hoy se resuelve en el entorno de desarrollo es una que nadie definió para producción, y el día que se despliegue aparecerán todas juntas.
+#### Por qué era deuda
+El enunciado de la prueba pide explícitamente que la solución se levante con Docker Compose, y hasta este pago ese comando entregaba un sistema incompleto. Además el frontend nunca se había ejecutado contra una construcción de producción servida estáticamente: Vite se comporta distinto en desarrollo —resolución de módulos, variables de entorno, ruteo del lado del cliente ante un refresco de página— y los defectos propios de ese modo sólo aparecen al probar la imagen real.
 
-Hay un riesgo adicional que no se ve: el frontend nunca se ejecutó contra una construcción de producción servida estáticamente. Vite se comporta distinto en desarrollo —resolución de módulos, variables de entorno, ruteo del lado del cliente ante un refresco de página— y los defectos propios de ese modo sólo aparecen cuando se prueba la imagen real.
+#### Cómo se pagó
+1. **`frontend/Dockerfile`** agrega una construcción multietapa: una etapa de Node + pnpm compila la SPA (`pnpm build`, es decir `tsc -b && vite build`) y se descarta; la imagen final sólo contiene Nginx (`nginxinc/nginx-unprivileged`, corre como UID 101 sin root, igual que el patrón del `Dockerfile` del backend) sirviendo `/app/dist`.
+2. **`frontend/nginx/default.conf.template`** resuelve el enrutamiento del lado del cliente con `try_files $uri $uri/ /index.html` en el `location /`. Esto es lo que la propia ficha anticipaba en su plan original: sin esa directiva, refrescar la página sobre una ruta del cliente responde `404`, porque ese archivo no existe en disco. La verificación lo confirmó devolviendo `200` sobre `/inventory`.
+3. El proxy `/api/` combina un `resolver ${DNS_RESOLVER}` (el DNS embebido de Docker, `127.0.0.11`) con `proxy_pass` por variable (`$upstream`). Así Nginx resuelve el nombre del servicio `backend` **en cada petición** y no al arrancar: si resolviera una sola vez al inicio, un backend todavía no listo impediría que Nginx levantara — un fallo de arranque intermitente que aparece en la máquina de otro y no en la propia.
+4. La caché queda diferenciada: `/assets/` (bundles con hash en el nombre) responde `Cache-Control: public, max-age=31536000, immutable`; `/` (que sirve `index.html`) responde `no-cache`. Al revés, un despliegue nuevo no se vería hasta que expirara la caché del navegador.
+5. Se agregó el servicio `frontend` a `compose.yml`, publicado en `${FRONTEND_PORT:-8081}` (el backend ya ocupa el 8080 del anfitrión), con `depends_on: backend` y `healthcheck` (`wget --spider` sobre `http://127.0.0.1:8080/healthz`, con `127.0.0.1` explícito porque Nginx sólo escucha IPv4 y el `wget` de BusyBox no reintenta si `localhost` resuelve primero a `::1`).
+6. Se conservó el objetivo `up` del `Makefile` para desarrollo (`db` y `backend` en contenedores, frontend nativo con HMR) y se agregó **`up-full`**: stack completo en contenedores (`docker compose up -d --build`). Son dos modos con propósitos distintos, no uno que reemplaza al otro.
 
-#### Plan de pago
-1. Agregar `frontend/Dockerfile` con construcción en dos etapas: `pnpm build` en una imagen de Node, y el resultado servido por Nginx o Caddy.
-2. Configurar el servidor para devolver `index.html` ante cualquier ruta desconocida; sin eso, refrescar la página en una ruta del cliente responde 404.
-3. Agregar el servicio `frontend` a `compose.yml`, dependiente de `backend`, y externalizar la URL de la API por variable de entorno en tiempo de construcción.
-4. Conservar el objetivo `up` del `Makefile` para desarrollo: son dos modos con propósitos distintos, no uno que reemplaza al otro.
-5. Verificar la imagen ejecutándola, no leyéndola: iniciar sesión, navegar, refrescar sobre una ruta profunda.
+#### Verificación
+Se levantó el sistema con `docker compose up -d --build` desde cero. Los tres servicios quedaron arriba (`backend` healthy, `db`, `frontend` healthy). `GET http://localhost:8081/` respondió `200`; `GET http://localhost:8081/inventory` (ruta profunda del cliente) respondió `200` devolviendo `index.html`; `POST http://localhost:8081/api/auth/login` con un usuario semilla respondió `200` con un JWT válido. Esta última prueba ejercita la cadena completa navegador → Nginx → proxy `/api` → backend → PostgreSQL, dentro de Compose, con un solo comando.
 
 #### Referencias
-Sección 5 del enunciado (`docs/prueba_tecnica_inventario.md`) · `compose.yml` · `Makefile`
+Sección 5 del enunciado (`docs/prueba_tecnica_inventario.md`) · `compose.yml` · `Makefile` · `frontend/Dockerfile` · `frontend/nginx/default.conf.template`
 
 ---
 
