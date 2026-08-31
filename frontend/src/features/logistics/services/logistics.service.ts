@@ -40,6 +40,9 @@ export const logisticsService = {
       if (validatedParams.active !== undefined) {
         searchParams.set('active', String(validatedParams.active))
       }
+      if (validatedParams.sort !== undefined) {
+        searchParams.set('sort', validatedParams.sort)
+      }
       if (validatedParams.page !== undefined) {
         searchParams.set('page', String(validatedParams.page))
       }

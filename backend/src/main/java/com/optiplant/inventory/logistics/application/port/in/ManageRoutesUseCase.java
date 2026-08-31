@@ -2,6 +2,7 @@ package com.optiplant.inventory.logistics.application.port.in;
 
 import com.optiplant.inventory.logistics.domain.model.RoutePage;
 import com.optiplant.inventory.logistics.domain.model.RoutePriority;
+import com.optiplant.inventory.logistics.domain.model.RouteSort;
 import com.optiplant.inventory.logistics.domain.model.RouteSummary;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import java.math.BigDecimal;
@@ -38,6 +39,6 @@ public interface ManageRoutesUseCase {
 			RoutePriority priorityLevel) {
 	}
 
-	record RouteListQuery(Boolean active, int page, int size) {
+	record RouteListQuery(Boolean active, RouteSort sort, int page, int size) {
 	}
 }

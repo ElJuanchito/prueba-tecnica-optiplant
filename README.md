@@ -23,7 +23,7 @@ Sistema para que varias sucursales de una organización gestionen su inventario 
 | Backend — los diez módulos de negocio | ✅ Completo — 573 clases, 94 endpoints |
 | Backend — pruebas | ✅ Completo — 85 clases `*Test` y 51 `*IT` con Testcontainers |
 | Frontend (SPA) | ✅ Completo — 11 módulos, 13 rutas |
-| `compose.yml` | ◐ Parcial — contenedoriza `db` y `backend`; el frontend corre nativo con `make up` |
+| `compose.yml` | ✅ Completo — contenedoriza `db`, `backend` y `frontend` |
 
 **Por qué se declara así.** Un README que prometa más de lo que arranca se desmiente en diez segundos. Cada ✅ de esta tabla corresponde a algo que se ejecutó, y la sección [Ejecución](#ejecución) dice con qué comando reproducirlo.
 
@@ -47,17 +47,17 @@ Desde la raíz del repositorio, sin configuración previa:
 docker compose up
 ```
 
-Levanta dos servicios: `db` (PostgreSQL 17, con el esquema y las semillas de `backend/init-db/`) y `backend` (Java 25 + Spring Boot 4.1).
+Levanta los tres servicios: `db` (PostgreSQL 17, con el esquema y las semillas de `backend/init-db/`), `backend` (Java 25 + Spring Boot 4.1) y `frontend` (la SPA compilada, servida por Nginx). La interfaz queda en `http://localhost:8081` (`FRONTEND_PORT`, por defecto `8081`: el backend ya ocupa el 8080 del anfitrión).
 
-**El frontend no está contenedorizado.** Para levantar el sistema completo:
+**Para desarrollo del frontend**, con recarga en caliente:
 
 ```bash
-make up    # db y backend en contenedores; frontend nativo con recarga en caliente
+make up    # db y backend en contenedores; frontend nativo con Vite (HMR)
 ```
 
-`make help` lista los demás objetivos. La SPA queda fuera del Compose a propósito durante el desarrollo: servirla desde un contenedor obliga a reconstruir la imagen en cada cambio y se pierde la recarga en caliente de Vite. Para un despliegue real corresponde agregarle su `Dockerfile` de construcción estática y su servicio en el Compose: está registrado como `DT-15`.
+Servir la SPA desde un contenedor obliga a reconstruir la imagen en cada cambio de código y pierde la recarga en caliente de Vite, así que durante el trabajo de interfaz `make up` sigue siendo el modo correcto: son dos caminos con propósitos distintos, no uno que reemplaza al otro. `docker compose up` reproduce el stack completo tal como se despliega; `make up` optimiza la iteración local. `make help` lista los demás objetivos.
 
-> **Sobre el nombre del archivo.** El enunciado pide un `docker-compose.yml`; este repositorio entrega un **`compose.yml`**. Desde Compose V2 ese es el nombre canónico que la herramienta busca primero, y `docker-compose.yml` se conserva únicamente por compatibilidad con la V1. El entregable real es que un solo comando levante la solución, y `docker compose up` funciona igual con cualquiera de los dos nombres —con la salvedad del frontend, que hoy corre fuera del Compose (`DT-15`). La divergencia se declara acá en lugar de dejarla implícita.
+> **Sobre el nombre del archivo.** El enunciado pide un `docker-compose.yml`; este repositorio entrega un **`compose.yml`**. Desde Compose V2 ese es el nombre canónico que la herramienta busca primero, y `docker-compose.yml` se conserva únicamente por compatibilidad con la V1. El entregable real es que un solo comando levante la solución, y `docker compose up` funciona igual con cualquiera de los dos nombres. La divergencia se declara acá en lugar de dejarla implícita.
 
 Cuando el backend queda `healthy`:
 
@@ -152,7 +152,10 @@ No ejecuta migraciones. Flyway está **declarado y explícitamente desactivado**
 │   └── init-db/               Esquema y datos semilla de PostgreSQL
 │       ├── 01-init-schema.sql   21 tablas, restricciones e índices
 │       └── 02-seed-data.sql     Datos de demostración
-├── frontend/                  (pendiente)
+├── frontend/                  React 19 + Vite + TypeScript
+│   ├── Dockerfile              Multi-etapa: Node + pnpm construye, Nginx sirve los estáticos
+│   ├── nginx/default.conf.template   Proxy `/api`, ruteo de la SPA y caché diferenciada
+│   └── src/                    Código de la SPA
 ├── docs/                      Documentación de ingeniería
 │   ├── especificacion_requerimientos.md
 │   ├── casos_de_uso.md

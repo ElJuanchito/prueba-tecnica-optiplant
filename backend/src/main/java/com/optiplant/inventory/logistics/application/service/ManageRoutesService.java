@@ -66,7 +66,7 @@ public class ManageRoutesService implements ManageRoutesUseCase {
 	@Override
 	@Transactional(readOnly = true)
 	public RoutePage list(AuthenticatedPrincipal actor, RouteListQuery query) {
-		return routeRepository.list(new RouteFilter(query.active(), query.page(), query.size()));
+		return routeRepository.list(new RouteFilter(query.active(), query.sort(), query.page(), query.size()));
 	}
 
 	private LogisticsRoute findOrThrow(UUID routeExternalId) {

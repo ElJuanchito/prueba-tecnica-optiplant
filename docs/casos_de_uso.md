@@ -287,7 +287,7 @@ El modelado visual se descompone en **un diagrama por módulo** en lugar de un �
 | [`diagrams/casos_de_uso_06_logistica.excalidraw`](./diagrams/casos_de_uso_06_logistica.excalidraw) | Módulo de Logística y Tiempos de Envío (CU-LOG-01 … CU-LOG-03). |
 | [`diagrams/casos_de_uso_07_dashboard.excalidraw`](./diagrams/casos_de_uso_07_dashboard.excalidraw) | Módulo de Dashboard y Análisis Visual (CU-DSH-01 … CU-DSH-03). |
 | [`diagrams/casos_de_uso_08_alertas_integracion.excalidraw`](./diagrams/casos_de_uso_08_alertas_integracion.excalidraw) | Módulos de Alertas Inteligentes e Integración Externa (CU-ALE-01 … CU-EXT-02). |
-| [`diagrams/casos_de_uso.puml`](./diagrams/casos_de_uso.puml) | Notación UML estricta con los 37 casos de uso y todas sus relaciones `«include»` / `«extend»` en una sola vista. |
+| [`diagrams/casos_de_uso.puml`](./diagrams/casos_de_uso.puml) | Notación UML estricta con los 39 casos de uso y todas sus relaciones `«include»` / `«extend»` en una sola vista. |
 
 > Los archivos `.excalidraw` se abren arrastrándolos sobre [excalidraw.com](https://excalidraw.com) o mediante la extensión de Excalidraw para VS Code.
 

@@ -16,6 +16,7 @@ import com.optiplant.inventory.logistics.domain.model.CompliancePage;
 import com.optiplant.inventory.logistics.domain.model.ComplianceRow;
 import com.optiplant.inventory.logistics.domain.model.RoutePage;
 import com.optiplant.inventory.logistics.domain.model.RoutePriority;
+import com.optiplant.inventory.logistics.domain.model.RouteSort;
 import com.optiplant.inventory.logistics.domain.model.RouteSummary;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import com.optiplant.inventory.shared.security.PrincipalAccessor;
@@ -72,11 +73,20 @@ public class LogisticsController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(toRouteResponse(created));
 	}
 
+	/**
+	 * {@code sort} defaults to {@code priority_desc} when absent (RF-LOG-03): the operational
+	 * dashboard this list feeds is dispatch-oriented, so the most urgent routes surfacing first
+	 * is the more useful default than an unspecified natural order. An unrecognized token is
+	 * rejected by {@link RouteSort#parse(String)} as {@code 400 invalid_request}
+	 * ({@code LogisticsExceptionHandler#onIllegalArgument}), never silently ignored.
+	 */
 	@GetMapping("/routes")
 	public RoutePageResponse listRoutes(@RequestParam(required = false) Boolean active,
+			@RequestParam(required = false, defaultValue = "priority_desc") String sort,
 			@RequestParam(defaultValue = "0") int page, @RequestParam(required = false) Integer size) {
 		AuthenticatedPrincipal actor = principalAccessor.require();
-		RoutePage result = manageRoutesUseCase.list(actor, new RouteListQuery(active, Math.max(page, 0), resolveSize(size)));
+		RoutePage result = manageRoutesUseCase.list(actor,
+				new RouteListQuery(active, RouteSort.parse(sort), Math.max(page, 0), resolveSize(size)));
 		List<RouteResponse> content = result.content().stream().map(LogisticsController::toRouteResponse).toList();
 		return new RoutePageResponse(content, result.totalElements(), result.page(), result.size());
 	}

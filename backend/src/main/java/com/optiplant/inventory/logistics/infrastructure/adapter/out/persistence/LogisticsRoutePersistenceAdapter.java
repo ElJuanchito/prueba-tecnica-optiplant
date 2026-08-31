@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 /**
@@ -79,8 +80,14 @@ public class LogisticsRoutePersistenceAdapter implements LogisticsRouteRepositor
 
 	@Override
 	public RoutePage list(RouteFilter filter) {
-		Page<LogisticsRouteJpaEntity> page = routeRepository.search(filter.activeOnly(),
-				PageRequest.of(filter.page(), filter.size()));
+		Page<LogisticsRouteJpaEntity> page = switch (filter.sort()) {
+			case COST_ASC -> routeRepository.search(filter.activeOnly(),
+					PageRequest.of(filter.page(), filter.size(), Sort.by(Sort.Direction.ASC, "transportCost")));
+			case DURATION_ASC -> routeRepository.search(filter.activeOnly(),
+					PageRequest.of(filter.page(), filter.size(), Sort.by(Sort.Direction.ASC, "estimatedDurationHours")));
+			case PRIORITY_DESC -> routeRepository.searchOrderByPriorityRank(filter.activeOnly(),
+					PageRequest.of(filter.page(), filter.size()));
+		};
 
 		Set<Long> branchIds = new HashSet<>();
 		for (LogisticsRouteJpaEntity entity : page.getContent()) {

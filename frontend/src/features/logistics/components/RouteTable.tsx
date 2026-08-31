@@ -19,10 +19,18 @@ import {
 } from '@/components/ui/table.tsx'
 import { useDeactivateRoute, useRoutes } from '../hooks/use-logistics.ts'
 import { RouteFormDialog } from './RouteFormDialog.tsx'
-import type { RouteQueryParams, RouteResponse } from '../types/route.types.ts'
+import { ROUTE_SORT } from '../schemas/route.schema.ts'
+import type {
+  RouteQueryParams,
+  RouteResponse,
+  RouteSortOption,
+} from '../types/route.types.ts'
 import { useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
+  ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -34,15 +42,40 @@ import {
   Route as RouteIcon,
 } from 'lucide-react'
 
+// Each RouteSortOption fixes both a field and a direction (RF-LOG-03) — there is
+// no ASC/DESC toggle, so clicking a header selects that fixed criterion rather
+// than flipping direction, unlike CorporateBoardView's free field/direction sort.
+function renderSortIndicator(
+  criterion: RouteSortOption,
+  activeSort: RouteSortOption,
+) {
+  if (activeSort !== criterion) {
+    return (
+      <ArrowUpDown className="h-3 w-3 ml-1 text-slate-300 group-hover:text-slate-500 inline" />
+    )
+  }
+  return criterion === ROUTE_SORT.PRIORITY_DESC ? (
+    <ArrowDown className="h-3.5 w-3.5 ml-1 text-indigo-600 inline" />
+  ) : (
+    <ArrowUp className="h-3.5 w-3.5 ml-1 text-indigo-600 inline" />
+  )
+}
+
 export function RouteTable() {
   const { t } = useTranslation()
   const [activeFilter, setActiveFilter] = React.useState<string>('ALL')
+  // Mirrors the backend's default (LogisticsController#listRoutes): the most
+  // urgent routes surface first when no explicit sort has been chosen yet.
+  const [sort, setSort] = React.useState<RouteSortOption>(
+    ROUTE_SORT.PRIORITY_DESC,
+  )
   const [page, setPage] = React.useState<number>(0)
   const pageSize = 10
 
   const queryParams: RouteQueryParams = {
     page,
     size: pageSize,
+    sort,
     active:
       activeFilter === 'ACTIVE'
         ? true
@@ -53,6 +86,11 @@ export function RouteTable() {
 
   const routesQuery = useRoutes(queryParams)
   const deactivateMutation = useDeactivateRoute()
+
+  const handleSort = (criterion: RouteSortOption) => {
+    setSort(criterion)
+    setPage(0)
+  }
 
   const [routeToEdit, setRouteToEdit] = React.useState<RouteResponse | null>(
     null,
@@ -149,14 +187,26 @@ export function RouteTable() {
                 {t('logistics.routes.origin')} →{' '}
                 {t('logistics.routes.destination')}
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700">
+              <TableHead
+                onClick={() => handleSort(ROUTE_SORT.DURATION_ASC)}
+                className="text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-100/80 select-none group"
+              >
                 {t('logistics.routes.durationHours')}
+                {renderSortIndicator(ROUTE_SORT.DURATION_ASC, sort)}
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700">
+              <TableHead
+                onClick={() => handleSort(ROUTE_SORT.COST_ASC)}
+                className="text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-100/80 select-none group"
+              >
                 {t('logistics.routes.cost')}
+                {renderSortIndicator(ROUTE_SORT.COST_ASC, sort)}
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700">
+              <TableHead
+                onClick={() => handleSort(ROUTE_SORT.PRIORITY_DESC)}
+                className="text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-100/80 select-none group"
+              >
                 {t('logistics.routes.priority')}
+                {renderSortIndicator(ROUTE_SORT.PRIORITY_DESC, sort)}
               </TableHead>
               <TableHead className="text-xs font-bold text-slate-700">
                 {t('logistics.routes.status')}
