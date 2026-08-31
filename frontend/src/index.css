@@ -68,3 +68,37 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-purchase-order,
+  #printable-purchase-order * {
+    visibility: visible;
+  }
+
+  #printable-purchase-order {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    display: block !important;
+    box-shadow: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

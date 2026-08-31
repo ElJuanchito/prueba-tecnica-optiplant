@@ -20,6 +20,14 @@ describe('RBAC Permissions Matrix', () => {
       expect(Permissions.canAccessCustomers(role)).toBe(true)
       expect(Permissions.canManageCustomers(role)).toBe(true)
       expect(Permissions.canDeactivateCustomers(role)).toBe(true)
+      expect(Permissions.canAccessPurchases(role)).toBe(true)
+      expect(Permissions.canCreatePurchaseOrder(role, true)).toBe(true)
+      expect(Permissions.canCreatePurchaseOrder(role, false)).toBe(false)
+      expect(Permissions.canApprovePurchaseOrder(role)).toBe(true)
+      expect(Permissions.canCancelPurchaseOrder(role)).toBe(true)
+      expect(Permissions.canReceivePurchaseOrder(role, true)).toBe(true)
+      expect(Permissions.canReceivePurchaseOrder(role, false)).toBe(false)
+      expect(Permissions.canManageSuppliers(role)).toBe(true)
       expect(Permissions.getDefaultRoute(role)).toBe('/')
     })
   })
@@ -42,6 +50,12 @@ describe('RBAC Permissions Matrix', () => {
       expect(Permissions.canAccessCustomers(role)).toBe(true)
       expect(Permissions.canManageCustomers(role)).toBe(true) // Create & Edit
       expect(Permissions.canDeactivateCustomers(role)).toBe(false) // ADMIN only
+      expect(Permissions.canAccessPurchases(role)).toBe(true)
+      expect(Permissions.canCreatePurchaseOrder(role)).toBe(true)
+      expect(Permissions.canApprovePurchaseOrder(role)).toBe(true)
+      expect(Permissions.canCancelPurchaseOrder(role)).toBe(true)
+      expect(Permissions.canReceivePurchaseOrder(role)).toBe(true)
+      expect(Permissions.canManageSuppliers(role)).toBe(false) // ADMIN only
       expect(Permissions.getDefaultRoute(role)).toBe('/inventory')
     })
   })
@@ -64,6 +78,12 @@ describe('RBAC Permissions Matrix', () => {
       expect(Permissions.canAccessCustomers(role)).toBe(true)
       expect(Permissions.canManageCustomers(role)).toBe(true) // Create & Edit at counter
       expect(Permissions.canDeactivateCustomers(role)).toBe(false) // ADMIN only
+      expect(Permissions.canAccessPurchases(role)).toBe(true)
+      expect(Permissions.canCreatePurchaseOrder(role)).toBe(true)
+      expect(Permissions.canApprovePurchaseOrder(role)).toBe(false) // Manager/Admin only
+      expect(Permissions.canCancelPurchaseOrder(role)).toBe(false) // Manager/Admin only
+      expect(Permissions.canReceivePurchaseOrder(role)).toBe(true)
+      expect(Permissions.canManageSuppliers(role)).toBe(false) // ADMIN only
       expect(Permissions.getDefaultRoute(role)).toBe('/inventory')
     })
   })
