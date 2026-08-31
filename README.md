@@ -138,11 +138,12 @@ No ejecuta migraciones. Flyway está **declarado y explícitamente desactivado**
 .
 ├── README.md                  Este documento
 ├── prueba_tecnica_inventario.md   Enunciado original de la prueba
-├── compose.yml                Servicios db y backend
-├── .env.example               Plantilla de configuración; ningún secreto real
+├── compose.yml                Servicios db, backend y frontend
+├── .env.example               Plantilla de configuración de Compose; ningún secreto real
 ├── backend/
 │   ├── pom.xml                Java 25, Spring Boot 4.1
 │   ├── mvnw                   Wrapper de Maven versionado
+│   ├── .env.example          Plantilla para el arranque nativo; Compose no la lee
 │   ├── Dockerfile             Multi-etapa: JDK 25 construye, JRE 25 ejecuta
 │   ├── src/main/java/com/optiplant/inventory/
 │   │   ├── InventoryApplication.java   Clase de arranque
@@ -154,6 +155,7 @@ No ejecuta migraciones. Flyway está **declarado y explícitamente desactivado**
 │       ├── 01-init-schema.sql   21 tablas, restricciones e índices
 │       └── 02-seed-data.sql     Datos de demostración
 ├── frontend/                  React 19 + Vite + TypeScript
+│   ├── .env.example           Plantilla; sólo el proxy dev de Vite
 │   ├── Dockerfile              Multi-etapa: Node + pnpm construye, Nginx sirve los estáticos
 │   ├── nginx/default.conf.template   Proxy `/api`, ruteo de la SPA y caché diferenciada
 │   └── src/                    Código de la SPA
