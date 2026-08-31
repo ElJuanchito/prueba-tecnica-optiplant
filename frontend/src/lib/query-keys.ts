@@ -178,4 +178,19 @@ export const queryKeys = {
         [...queryKeys.purchases.costHistory.all, 'list', filters] as const,
     },
   },
+  analytics: {
+    all: ['analytics'] as const,
+    salesTrend: (params: Record<string, unknown>) =>
+      [...queryKeys.analytics.all, 'salesTrend', params] as const,
+    rotation: (params: Record<string, unknown>) =>
+      [...queryKeys.analytics.all, 'rotation', params] as const,
+    transfersSummary: (params: Record<string, unknown>) =>
+      [...queryKeys.analytics.all, 'transfersSummary', params] as const,
+    transfersImpact: (params: Record<string, unknown>) =>
+      [...queryKeys.analytics.all, 'transfersImpact', params] as const,
+    replenishment: (params: Record<string, unknown>) =>
+      [...queryKeys.analytics.all, 'replenishment', params] as const,
+    corporateBoard: (params: Record<string, unknown>) =>
+      [...queryKeys.analytics.all, 'corporateBoard', params] as const,
+  },
 } as const

@@ -9,6 +9,7 @@ import { LanguageSwitcher, useTranslation } from '@/lib/i18n/i18n-context.tsx'
 import {
   ArrowLeftRight,
   BadgePercent,
+  BarChart3,
   BellRing,
   Boxes,
   ChevronLeft,
@@ -38,6 +39,7 @@ interface AppLayoutProps {
     | 'pricing'
     | 'customers'
     | 'purchases'
+    | 'analytics'
     | undefined
   onLogout?: (() => void) | undefined
 }
@@ -211,6 +213,17 @@ export function AppLayout({
       badge: null,
       color: 'text-rose-600 group-hover:text-rose-700',
       activeBg: 'bg-rose-50 text-rose-900 border-rose-200',
+    },
+    {
+      id: 'analytics',
+      label: t('nav.analytics'),
+      shortLabel: 'Analytics',
+      path: '/analytics',
+      icon: BarChart3,
+      visible: Permissions.canAccessAnalytics(role),
+      badge: isAdmin ? 'Corporate' : 'Branch',
+      color: 'text-purple-600 group-hover:text-purple-700',
+      activeBg: 'bg-purple-50 text-purple-900 border-purple-200',
     },
   ].filter((item) => item.visible)
 

@@ -102,6 +102,11 @@ export const Permissions = {
 
   canManageSuppliers: (role?: UserRole): boolean => role === 'ADMIN',
 
+  canAccessAnalytics: (role?: UserRole): boolean =>
+    role === 'ADMIN' || role === 'BRANCH_MANAGER' || role === 'OPERATOR',
+
+  canAccessCorporateAnalytics: (role?: UserRole): boolean => role === 'ADMIN',
+
   getDefaultRoute: (role?: UserRole): string => {
     switch (role) {
       case 'OPERATOR':
