@@ -47,8 +47,8 @@ Al agregar un requerimiento hay que agregar también su caso de uso y su fila en
 | :--- | :--- |
 | Requerimientos, reglas de negocio `RN-xx`, alcance excluido | `docs/especificacion_requerimientos.md` |
 | Justificación de una decisión técnica | `docs/decisiones_arquitectura_tecnica.md` |
-| Trabajo postergado y su plan de pago | `docs/deuda_tecnica.md` |
-| Modelo de datos | `docs/diagrama_er.md` + `backend/init-db/01-init-schema.sql` |
+| Trabajo postergado y su plan de pago | `docs/decisiones_arquitectura_tecnica.md` (sección 7) |
+| Modelo de datos | `docs/modelado_sistema.md` (sección 4) + `backend/init-db/01-init-schema.sql` |
 
 ## Backend
 
@@ -64,7 +64,7 @@ Los diez módulos y sus responsabilidades están en la sección 2.4 del document
 | **Las pruebas que necesitan Docker terminan en `IT`**, no en `Test` | `*Test` corre en `package` (surefire) y `*IT` en `verify` (failsafe). Con Data JPA en el classpath, un `@SpringBootTest` sin base no levanta contexto: si esa prueba corriera en `package`, la construcción de la imagen exigiría un demonio Docker. |
 | Las reglas de ArchUnit llevan **`allowEmptyShould(true)`** | Mientras los paquetes de módulo no existan, las reglas no encuentran clases que evaluar y ArchUnit falla ante un conjunto vacío por defecto. El vacío es el estado legítimo del proyecto, no un error de la regla. Cada módulo que aparezca entra automáticamente bajo esas comprobaciones. |
 | `shared/` será **módulo abierto** y debe ser **hoja** | Ningún módulo puede aparecer en sus importaciones, o el desacoplamiento por puertos se rompe por la puerta de atrás. Hay una regla de ArchUnit que lo verifica. |
-| **No agregar Flyway junto a `backend/init-db/`** | La dependencia está declarada y `spring.flyway.enabled` en `false`. El volumen ya inicializado hace que Flyway encuentre tablas que no creó y falle; `baseline-on-migrate` no lo resuelve, solo le pide ignorar un estado que no comprende. La migración es sustitución, no coexistencia — el procedimiento está en `DT-01` de `docs/deuda_tecnica.md`. |
+| **No agregar Flyway junto a `backend/init-db/`** | La dependencia está declarada y `spring.flyway.enabled` en `false`. El volumen ya inicializado hace que Flyway encuentre tablas que no creó y falle; `baseline-on-migrate` no lo resuelve, solo le pide ignorar un estado que no comprende. La migración es sustitución, no coexistencia — el procedimiento está en `DT-01` de `docs/decisiones_arquitectura_tecnica.md` (sección 7). |
 
 ### Spring Boot 4 no es Spring Boot 3
 

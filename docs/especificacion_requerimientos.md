@@ -122,7 +122,7 @@ Los requerimientos funcionales se encuentran organizados por módulos de dominio
 | **RF-VEN-05** | Anulación de Venta | El sistema debe permitir anular una venta confirmada, reintegrando el stock a la sucursal mediante un movimiento de reversión en el Kardex, sin eliminar el movimiento original. |
 | **RF-VEN-06** | Gestión de Clientes | El sistema debe permitir registrar, editar, deshabilitar y consultar clientes con sus datos de contacto e identificación tributaria, asociarlos opcionalmente a las ventas comerciales y consultar su histórico de compras. |
 
-> **Soporte de modelo de datos (RF-VEN-03):** resuelto en la versión 1.2. El modelo incorpora `price_lists` (lista con su tope de descuento) y `price_list_items` (precio por producto, con excepción opcional por sucursal y vigencia acotada por `valid_from` / `valid_to`). La venta registra la lista aplicada y cada ítem congela el precio de lista del momento, haciendo auditable el descuento. Ver [`diagrama_er.md`](./diagrama_er.md), sección 1.1.
+> **Soporte de modelo de datos (RF-VEN-03):** resuelto en la versión 1.2. El modelo incorpora `price_lists` (lista con su tope de descuento) y `price_list_items` (precio por producto, con excepción opcional por sucursal y vigencia acotada por `valid_from` / `valid_to`). La venta registra la lista aplicada y cada ítem congela el precio de lista del momento, haciendo auditable el descuento. Ver [`modelado_sistema.md`](./modelado_sistema.md), sección 4.2.
 
 ### 3.5. Módulo 4: Transferencias entre Sucursales
 
@@ -322,14 +322,14 @@ La trazabilidad del sistema se sostiene sobre tres documentos encadenados, de mo
 | Requerimiento funcional (RF) | Caso de uso (CU) | [`casos_de_uso.md`](./casos_de_uso.md) — sección 6, matriz de trazabilidad |
 | Caso de uso (CU) | Historia de usuario (HU) y criterios de aceptación | [`historias_de_usuario.md`](./historias_de_usuario.md) |
 | Requerimiento no funcional (RNF) | Decisión de arquitectura justificada | [`decisiones_arquitectura_tecnica.md`](./decisiones_arquitectura_tecnica.md) |
-| Regla de negocio (RN) | Restricción declarativa en el esquema | [`diagrama_er.md`](./diagrama_er.md) |
-| Decisión de postergar trabajo | Ítem con plan de pago y disparador | [`deuda_tecnica.md`](./deuda_tecnica.md) |
+| Regla de negocio (RN) | Restricción declarativa en el esquema | [`modelado_sistema.md`](./modelado_sistema.md) — sección 4, modelo E-R |
+| Decisión de postergar trabajo | Ítem con plan de pago y disparador | [`decisiones_arquitectura_tecnica.md`](./decisiones_arquitectura_tecnica.md) — sección 7, deuda técnica |
 
 ---
 
 ## 9. Asuntos Abiertos (*Open Issues*)
 
-Las decisiones de postergar trabajo y las limitaciones conocidas del diseño se registran en [`deuda_tecnica.md`](./deuda_tecnica.md). Esta sección conserva únicamente los asuntos originados en el levantamiento de requerimientos.
+Las decisiones de postergar trabajo y las limitaciones conocidas del diseño se registran en [`decisiones_arquitectura_tecnica.md`](./decisiones_arquitectura_tecnica.md), sección 7. Esta sección conserva únicamente los asuntos originados en el levantamiento de requerimientos.
 
 | ID | Asunto | Impacto | Estado |
 | :--- | :--- | :--- | :--- |

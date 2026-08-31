@@ -65,7 +65,7 @@ rules:
     guidelines:
       - Follow existing code patterns
       - No new class directly under a base package subfolder unless it is a real business module (see CLAUDE.md)
-      - Do not add Flyway migrations alongside backend/init-db (see DT-01 in docs/deuda_tecnica.md)
+      - Do not add Flyway migrations alongside backend/init-db (see DT-01 in docs/decisiones_arquitectura_tecnica.md section 7)
     tdd: false
     test_command: "cd backend && ./mvnw verify"
   verify:

@@ -22,7 +22,7 @@ DOCS = os.path.join(RAIZ, "docs")
 
 SRS = "especificacion_requerimientos.md"
 CASOS = "casos_de_uso.md"
-DEUDA = "deuda_tecnica.md"
+DEUDA = "decisiones_arquitectura_tecnica.md"  # el registro de deuda vive en su sección 7
 
 PATRON_ID = r"\b(?:RF|RNF|RN)-[A-Z]*-?\d+\b"
 PATRON_DEF = r"\*\*((?:RF|RNF|RN)-[A-Z]*-?\d+)"
