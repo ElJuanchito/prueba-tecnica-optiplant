@@ -282,7 +282,7 @@ El modelado visual se descompone en **un diagrama por módulo** en lugar de un �
 | [`diagrams/casos_de_uso_01_seguridad.excalidraw`](./diagrams/casos_de_uso_01_seguridad.excalidraw) | Módulo de Seguridad e Identidad (CU-SEG-01 … CU-SEG-04). |
 | [`diagrams/casos_de_uso_02_inventario.excalidraw`](./diagrams/casos_de_uso_02_inventario.excalidraw) | Módulo de Inventario y Catálogo (CU-INV-01 … CU-INV-08). |
 | [`diagrams/casos_de_uso_03_compras.excalidraw`](./diagrams/casos_de_uso_03_compras.excalidraw) | Módulo de Compras y Reabastecimiento (CU-COM-01 … CU-COM-05). |
-| [`diagrams/casos_de_uso_04_ventas.excalidraw`](./diagrams/casos_de_uso_04_ventas.excalidraw) | Módulo de Ventas y Salidas Comerciales (CU-VEN-01 … CU-VEN-04). |
+| [`diagrams/casos_de_uso_04_ventas.excalidraw`](./diagrams/casos_de_uso_04_ventas.excalidraw) | Módulo de Ventas y Salidas Comerciales (CU-VEN-01 … CU-VEN-06). |
 | [`diagrams/casos_de_uso_05_transferencias.excalidraw`](./diagrams/casos_de_uso_05_transferencias.excalidraw) | Módulo de Transferencias con su máquina de estados completa (CU-TRA-01 … CU-TRA-06). |
 | [`diagrams/casos_de_uso_06_logistica.excalidraw`](./diagrams/casos_de_uso_06_logistica.excalidraw) | Módulo de Logística y Tiempos de Envío (CU-LOG-01 … CU-LOG-03). |
 | [`diagrams/casos_de_uso_07_dashboard.excalidraw`](./diagrams/casos_de_uso_07_dashboard.excalidraw) | Módulo de Dashboard y Análisis Visual (CU-DSH-01 … CU-DSH-03). |
