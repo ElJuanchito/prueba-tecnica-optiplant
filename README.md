@@ -225,18 +225,31 @@ Las siete que más condicionan el sistema. Cada una está justificada en extenso
 
 ---
 
+## Funcionalidad Adicional (§4) — Alertas Inteligentes y Auditoría
+
+La §4 del enunciado exige que el candidato proponga e implemente al menos una funcionalidad adicional. Este proyecto responde con dos de las seis ideas orientadoras de esa sección: el **sistema de alertas inteligentes**, que la propia tabla del enunciado califica de «alto valor operativo», y la **auditoría y trazabilidad**, que califica de «esencial para cumplimiento».
+
+El motor de alertas emite tres tipos de eventos operativos. `STOCK_MINIMUM` se calcula en `AlertRaisingPolicy` (`inventory/domain/service`) cada vez que un movimiento deja el stock de un producto en o por debajo de su umbral mínimo. `LOGISTIC_DELAY` lo detecta un planificador de `logistics` (`TransferDelayScheduler`) que corre en un cron configurable, por defecto cada 15 minutos. `TRANSFER_DISCREPANCY` se emite desde la recepción de transferencias cuando la cantidad recibida no coincide con la despachada. Los tres pasan por la misma deduplicación: `AlertDedupKey` (`notifications/domain/model`) evita que la misma alerta sin resolver se duplique en cada ciclo de detección. La API expone consulta y resolución de alertas, y el frontend tiene un centro de alertas dedicado (`AlertCenter`).
+
+La alerta nace de un evento de dominio (`OperationalAlertRaised`) publicado **después del commit**: `OperationalAlertListener` lo procesa con `@TransactionalEventListener(phase = AFTER_COMMIT)`, en su propia transacción y envuelto en un `try/catch` que registra el fallo sin propagarlo. Si emitir la alerta falla, la operación que la originó —descontar stock, recibir una transferencia— ya quedó confirmada y no se revierte. Esa decisión es la que separa una notificación de un acoplamiento peligroso.
+
+La auditoría se resuelve al revés, y a propósito: el registro de auditoría se escribe en la misma transacción que la mutación que audita —por ejemplo, `RECEIVE_TRANSFER` se graba antes de que el método de recepción retorne, no después del commit—. Una mutación sin su registro de auditoría no debe persistir, así que ahí no hay lugar para la tolerancia a fallos que sí tienen las alertas. El contraste es deliberado: no todo efecto secundario se resuelve igual, y cuál de los dos caminos toma cada uno depende de si su fallo puede convivir con una operación ya confirmada.
+
+---
+
 ## Documentación
 
 | Documento | Contenido | Sección del enunciado |
 | :--- | :--- | :--- |
+| [Funcionalidad adicional — alertas inteligentes y auditoría](#funcionalidad-adicional-4--alertas-inteligentes-y-auditoría) | Motor de alertas con deduplicación, eventos post-commit y auditoría síncrona | 4 |
 | [Especificación de requerimientos](docs/especificacion_requerimientos.md) | 43 RF, 34 RNF, 17 reglas de negocio, restricciones, supuestos, glosario y alcance excluido | 6.1 |
-| [Casos de uso](docs/casos_de_uso.md) | 5 actores, matriz RBAC, 37 casos de uso, 7 especificaciones extendidas, matriz de trazabilidad | 6.2 |
+| [Casos de uso](docs/casos_de_uso.md) | 5 actores, matriz RBAC, 39 casos de uso, 7 especificaciones extendidas, matriz de trazabilidad | 6.2 |
 | [Historias de usuario](docs/historias_de_usuario.md) | 31 historias en 8 épicas con criterios de aceptación en Gherkin, MoSCoW y definición de terminado | 6.3 |
 | [Modelado del sistema](docs/modelado_sistema.md) | Índice de los diagramas obligatorios, flujos de actividad y vistas de arquitectura | 7.1 |
 | [Diagrama entidad-relación](docs/diagrama_er.md) | Modelo de datos completo en Mermaid, PlantUML y Excalidraw | 7.1 |
 | [Decisiones de arquitectura](docs/decisiones_arquitectura_tecnica.md) | Separación de responsabilidades y las decisiones técnicas justificadas | 8.1 y 8.2 |
 | [Uso de inteligencia artificial](docs/uso_de_ia.md) | Herramientas, prompts reales, evaluación crítica y estimación de asistencia | 9 |
-| [Deuda técnica](docs/deuda_tecnica.md) | 6 ítems con plan de pago y condición que lo dispara | — |
+| [Deuda técnica](docs/deuda_tecnica.md) | 15 ítems con plan de pago y condición que lo dispara | — |
 
 ### Diagramas
 
@@ -258,7 +271,7 @@ Toda afirmación de verificación de este proyecto es reproducible. Los dos scri
 
 | Script | Comprueba | Salida esperada |
 | :--- | :--- | :--- |
-| `validar_trazabilidad.py` | Que todo identificador citado exista, que todo requerimiento tenga caso de uso, que todo caso de uso tenga requerimiento, que toda deuda tenga ficha y que ningún enlace esté roto | `43 RF · 34 RNF · 17 RN · 39 CU · 14 DT` |
+| `validar_trazabilidad.py` | Que todo identificador citado exista, que todo requerimiento tenga caso de uso, que todo caso de uso tenga requerimiento, que toda deuda tenga ficha y que ningún enlace esté roto | `43 RF · 34 RNF · 17 RN · 39 CU · 15 DT` |
 | `validar_esquema.sh` | 34 invariantes de negocio contra PostgreSQL 17 real | `34 comprobaciones correctas` |
 | `cd backend && ./mvnw verify` | Las fronteras de arquitectura con ArchUnit, las pruebas unitarias de dominio y las de integración con Testcontainers | `BUILD SUCCESS` |
 

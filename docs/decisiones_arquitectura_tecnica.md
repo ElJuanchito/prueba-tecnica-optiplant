@@ -66,7 +66,7 @@ Definir qué hace cada capa importa; definir qué **no** hace importa más, porq
                                          ▼
 +-----------------------------------------------------------------------------------+
 |                    DATOS — servicio  db  (PostgreSQL 17)                          |
-|     19 tablas · Kardex append-only · bloqueo pesimista · CHECK como red de fondo   |
+|     21 tablas · Kardex append-only · bloqueo pesimista · CHECK como red de fondo   |
 +-----------------------------------------------------------------------------------+
 
         Todo lo anterior corre dentro de INFRAESTRUCTURA — Docker Compose
@@ -121,7 +121,7 @@ Definir qué hace cada capa importa; definir qué **no** hace importa más, porq
 ### 3.3. Motor de Base de Datos y Modelo de Datos: PostgreSQL 17
 
 #### Decisión
-**PostgreSQL 17** como motor relacional único, con **modelo normalizado (3FN)**, patrón **PK numérica (`BIGINT IDENTITY`) + token público (`external_id UUID`)** y tablas *append-only* para Kardex y auditoría. **19 tablas.**
+**PostgreSQL 17** como motor relacional único, con **modelo normalizado (3FN)**, patrón **PK numérica (`BIGINT IDENTITY`) + token público (`external_id UUID`)** y tablas *append-only* para Kardex y auditoría. **21 tablas.**
 
 #### Justificación Técnica
 1. **Integridad transaccional ACID innegociable.** El inventario es un activo financiero. No se admite consistencia eventual en ventas concurrentes ni en traslados de mercancía. *Sostiene RNF-INT-01.*

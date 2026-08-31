@@ -67,7 +67,7 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 **Severidad:** Alta · **Estado:** Aceptada · **Esfuerzo estimado:** pequeño (menos de media jornada)
 
 #### Situación actual
-El esquema y los datos semilla viven en `backend/init-db/01-init-schema.sql` y `02-seed-data.sql`, ejecutados por el mecanismo de inicialización de la imagen de PostgreSQL. Ambos scripts están verificados contra PostgreSQL 17: crean las 19 tablas y cargan los datos sin errores.
+El esquema y los datos semilla viven en `backend/init-db/01-init-schema.sql` y `02-seed-data.sql`, ejecutados por el mecanismo de inicialización de la imagen de PostgreSQL. Ambos scripts están verificados contra PostgreSQL 17: crean las 21 tablas y cargan los datos sin errores.
 
 #### Por qué se aceptó
 Todavía no existe backend. Mover el esquema dentro de un proyecto Java inexistente le quitaría al repositorio la capacidad de levantar la base por sí sola, a cambio de ningún beneficio. Hoy `init-db/` es la herramienta correcta.

@@ -156,7 +156,7 @@ flowchart TD
         direction TB
         FE["Capa de Presentación — servicio frontend<br/>React 19 + Vite + TypeScript · SPA sin lógica de negocio"]
         BE["Capa de Negocio — servicio backend<br/>Java 25 + Spring Boot 4.1 · puerto 8080"]
-        DB[("Capa de Datos — servicio db<br/>PostgreSQL 17 · 19 tablas · Kardex append-only")]
+        DB[("Capa de Datos — servicio db<br/>PostgreSQL 17 · 21 tablas · Kardex append-only")]
         VOL[["Volumen pgdata"]]
         INIT[["init-db/*.sql · esquema y semillas"]]
 
