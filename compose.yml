@@ -37,5 +37,28 @@ services:
       retries: 12
       start_period: 40s
 
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      # Upstream del proxy `/api` de Nginx dentro de la red de Compose. El
+      # backend escucha en BACKEND_PORT; Nginx resuelve el nombre en cada request
+      # (resolver 127.0.0.11), así que no necesita esperar a que esté sano.
+      - BACKEND_URL=http://backend:${BACKEND_PORT:-8080}
+    ports:
+      # Nginx escucha 8080 dentro del contenedor; se publica en otro puerto del
+      # anfitrión porque el backend ya ocupa 8080.
+      - "${FRONTEND_PORT:-8081}:8080"
+    depends_on:
+      - backend
+    healthcheck:
+      # 127.0.0.1 y no `localhost`: Nginx sólo escucha IPv4 y el wget de BusyBox
+      # no reintenta si `localhost` resuelve primero a ::1.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
 volumes:
   pgdata:

@@ -17,6 +17,8 @@ internos. Toda ruta usa `external_id`; el `id` numérico nunca sale del backend.
 | Framework          | React 19                        | Ecosistema maduro para formularios y tablas densas  |
 | Build              | Vite                            | Arranque en frío casi instantáneo                   |
 | Lenguaje           | TypeScript en **modo estricto** | El contrato de la API llega tipado hasta el cliente |
+| Enrutamiento       | TanStack Router                 | Rutas por archivo tipadas, con generación de árbol  |
+| Estado de servidor | TanStack Query                  | Caché, revalidación y estados de carga de la API    |
 | Linter             | oxlint                          | Viene con la plantilla de Vite                      |
 | Formato            | Prettier                        | Sin comillas dobles, sin punto y coma               |
 | Pruebas            | Vitest + Testing Library        | El proyecto no da nada por terminado sin ejecutarlo |
@@ -29,7 +31,7 @@ la producción. `tsconfig.app.json` añade además `noUncheckedIndexedAccess`,
 
 ## Requisitos
 
-- Node >= 22 (ver `.nvmrc`)
+- Node 24 (ver `.nvmrc`); `engines` en `package.json` exige `>=22`
 - pnpm >= 11 (`corepack enable` o instalación global)
 
 ## Comandos
@@ -52,9 +54,12 @@ y `pnpm test` en verde.
 
 ## Estado
 
-Esqueleto recién inicializado. La plantilla de Vite sigue en `src/App.tsx`. Las
-funcionalidades de dominio —empezando por el vertical slice de IAM: inicio de
-sesión, gestión de usuarios y consulta de auditoría contra la API `/api/v1`—
-todavía no están implementadas.
+Interfaz de los diez módulos de dominio del backend implementada: IAM (inicio de
+sesión, gestión de usuarios, auditoría), catálogo, inventario, transferencias,
+logística, ventas, precios, compras, clientes y notificaciones, más la analítica
+de solo lectura. El enrutamiento arranca en `src/main.tsx` con TanStack Router;
+`src/routes/` define las páginas y `src/features/<dominio>/` agrupa componentes,
+hooks, servicios y esquemas de cada área. Los estados de sesión y el aislamiento
+por rol viven en `src/features/iam` y `src/lib/permissions.ts`.
 
 El alias `@/` apunta a `src/`.
