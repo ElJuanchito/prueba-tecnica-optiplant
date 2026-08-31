@@ -1,0 +1,25 @@
+# Superposición de desarrollo. Reabre en el anfitrión los puertos que
+# `compose.yml` mantiene cerrados, para los flujos en los que backend o
+# frontend corren nativos y necesitan alcanzar a los contenedores.
+#
+#   docker compose -f compose.yml -f compose.dev.yml up -d db backend
+#
+# El Makefile ya la aplica en sus objetivos de desarrollo (`make db`, `make up`,
+# `make up-containers`). `docker compose up` a secas NO la lee: la entrega sigue
+# exponiendo un solo puerto.
+services:
+  db:
+    ports:
+      # Para el backend nativo (`./mvnw spring-boot:run`), psql y clientes gráficos.
+      - "${DB_PORT_HOST:-5432}:5432"
+
+  backend:
+    ports:
+      # Para el proxy del servidor de desarrollo de Vite, que apunta a
+      # http://localhost:8080 (frontend/vite.config.ts).
+      - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
+    environment:
+      # Con el frontend nativo el origen del navegador es el de Vite, no el del
+      # Nginx del compose. Se declaran ambos para que los dos flujos funcionen
+      # con la misma superposición.
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:${FRONTEND_PORT:-8081}}

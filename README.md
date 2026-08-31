@@ -59,11 +59,17 @@ Servir la SPA desde un contenedor obliga a reconstruir la imagen en cada cambio 
 
 > **Sobre el nombre del archivo.** El enunciado pide un `docker-compose.yml`; este repositorio entrega un **`compose.yml`**. Desde Compose V2 ese es el nombre canónico que la herramienta busca primero, y `docker-compose.yml` se conserva únicamente por compatibilidad con la V1. El entregable real es que un solo comando levante la solución, y `docker compose up` funciona igual con cualquiera de los dos nombres. La divergencia se declara acá en lugar de dejarla implícita.
 
-Cuando el backend queda `healthy`:
+El **único puerto publicado es el del frontend**: `db` y `backend` sólo existen dentro de la red de Compose, alcanzables como `db:5432` y `backend:8080`. El navegador nunca habla con la API directamente; lo hace por el proxy `/api` de Nginx, bajo un mismo origen. Por eso la sonda del backend se consulta desde adentro:
 
 ```bash
-curl http://localhost:8080/actuator/health/readiness
+docker compose exec backend curl -fsS http://localhost:8080/actuator/health/readiness
 # {"status":"UP"}
+```
+
+Para abrir esos puertos en el anfitrión —backend nativo contra la base del contenedor, `psql`, un cliente gráfico— está la superposición [`compose.dev.yml`](./compose.dev.yml), que los objetivos de desarrollo del Makefile ya aplican:
+
+```bash
+docker compose -f compose.yml -f compose.dev.yml up -d db backend
 ```
 
 La configuración se inyecta por variables de entorno con valores por defecto operativos, de modo que el comando funciona sin crear ningún archivo. Para ajustarlos, copiar [`.env.example`](./.env.example) a `.env`.
