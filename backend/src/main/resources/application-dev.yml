@@ -8,6 +8,11 @@ optiplant:
     # frontend/ todavía no existe; estos son los puertos habituales de Vite/CRA en
     # local. Sin comodín — un origen explícito por entrada (RNF-SEC-06).
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+  analytics:
+    external:
+      api-keys:
+        - key: ${ANALYTICS_EXTERNAL_API_KEY:dev-external-availability-api-key-32chars}
+          user-external-id: e0000000-0000-0000-0000-000000000005
 
 springdoc:
   api-docs:

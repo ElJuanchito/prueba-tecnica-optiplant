@@ -5,6 +5,7 @@ import com.optiplant.inventory.analytics.domain.exception.ProductNotFoundExcepti
 import com.optiplant.inventory.shared.availability.NetworkAvailabilityPort;
 import com.optiplant.inventory.shared.availability.NetworkAvailabilityView;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>{@code @Service} restored in S2 (design §12 trap 6).
  */
+@Service
 public class QueryNetworkAvailabilityService implements QueryNetworkAvailabilityUseCase {
 
 	private final NetworkAvailabilityPort networkAvailabilityPort;

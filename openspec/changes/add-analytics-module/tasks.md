@@ -43,32 +43,32 @@ and five pure functions (design §5); do not invent value objects to pad it.
 
 ## Phase 2 — S2: infrastructure and web (PR2)
 
-- [ ] 2.1 Create `inventory/infrastructure/adapter/out/availability/NetworkAvailabilityAdapter` (`@Component`) —
+- [x] 2.1 Create `inventory/infrastructure/adapter/out/availability/NetworkAvailabilityAdapter` (`@Component`) —
       the single `NetworkAvailabilityPort` implementation over 1.2's overload, dropping `isOwnBranch` (design §2).
-- [ ] 2.2 Create `analytics/infrastructure/adapter/out/persistence/SalesAnalyticsJdbcAdapter` — design §4's
+- [x] 2.2 Create `analytics/infrastructure/adapter/out/persistence/SalesAnalyticsJdbcAdapter` — design §4's
       Q-1, Q-2, Q-3 over `JdbcClient` (D-4). Q-2's cumulative share is `SUM(...) OVER (ORDER BY salesAmount
       DESC, p.sku ASC)` in a CTE with **no `LIMIT` inside it** (trap 4); paging is `LIMIT/OFFSET` outside.
       Every statement carries `s.status = 'COMPLETED'` (F-2), joining `sale_items` via `sales.id` (F-1).
-- [ ] 2.3 Create the three remaining read adapters — `InventoryAnalyticsJdbcAdapter` (Q-4 — column-to-column
+- [x] 2.3 Create the three remaining read adapters — `InventoryAnalyticsJdbcAdapter` (Q-4 — column-to-column
       threshold, `p.is_active`, D-8's `ORDER BY CASE` default), `TransferAnalyticsJdbcAdapter` (Q-5, Q-6 —
       `dispatched_quantity` inbound `IN_TRANSIT`, `requested_quantity` outbound
       `REQUESTED`/`IN_PREPARATION`; `in_transit_stock` reported
       as stored, R-14), `BranchBoardJdbcAdapter` (Q-7 — `b.is_active`, `average_cost` for `inventoryValue`,
       R-20/R-22/F-8) and `BranchDirectoryJdbcAdapter` (Q-8). Grep-verify none mentions `kardex_movements`
       (F-4) or returns a numeric `id`.
-- [ ] 2.4 Create `analytics/infrastructure/config/` (design §7): `ExternalAvailabilityApiKeyProperties`
+- [x] 2.4 Create `analytics/infrastructure/config/` (design §7): `ExternalAvailabilityApiKeyProperties`
       (`optiplant.analytics.external`, constant-time match, **no `branchExternalId`**),
       `ExternalAvailabilityAuthenticationToken`, `ServiceUserPort` + its `JdbcClient` adapter (Q-9),
       `ExternalAvailabilityApiKeyFilter` (`shouldNotFilter` guarding `/api/external/availability` — trap 5; one
       `401 invalid_api_credential` body for every failure, no key material logged, R-25) and
       `ExternalAvailabilitySecurityConfig` (`@Bean @Order(2)`, exact `securityMatcher`, D-11). Add the keys to
       `application-dev.yml` and the test profile.
-- [ ] 2.5 Create `AnalyticsDashboardController`, `CorporateBoardController`, `ExternalAvailabilityController`
+- [x] 2.5 Create `AnalyticsDashboardController`, `CorporateBoardController`, `ExternalAvailabilityController`
       and `AnalyticsExceptionHandler` (design §7) — contract §6's seven operations verbatim, `resolveSize`
       copied from `TransferController:153-161` (**rejects**, never clamps — R-00/DT-10), `months` 1–12
       (R-07), the date window validated (R-11), unknown `sort`/`direction` ⇒ `400` never a silent fallback
       (R-21), no numeric id, **no `POST`/`PUT`/`PATCH`/`DELETE` mapping**. Restore `@Service` on S1's services.
-- [ ] 2.6 Edit `iam/.../config/SecurityConfig` — design §7's two matchers, `/api/analytics/corporate/**`
+- [x] 2.6 Edit `iam/.../config/SecurityConfig` — design §7's two matchers, `/api/analytics/corporate/**`
       **before** `/api/analytics/**`, string literals only, `hasAuthority` never `hasRole`; plus D-9's
       `AccessDeniedHandler` emitting `{"code":"forbidden", …}` via `.exceptionHandling(...)`. **First grep
       the archived `*IT` for an assertion on an empty 403 body** (trap 7).

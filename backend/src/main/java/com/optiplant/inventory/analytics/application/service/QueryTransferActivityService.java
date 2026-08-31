@@ -11,6 +11,7 @@ import com.optiplant.inventory.analytics.domain.service.AnalyticsAccessPolicy;
 import com.optiplant.inventory.shared.security.AuthenticatedPrincipal;
 import com.optiplant.inventory.shared.security.Role;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>{@code @Service} restored in S2 (design §12 trap 6).
  */
+@Service
 public class QueryTransferActivityService implements QueryTransferActivityUseCase {
 
 	private final TransferAnalyticsPort transferAnalyticsPort;

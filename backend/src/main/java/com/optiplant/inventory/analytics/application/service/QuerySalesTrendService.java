@@ -16,6 +16,7 @@ import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>{@code @Service} restored in S2: S1 ships this class unannotated because its out-ports
  * have no adapter yet (design §12 trap 6).
  */
+@Service
 public class QuerySalesTrendService implements QuerySalesTrendUseCase {
 
 	private final SalesAnalyticsPort salesAnalyticsPort;
