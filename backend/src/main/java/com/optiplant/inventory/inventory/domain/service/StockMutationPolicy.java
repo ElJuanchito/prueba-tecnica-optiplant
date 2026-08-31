@@ -50,7 +50,10 @@ public final class StockMutationPolicy {
 
 		BigDecimal totalCost = quantity.value().multiply(effectiveCost.value()).setScale(SCALE, RoundingMode.HALF_UP);
 
-		BranchInventory updated = current.withStock(new StockLevel(resultingStock), now);
+		UnitCost resultingAverage = movementType == StockMovementType.PURCHASE_RECEIPT
+				? WeightedAverageCostPolicy.recalculate(previousStock, current.averageCost(), quantity, effectiveCost)
+				: current.averageCost();
+		BranchInventory updated = current.withStockAndCost(new StockLevel(resultingStock), resultingAverage, now);
 		KardexMovement.Draft movement = new KardexMovement.Draft(current.branchExternalId(),
 				current.productExternalId(), movementType, quantity, effectiveCost, totalCost, previousStock,
 				resultingStock, referenceType, referenceId, notes, actorUserExternalId);

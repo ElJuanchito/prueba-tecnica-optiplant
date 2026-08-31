@@ -10,6 +10,7 @@
 | 1.4 | 2026-08-29 | Se agrega un ítem surgido de la verificación del módulo `inventory`: el tope de tamaño de página se clampea en `catalog` y se rechaza en el resto de los módulos. |
 | 1.5 | 2026-08-30 | Se agrega un ítem surgido del diseño del módulo `sales`: la asignación de `invoice_number` sin una secuencia de base de datos. |
 | 1.6 | 2026-08-30 | Se salda el ítem «Cliente sin entidad propia en las ventas»: el sub-dominio de clientes dentro de `sales` incorpora la tabla `customers`, el CRUD, la asociación opcional a la venta con congelado del nombre y la identificación, y el histórico de compras por cliente. La segmentación de listas de precios por cliente se mantiene fuera de alcance. |
+| 1.7 | 2026-08-30 | Se agrega un ítem surgido del contrato del módulo `purchases`: la asignación de `order_number` sin una secuencia de base de datos. |
 
 ---
 
@@ -51,6 +52,7 @@ Este documento registra las **decisiones deliberadas de postergar trabajo** y la
 | **DT-10** | El tope de tamaño de página se resuelve distinto en `catalog` que en el resto de los módulos | Baja | Aceptada | Cuando se pueda ajustar el frontend de `catalog` en el mismo cambio |
 | **DT-11** | `transfer_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 | **DT-12** | `sales.invoice_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
+| **DT-13** | `purchase_orders.order_number` se asigna sin una secuencia de base de datos | Baja | Aceptada | Cuando llegue el próximo cambio de esquema |
 
 ---
 
@@ -403,6 +405,31 @@ Cuando llegue el próximo cambio de esquema:
 
 #### Referencias
 RF-VEN-01 · RF-VEN-02 · RF-EXT-02 · `openspec/changes/archive/2026-08-30-add-sales-module/design.md` §6.3, §10, D-5.
+
+---
+
+### DT-13 — `purchase_orders.order_number` se asigna sin una secuencia de base de datos
+
+**Severidad:** Baja · **Estado:** Aceptada · **Esfuerzo estimado:** trivial · **Origen:** contrato del módulo `purchases`
+
+#### Situación actual
+`purchase_orders` no tiene ninguna columna de secuencia ni un `SEQUENCE` de PostgreSQL que numere `order_number`: la tabla sólo declara `order_number VARCHAR(50) NOT NULL UNIQUE` (`01-init-schema.sql`, §2.5 de `openspec/changes/add-purchases-module/contract.md`, hallazgo F-9). RF-COM-01 y HU-COM-01 exigen un número correlativo único legible, que se fija con el formato `OC-<yyyy>-<nnnn>` para acompañar a los ya usados `TRF-<yyyy>-<nnnn>` y `VEN-<yyyy>-<nnnn>`. El adaptador de persistencia de `purchases` lo resolverá sin tocar el esquema: tomará un bloqueo consultivo de transacción de PostgreSQL con alcance anual (`pg_advisory_xact_lock(hashtext('purchase_order_number:' || :year))`) como primera sentencia, calculará `MAX(...) + 1` sobre los números ya asignados ese año y recién entonces insertará —la misma técnica que **DT-11** utiliza para numerar transferencias, **DT-12** para las facturas de venta y **DT-09** para deduplicar alertas—.
+
+#### Por qué se aceptó
+El bloqueo consultivo serializa correctamente las creaciones concurrentes dentro de un mismo año sin requerir una migración de esquema (§2.5 del contrato prohíbe deliberadamente tocar `01-init-schema.sql` en este cambio). La restricción `UNIQUE` existente sobre `order_number` queda como última línea de defensa: si alguna vez el bloqueo se omitiera, el `INSERT` duplicado fallaría en la base en vez de corromper silenciosamente la numeración.
+
+#### Por qué es deuda
+La corrección depende enteramente de que **todo** escritor futuro de `purchase_orders` tome el mismo bloqueo consultivo antes de calcular el siguiente número correlativo. Un segundo camino de escritura —una migración de datos, un script administrativo o una carga masiva de órdenes históricas que inserte directamente en `purchase_orders`— que no respete ese orden puede colisionar con una creación concurrente y verse rechazado por la restricción `UNIQUE` en vez de recibir un número válido. No hay una secuencia de base de datos que garantice la asignación correlativa de forma estructural.
+
+#### Plan de pago
+Cuando llegue el próximo cambio de esquema:
+
+1. `CREATE SEQUENCE purchase_order_number_seq;`.
+2. Retirar `pg_advisory_xact_lock` y la consulta `MAX(...)` del adaptador de persistencia de `purchases`.
+3. Formatear `order_number` a partir de `nextval('purchase_order_number_seq')` combinado con el año en curso, conservando el formato `OC-<yyyy>-<nnnn>` que el frontend y el histórico de compras ya asumen.
+
+#### Referencias
+RF-COM-01 · RF-COM-05 · HU-COM-01 · `openspec/changes/add-purchases-module/contract.md` §2.5 F-9, §4 R-05, PA-04.
 
 ---
 
