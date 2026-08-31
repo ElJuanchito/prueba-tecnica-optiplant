@@ -59,18 +59,25 @@ public class StockQueryService implements QueryStockUseCase {
 
 	@Override
 	@Transactional(readOnly = true)
-	public NetworkAvailability networkAvailability(AuthenticatedPrincipal actor, UUID productExternalId) {
+	public NetworkAvailability networkAvailability(UUID productExternalId) {
 		ProductDescriptor product = productLookupPort.findByExternalId(productExternalId)
 				.orElseThrow(() -> new ProductNotFoundException(productExternalId));
 
 		List<BranchAvailability> raw = branchInventoryRepository.findAcrossActiveBranches(productExternalId);
-		UUID ownBranch = actor.isCorporate() ? null : actor.branchId();
-
-		List<BranchAvailability> marked = raw.stream().map(branch -> mark(branch, ownBranch)).toList();
-		BigDecimal networkTotal = marked.stream().map(BranchAvailability::currentStock)
+		BigDecimal networkTotal = raw.stream().map(BranchAvailability::currentStock)
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
 
-		return new NetworkAvailability(product.externalId(), product.sku(), product.name(), marked, networkTotal);
+		return new NetworkAvailability(product.externalId(), product.sku(), product.name(), raw, networkTotal);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public NetworkAvailability networkAvailability(AuthenticatedPrincipal actor, UUID productExternalId) {
+		NetworkAvailability unmarked = networkAvailability(productExternalId);
+		UUID ownBranch = actor.isCorporate() ? null : actor.branchId();
+
+		List<BranchAvailability> marked = unmarked.branches().stream().map(branch -> mark(branch, ownBranch)).toList();
+		return new NetworkAvailability(unmarked.productExternalId(), unmarked.sku(), unmarked.name(), marked, unmarked.networkTotal());
 	}
 
 	private static BranchAvailability mark(BranchAvailability branch, UUID ownBranch) {
